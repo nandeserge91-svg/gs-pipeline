@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, AlertTriangle, TrendingUp, Search } from 'lucide-react';
+import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/utils/statusHelpers';
@@ -9,6 +9,8 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [adjustQuantity, setAdjustQuantity] = useState('');
   const [adjustType, setAdjustType] = useState('APPROVISIONNEMENT');
@@ -20,6 +22,13 @@ export default function Products() {
     prix: '',
     stockActuel: '',
     stockAlerte: '10'
+  });
+  const [editProduct, setEditProduct] = useState({
+    code: '',
+    nom: '',
+    description: '',
+    prix: '',
+    stockAlerte: ''
   });
   const queryClient = useQueryClient();
 
@@ -86,6 +95,44 @@ export default function Products() {
     },
   });
 
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, productData }: any) => {
+      const { data } = await api.put(`/products/${id}`, {
+        code: productData.code,
+        nom: productData.nom,
+        description: productData.description || '',
+        prixUnitaire: parseFloat(productData.prix),
+        stockAlerte: parseInt(productData.stockAlerte)
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setShowEditProductModal(false);
+      setSelectedProduct(null);
+      toast.success('Produit modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la modification');
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      const { data } = await api.delete(`/products/${productId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setShowDeleteConfirm(false);
+      setSelectedProduct(null);
+      toast.success('Produit supprimé avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
+    },
+  });
+
   const handleCreateProduct = () => {
     if (!newProduct.code || !newProduct.nom || !newProduct.prix || !newProduct.stockActuel) {
       toast.error('Veuillez remplir tous les champs obligatoires');
@@ -112,6 +159,41 @@ export default function Products() {
   const openAdjustModal = (product: any) => {
     setSelectedProduct(product);
     setShowAddStockModal(true);
+  };
+
+  const openEditModal = (product: any) => {
+    setSelectedProduct(product);
+    setEditProduct({
+      code: product.code,
+      nom: product.nom,
+      description: product.description || '',
+      prix: product.prixUnitaire.toString(),
+      stockAlerte: product.stockAlerte.toString()
+    });
+    setShowEditProductModal(true);
+  };
+
+  const openDeleteConfirm = (product: any) => {
+    setSelectedProduct(product);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleUpdateProduct = () => {
+    if (!editProduct.code || !editProduct.nom || !editProduct.prix || !editProduct.stockAlerte) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    updateProductMutation.mutate({
+      id: selectedProduct.id,
+      productData: editProduct
+    });
+  };
+
+  const handleDeleteProduct = () => {
+    if (selectedProduct) {
+      deleteProductMutation.mutate(selectedProduct.id);
+    }
   };
 
   const filteredProducts = productsData?.products || [];
@@ -235,13 +317,32 @@ export default function Products() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => openAdjustModal(product)}
-                  className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2"
-                >
-                  <TrendingUp size={18} />
-                  Ajuster le stock
-                </button>
+                <div className="mt-4 space-y-2">
+                  <button
+                    onClick={() => openAdjustModal(product)}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    <TrendingUp size={18} />
+                    Ajuster le stock
+                  </button>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEditModal(product)}
+                      className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
+                    >
+                      <Edit2 size={16} />
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => openDeleteConfirm(product)}
+                      className="btn bg-red-600 text-white hover:bg-red-700 flex-1 flex items-center justify-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -343,6 +444,171 @@ export default function Products() {
         </div>
       )}
 
+      {/* Modal d'édition de produit */}
+      {showEditProductModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Modifier le produit</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Code (product_key) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editProduct.code}
+                  onChange={(e) => setEditProduct({ ...editProduct, code: e.target.value.toUpperCase() })}
+                  className="input"
+                  placeholder="Ex: GAINE_TOURMALINE"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  ⚠️ Doit correspondre au product_key de Google Apps Script. Pas d'espaces ni d'accents.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editProduct.nom}
+                  onChange={(e) => setEditProduct({ ...editProduct, nom: e.target.value })}
+                  className="input"
+                  placeholder="Ex: Gaine Tourmaline Amincissante"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (optionnel)
+                </label>
+                <textarea
+                  value={editProduct.description}
+                  onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })}
+                  className="input"
+                  rows={3}
+                  placeholder="Description du produit..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prix unitaire (XOF) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editProduct.prix}
+                  onChange={(e) => setEditProduct({ ...editProduct, prix: e.target.value })}
+                  className="input"
+                  placeholder="Ex: 45000"
+                  required
+                  min="0"
+                  step="100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Seuil d'alerte <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editProduct.stockAlerte}
+                  onChange={(e) => setEditProduct({ ...editProduct, stockAlerte: e.target.value })}
+                  className="input"
+                  placeholder="Ex: 10"
+                  required
+                  min="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Alerte si le stock descend sous ce seuil
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800">
+                  ℹ️ Le stock actuel ne peut être modifié ici. Utilisez "Ajuster le stock" pour cela.
+                </p>
+                <p className="text-sm font-medium text-gray-700 mt-1">
+                  Stock actuel : <span className="text-primary-600">{selectedProduct.stockActuel}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleUpdateProduct}
+                disabled={!editProduct.code || !editProduct.nom || !editProduct.prix || !editProduct.stockAlerte || updateProductMutation.isPending}
+                className="btn btn-primary flex-1"
+              >
+                {updateProductMutation.isPending ? 'Modification...' : 'Enregistrer les modifications'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowEditProductModal(false);
+                  setSelectedProduct(null);
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation de suppression */}
+      {showDeleteConfirm && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Supprimer le produit</h2>
+                <p className="text-sm text-gray-600">Cette action est irréversible</p>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="font-medium text-gray-900">{selectedProduct.nom}</p>
+              <p className="text-sm text-gray-600">Code: {selectedProduct.code}</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Stock actuel: <strong>{selectedProduct.stockActuel}</strong>
+              </p>
+            </div>
+
+            <p className="text-sm text-gray-700 mb-6">
+              ⚠️ Êtes-vous sûr de vouloir supprimer ce produit ? Toutes les données associées seront perdues.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteProduct}
+                disabled={deleteProductMutation.isPending}
+                className="btn bg-red-600 text-white hover:bg-red-700 flex-1"
+              >
+                {deleteProductMutation.isPending ? 'Suppression...' : 'Oui, supprimer'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSelectedProduct(null);
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'ajout de produit */}
       {showAddProductModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -363,7 +629,7 @@ export default function Products() {
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  ⚠️ Doit correspondre au product_key de Make. Pas d'espaces ni d'accents.
+                  ⚠️ Doit correspondre au product_key de Google Apps Script. Pas d'espaces ni d'accents.
                 </p>
               </div>
 
