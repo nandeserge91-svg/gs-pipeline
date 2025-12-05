@@ -86,7 +86,7 @@ router.post('/make', verifyApiKey, [
 
     // 2. Calculer les montants
     const orderQuantity = parseInt(quantity) || 1;
-    const unitPrice = product.prix;
+    const unitPrice = product.prixUnitaire;
     const totalAmount = unitPrice * orderQuantity;
 
     // 3. Créer la commande dans la base de données
@@ -174,7 +174,7 @@ router.get('/products', verifyApiKey, async (req, res) => {
         id: true,
         code: true,
         nom: true,
-        prix: true,
+        prixUnitaire: true,
         stockActuel: true
       },
       orderBy: {
@@ -187,7 +187,7 @@ router.get('/products', verifyApiKey, async (req, res) => {
       products: products.map(p => ({
         product_key: p.code,
         name: p.nom,
-        price: p.prix,
+        price: p.prixUnitaire,
         stock: p.stockActuel
       })),
       count: products.length
