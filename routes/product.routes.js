@@ -121,9 +121,10 @@ router.post('/', authorize('ADMIN'), [
 router.put('/:id', authorize('ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, description, prixUnitaire, stockAlerte, actif } = req.body;
+    const { nom, description, prixUnitaire, stockAlerte, actif, code } = req.body;
 
     const updateData = {};
+    if (code) updateData.code = code;
     if (nom) updateData.nom = nom;
     if (description !== undefined) updateData.description = description;
     if (prixUnitaire) updateData.prixUnitaire = parseFloat(prixUnitaire);
@@ -139,6 +140,52 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
   } catch (error) {
     console.error('Erreur modification produit:', error);
     res.status(500).json({ error: 'Erreur lors de la modification du produit.' });
+  }
+});
+
+// DELETE /api/products/:id - Supprimer un produit (Admin uniquement)
+router.delete('/:id', authorize('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier si le produit existe
+    const product = await prisma.product.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        _count: {
+          select: {
+            orders: true
+          }
+        }
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Produit non trouvé.' });
+    }
+
+    // Vérifier si le produit est lié à des commandes
+    if (product._count.orders > 0) {
+      return res.status(400).json({ 
+        error: `Impossible de supprimer ce produit. Il est lié à ${product._count.orders} commande(s).`,
+        hint: 'Vous pouvez désactiver le produit au lieu de le supprimer.'
+      });
+    }
+
+    // Supprimer les mouvements de stock associés en premier
+    await prisma.stockMovement.deleteMany({
+      where: { productId: parseInt(id) }
+    });
+
+    // Supprimer le produit
+    await prisma.product.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Produit supprimé avec succès.' });
+  } catch (error) {
+    console.error('Erreur suppression produit:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du produit.' });
   }
 });
 
