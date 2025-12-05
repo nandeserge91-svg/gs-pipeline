@@ -10,7 +10,9 @@ import webhookRoutes from './routes/webhook.routes.js';
 import productRoutes from './routes/product.routes.js';
 import stockRoutes from './routes/stock.routes.js';
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
