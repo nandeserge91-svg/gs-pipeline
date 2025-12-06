@@ -2,7 +2,7 @@
 
 ## 🗂️ VILLES PAR ORDRE ALPHABÉTIQUE
 
-La liste des agences de retrait pour les commandes EXPRESS a été mise à jour avec **24 villes** de Côte d'Ivoire, triées par ordre alphabétique :
+La liste des agences de retrait pour les commandes EXPRESS comprend **24 villes** de Côte d'Ivoire, triées par ordre alphabétique :
 
 1. **Beoumi**
 2. **Bocanda**
@@ -31,9 +31,46 @@ La liste des agences de retrait pour les commandes EXPRESS a été mise à jour 
 
 ---
 
+## 🔧 FICHIER SOURCE UNIQUE
+
+### **`frontend/src/constants/cities.ts`**
+
+Cette liste est maintenant **centralisée** dans un seul fichier pour éviter les doublons et faciliter la maintenance :
+
+```typescript
+export const VILLES_AGENCES_EXPRESS = [
+  'Beoumi',
+  'Bocanda',
+  'Bonon',
+  'Bouaflé',
+  'Bouaké',
+  'Daloa',
+  'Dimbokro',
+  'Divo',
+  'Duékoué',
+  'Gabiadji',
+  'Gagnoa',
+  'Gonaté',
+  'Guibéroua',
+  'Hiré',
+  'Issia',
+  'Man',
+  'Méagui',
+  'San Pedro',
+  'Sinfra',
+  'Soubré',
+  'Tiébissou',
+  'Toumodi',
+  'Yabayo',
+  'Yamoussoukro',
+] as const;
+```
+
+---
+
 ## 📋 OÙ CETTE LISTE EST UTILISÉE
 
-### **Modal EXPRESS** (Création d'un EXPRESS)
+### **1️⃣ Modal EXPRESS** (Création d'un EXPRESS)
 
 Quand un appelant crée un EXPRESS (paiement 10%), il doit sélectionner une **agence de retrait** parmi ces 24 villes.
 
@@ -54,6 +91,40 @@ Quand un appelant crée un EXPRESS (paiement 10%), il doit sélectionner une **a
 │ └─────────────────────────────────┘ │
 └─────────────────────────────────────┘
 ```
+
+---
+
+### **2️⃣ Filtres - Page "Expéditions & EXPRESS"**
+
+Les filtres utilisent cette **même liste fixe** pour :
+
+#### **Filtre par Ville client** 📍
+```
+📍 Ville client
+┌────────────────────┐
+│ [v] Toutes les villes
+│  Beoumi
+│  Bocanda
+│  Bonon
+│  ...
+│  Yamoussoukro
+└────────────────────┘
+```
+
+#### **Filtre par Agence de retrait** 🏢
+```
+🏢 Agence de retrait
+┌────────────────────┐
+│ [v] Toutes les agences
+│  Beoumi
+│  Bocanda
+│  Bonon
+│  ...
+│  Yamoussoukro
+└────────────────────┘
+```
+
+**Chemin** : `frontend/src/pages/admin/ExpeditionsExpress.tsx`
 
 ---
 
@@ -85,35 +156,65 @@ Quand un appelant crée un EXPRESS (paiement 10%), il doit sélectionner une **a
 
 ---
 
-## 📊 STATISTIQUES PAR AGENCE
+## 📊 STATISTIQUES ET FILTRES PAR AGENCE
 
-Vous pouvez voir les statistiques par agence dans la page **"Expéditions & EXPRESS"** :
+Dans la page **"Expéditions & EXPRESS"**, vous pouvez :
 
-- Nombre d'EXPRESS par agence
-- EXPRESS en attente de retrait
-- EXPRESS livrés
+✅ **Filtrer** les commandes par ville client
+✅ **Filtrer** les EXPRESS par agence de retrait
+✅ **Voir** le nombre d'EXPRESS par agence
+✅ **Organiser** les retraits par agence
 
----
-
-## 🔍 FILTRAGE PAR AGENCE
-
-Dans la page **"Expéditions & EXPRESS"** > Onglet **"EXPRESS - En agence"**, vous pouvez filtrer par agence :
-
-```
-┌──────────────────────────────────────┐
-│ Agence : [v] Toutes les agences      │
-│           Beoumi                      │
-│           Bocanda                     │
-│           Bouaké                      │
-│           ...                         │
-└──────────────────────────────────────┘
-```
+**Avantage** : Toutes les 24 villes apparaissent dans les filtres, **même sans commandes** ! Cela permet de voir clairement quelles villes n'ont pas de commandes.
 
 ---
 
 ## ⚠️ IMPORTANT
 
-### **Calcul des frais d'expédition**
+### **Liste fixe vs Liste dynamique**
+
+#### **Avant** ❌
+- Les filtres affichaient seulement les villes avec des commandes
+- Si Bouaké n'avait pas de commande, Bouaké n'apparaissait pas dans les filtres
+- Confusion pour les utilisateurs
+
+#### **Maintenant** ✅
+- Les filtres affichent **toutes les 24 villes**, toujours
+- Même si Bouaké n'a pas de commande, Bouaké apparaît dans les filtres
+- Cohérence avec le modal EXPRESS
+- Clarté pour les utilisateurs
+
+---
+
+## 🔄 MISE À JOUR DE LA LISTE
+
+### **Comment modifier la liste :**
+
+1. **Ouvrir** le fichier `frontend/src/constants/cities.ts`
+2. **Ajouter/Retirer** une ville dans le tableau `VILLES_AGENCES_EXPRESS`
+3. **Maintenir l'ordre alphabétique** ⭐
+4. **Sauvegarder** le fichier
+5. Commit et push
+
+**✅ CHANGEMENTS AUTOMATIQUES DANS :**
+- Modal EXPRESS (sélection agence)
+- Filtre "Ville client" (page Expéditions & EXPRESS)
+- Filtre "Agence de retrait" (page Expéditions & EXPRESS)
+
+**Exemple d'ajout** :
+```typescript
+export const VILLES_AGENCES_EXPRESS = [
+  'Abengourou',     // ✅ Nouvelle ville ajoutée
+  'Beoumi',
+  'Bocanda',
+  // ...
+  'Yamoussoukro',
+] as const;
+```
+
+---
+
+## ⚠️ CALCUL DES FRAIS D'EXPÉDITION
 
 Les frais d'expédition peuvent varier selon la ville de destination :
 
@@ -146,35 +247,23 @@ Les frais d'expédition peuvent varier selon la ville de destination :
 
 ---
 
-## ✅ AVANTAGES DE CETTE LISTE
+## ✅ AVANTAGES DE CETTE APPROCHE
 
-1. ✅ **Ordre alphabétique** : Facile à trouver une ville
-2. ✅ **24 villes** : Couverture complète de la Côte d'Ivoire
-3. ✅ **Simplicité** : Nom de ville uniquement (pas "Agence de...")
-4. ✅ **Traçabilité** : Suivi par agence facilité
-
----
-
-## 🔄 MISE À JOUR DE LA LISTE
-
-Pour ajouter ou supprimer une ville :
-
-1. Ouvrir : `frontend/src/components/modals/ExpressModal.tsx`
-2. Trouver la section `<select>` avec `agenceRetrait`
-3. Ajouter/supprimer/modifier les `<option>`
-4. **Maintenir l'ordre alphabétique** ⭐
-5. Commit et push
-
-**Exemple** :
-```tsx
-<option value="Nouvelle Ville">Nouvelle Ville</option>
-```
+1. ✅ **Source unique** : Un seul fichier à modifier
+2. ✅ **Ordre alphabétique** : Facile à trouver une ville
+3. ✅ **24 villes** : Couverture complète de la Côte d'Ivoire
+4. ✅ **Cohérence** : Même liste partout (modal + filtres)
+5. ✅ **Liste fixe** : Toutes les villes visibles, même sans commandes
+6. ✅ **Traçabilité** : Suivi par agence facilité
+7. ✅ **Type-safe** : TypeScript garantit la cohérence
 
 ---
 
 ## 📋 VÉRIFICATION
 
-### **Pour tester la nouvelle liste :**
+### **Pour tester la liste mise à jour :**
+
+#### **Test 1 : Modal EXPRESS**
 
 1. Connectez-vous en **Appelant**
 2. Allez dans **"À appeler"**
@@ -183,9 +272,28 @@ Pour ajouter ou supprimer une ville :
 5. Dans le formulaire, cliquez sur **"Agence de retrait"**
 6. ✅ **Vérifiez** : Vous voyez les 24 villes par ordre alphabétique
 
+#### **Test 2 : Filtres page "Expéditions & EXPRESS"**
+
+1. Allez dans **"Expéditions & EXPRESS"**
+2. Cliquez sur **"Filtres"**
+3. Regardez **"📍 Ville client"** et **"🏢 Agence de retrait"**
+4. ✅ **Vérifiez** : Vous voyez les 24 villes par ordre alphabétique
+5. ✅ **Vérifiez** : Toutes les villes apparaissent, même celles sans commandes
+
 ---
 
-**LISTE MISE À JOUR ET DÉPLOYÉE ! 🚀**
+## 🚀 DÉPLOIEMENT
 
-**Dans 3-5 minutes, rafraîchissez et testez la nouvelle liste !**
+- ✅ **Fichier créé** : `frontend/src/constants/cities.ts`
+- ✅ **Modal mis à jour** : `ExpressModal.tsx`
+- ✅ **Filtres mis à jour** : `ExpeditionsExpress.tsx`
+- ✅ **Code poussé** sur GitHub
+- ⏳ **Vercel redéploie** (3 min)
 
+---
+
+**LISTE CENTRALISÉE ET DÉPLOYÉE ! 🚀**
+
+**Dans 3-5 minutes, rafraîchissez et testez les filtres avec la liste fixe !**
+
+**Tous les 24 villes apparaîtront dans les filtres, même celles sans commandes ! ✨**
