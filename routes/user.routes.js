@@ -10,8 +10,8 @@ const prisma = new PrismaClient();
 // Toutes les routes nécessitent authentification
 router.use(authenticate);
 
-// GET /api/users - Liste des utilisateurs (Admin et Gestionnaire)
-router.get('/', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+// GET /api/users - Liste des utilisateurs (Admin, Gestionnaire, Gestionnaire Stock)
+router.get('/', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
     const { role, actif } = req.query;
     

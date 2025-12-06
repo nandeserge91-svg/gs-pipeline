@@ -27,8 +27,8 @@ router.get('/', async (req, res) => {
     } else if (user.role === 'LIVREUR') {
       // Le livreur voit uniquement ses commandes assignées
       where.delivererId = user.id;
-    } else if (user.role === 'GESTIONNAIRE') {
-      // Le gestionnaire voit toutes les commandes validées et celles en cours de livraison
+    } else if (user.role === 'GESTIONNAIRE' || user.role === 'GESTIONNAIRE_STOCK') {
+      // Le gestionnaire et gestionnaire de stock voient toutes les commandes
       // (pas de restriction)
     } else if (user.role === 'ADMIN') {
       // L'admin voit tout (pas de restriction)

@@ -4,6 +4,7 @@ import { Truck, Zap, Package, CheckCircle, Phone, MapPin, DollarSign, Calendar, 
 import { ordersApi, usersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/utils/statusHelpers';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 import type { Order } from '@/types';
 
 export default function ExpeditionsExpress() {
@@ -21,6 +22,10 @@ export default function ExpeditionsExpress() {
   });
 
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  
+  // Vérifier si l'utilisateur peut assigner des livreurs
+  const canAssignDeliverer = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   // Récupérer les livreurs
   const { data: deliverersData } = useQuery({
@@ -266,7 +271,7 @@ export default function ExpeditionsExpress() {
                             )}
                           </td>
                           <td className="py-3 px-4">
-                            {!order.delivererId && (
+                            {!order.delivererId && canAssignDeliverer && (
                               <button
                                 onClick={() => {
                                   setSelectedOrder(order);
@@ -278,9 +283,14 @@ export default function ExpeditionsExpress() {
                                 Assigner livreur
                               </button>
                             )}
+                            {!order.delivererId && !canAssignDeliverer && (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                                ⏳ En attente d'assignation
+                              </span>
+                            )}
                             {order.delivererId && (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                ✓ Assignée
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1">
+                                ✓ Assignée - Préparer le colis
                               </span>
                             )}
                           </td>
