@@ -5,6 +5,7 @@ import { ordersApi, productsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import { toast } from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +19,10 @@ export default function Orders() {
   const [showFilters, setShowFilters] = useState(false);
   
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  
+  // Vérifier si l'utilisateur peut supprimer des commandes (Admin uniquement)
+  const canDelete = user?.role === 'ADMIN';
 
   // Récupérer la liste des produits pour le filtre
   const { data: productsData } = useQuery({
@@ -279,7 +284,9 @@ export default function Orders() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Montant</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Statut</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                    {canDelete && (
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -299,18 +306,20 @@ export default function Orders() {
                       <td className="py-3 px-4 text-sm text-gray-500">
                         {formatDateTime(order.createdAt)}
                       </td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => {
-                            setOrderToDelete(order);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-red-600 hover:text-red-800 transition-colors"
-                          title="Supprimer la commande"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
+                      {canDelete && (
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => {
+                              setOrderToDelete(order);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            title="Supprimer la commande"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

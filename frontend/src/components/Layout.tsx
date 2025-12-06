@@ -49,7 +49,8 @@ export default function Layout({ children }: LayoutProps) {
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/gestionnaire' },
           { icon: Phone, label: 'À appeler', path: '/gestionnaire/to-call' },
-          { icon: ShoppingCart, label: 'Commandes validées', path: '/gestionnaire/validated' },
+          { icon: ShoppingCart, label: 'Toutes les commandes', path: '/gestionnaire/all-orders' },
+          { icon: CheckCircle, label: 'Commandes validées', path: '/gestionnaire/validated' },
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/gestionnaire/expeditions' },
           { icon: Truck, label: 'Livraisons', path: '/gestionnaire/deliveries' },
           { icon: Database, label: 'Base Clients', path: '/gestionnaire/database' },
@@ -69,6 +70,7 @@ export default function Layout({ children }: LayoutProps) {
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/appelant' },
           { icon: Phone, label: 'À appeler', path: '/appelant/orders' },
+          { icon: ShoppingCart, label: 'Toutes les commandes', path: '/appelant/all-orders' },
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/appelant/expeditions' },
           { icon: CheckCircle, label: 'Mes commandes traitées', path: '/appelant/processed' },
           { icon: Database, label: 'Base Clients', path: '/appelant/database' },

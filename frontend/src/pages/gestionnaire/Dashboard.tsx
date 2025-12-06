@@ -7,12 +7,14 @@ import ClientDatabase from '../common/ClientDatabase';
 import CallerSupervision from '../common/CallerSupervision';
 import AppelantOrders from '../appelant/Orders';
 import ExpeditionsExpress from '../admin/ExpeditionsExpress';
+import AllOrders from '../admin/Orders';
 
 export default function GestionnaireDashboard() {
   return (
     <Routes>
       <Route index element={<Overview />} />
       <Route path="to-call" element={<AppelantOrders />} />
+      <Route path="all-orders" element={<AllOrders />} />
       <Route path="validated" element={<ValidatedOrders />} />
       <Route path="expeditions" element={<ExpeditionsExpress />} />
       <Route path="deliveries" element={<Deliveries />} />
