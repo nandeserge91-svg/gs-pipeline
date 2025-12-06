@@ -402,7 +402,7 @@ router.put('/:id', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
 });
 
 // POST /api/orders/:id/expedition - Créer une EXPÉDITION (paiement 100%)
-router.post('/:id/expedition', authorize('APPELANT', 'ADMIN'), [
+router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
   body('montantPaye').isFloat({ min: 0 }).withMessage('Montant invalide'),
   body('modePaiement').notEmpty().withMessage('Mode de paiement requis'),
 ], async (req, res) => {
@@ -523,7 +523,7 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN'), [
 });
 
 // POST /api/orders/:id/express - Créer un EXPRESS (paiement 10%)
-router.post('/:id/express', authorize('APPELANT', 'ADMIN'), [
+router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
   body('montantPaye').isFloat({ min: 0 }).withMessage('Montant invalide'),
   body('modePaiement').notEmpty().withMessage('Mode de paiement requis'),
   body('agenceRetrait').notEmpty().withMessage('Agence de retrait requise'),
