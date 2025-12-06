@@ -47,7 +47,7 @@ router.post('/', authorize('ADMIN'), [
   body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
   body('nom').notEmpty().withMessage('Nom requis'),
   body('prenom').notEmpty().withMessage('Prénom requis'),
-  body('role').isIn(['ADMIN', 'GESTIONNAIRE', 'APPELANT', 'LIVREUR']).withMessage('Rôle invalide')
+  body('role').isIn(['ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT', 'LIVREUR']).withMessage('Rôle invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
