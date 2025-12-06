@@ -50,6 +50,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: LayoutDashboard, label: 'Dashboard', path: '/gestionnaire' },
           { icon: Phone, label: 'À appeler', path: '/gestionnaire/to-call' },
           { icon: ShoppingCart, label: 'Commandes validées', path: '/gestionnaire/validated' },
+          { icon: Zap, label: 'Expéditions & EXPRESS', path: '/gestionnaire/expeditions' },
           { icon: Truck, label: 'Livraisons', path: '/gestionnaire/deliveries' },
           { icon: Database, label: 'Base Clients', path: '/gestionnaire/database' },
           { icon: Eye, label: 'Supervision Appelants', path: '/gestionnaire/supervision' },
@@ -59,6 +60,7 @@ export default function Layout({ children }: LayoutProps) {
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/stock' },
           { icon: Truck, label: 'Tournées', path: '/stock/tournees' },
+          { icon: Zap, label: 'Expéditions & EXPRESS', path: '/stock/expeditions' },
           { icon: Package, label: 'Produits', path: '/stock/products' },
           { icon: History, label: 'Mouvements', path: '/stock/movements' },
           { icon: Database, label: 'Base Clients', path: '/stock/database' },
@@ -67,6 +69,7 @@ export default function Layout({ children }: LayoutProps) {
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/appelant' },
           { icon: Phone, label: 'À appeler', path: '/appelant/orders' },
+          { icon: Zap, label: 'Expéditions & EXPRESS', path: '/appelant/expeditions' },
           { icon: CheckCircle, label: 'Mes commandes traitées', path: '/appelant/processed' },
           { icon: Database, label: 'Base Clients', path: '/appelant/database' },
           { icon: BarChart3, label: 'Mes statistiques', path: '/appelant/stats' },
