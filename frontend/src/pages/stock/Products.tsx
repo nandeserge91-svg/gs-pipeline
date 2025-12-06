@@ -4,6 +4,7 @@ import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2 } from 
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/utils/statusHelpers';
+import type { Product } from '@/types';
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -260,7 +261,7 @@ export default function Products() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map((product: any) => {
+          {filteredProducts.map((product: Product) => {
             const isLowStock = product.stockActuel <= product.stockAlerte;
             const stockPercentage = (product.stockActuel / (product.stockAlerte * 3)) * 100;
             
@@ -299,18 +300,43 @@ export default function Products() {
                       />
                     </div>
                     
-                    {/* Stock EXPRESS réservé */}
-                    {product.stockExpress > 0 && (
-                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-amber-700">Stock EXPRESS (réservé)</span>
-                          <span className="text-sm font-bold text-amber-900">{product.stockExpress}</span>
-                        </div>
-                        <p className="text-xs text-amber-600 mt-1">
-                          Clients ayant payé 10%, en attente retrait
-                        </p>
+                    {/* Stock EXPRESS réservé - Toujours afficher */}
+                    <div className={`mt-2 p-2 rounded-md ${
+                      (product.stockExpress || 0) > 0 
+                        ? 'bg-amber-50 border border-amber-200' 
+                        : 'bg-gray-50 border border-gray-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs flex items-center gap-1 ${
+                          (product.stockExpress || 0) > 0 ? 'text-amber-700' : 'text-gray-600'
+                        }`}>
+                          ⚡ Stock EXPRESS (réservé)
+                        </span>
+                        <span className={`text-sm font-bold ${
+                          (product.stockExpress || 0) > 0 ? 'text-amber-900' : 'text-gray-500'
+                        }`}>
+                          {product.stockExpress || 0}
+                        </span>
                       </div>
-                    )}
+                      <p className={`text-xs mt-1 ${
+                        (product.stockExpress || 0) > 0 ? 'text-amber-600' : 'text-gray-500'
+                      }`}>
+                        {(product.stockExpress || 0) > 0 
+                          ? 'Clients ayant payé 10%, en attente retrait'
+                          : 'Aucune réservation EXPRESS'
+                        }
+                      </p>
+                    </div>
+                    
+                    {/* Stock total */}
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 font-medium">📊 Stock total (physique)</span>
+                        <span className="text-sm font-bold text-primary-600">
+                          {product.stockActuel + (product.stockExpress || 0)}
+                        </span>
+                      </div>
+                    </div>
                     
                     <p className="text-xs text-gray-500 mt-1">
                       Seuil d'alerte: {product.stockAlerte}

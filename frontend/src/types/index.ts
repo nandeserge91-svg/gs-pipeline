@@ -167,3 +167,17 @@ export interface ExpressData {
   note?: string;
 }
 
+export interface Product {
+  id: number;
+  code: string;
+  nom: string;
+  description?: string;
+  prixUnitaire: number;
+  stockActuel: number;
+  stockExpress: number;
+  stockAlerte: number;
+  actif: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
