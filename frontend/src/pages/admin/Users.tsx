@@ -27,6 +27,18 @@ export default function Users() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => usersApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditingUser(null);
+      toast.success('Utilisateur modifié avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la modification');
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: usersApi.delete,
     onSuccess: () => {
@@ -58,12 +70,13 @@ export default function Users() {
       </div>
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {['ADMIN', 'GESTIONNAIRE', 'APPELANT', 'LIVREUR'].map(role => {
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {['ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT', 'LIVREUR'].map(role => {
           const count = usersData?.users?.filter((u: User) => u.role === role && u.actif).length || 0;
+          const displayName = role === 'GESTIONNAIRE_STOCK' ? 'STOCK' : role;
           return (
             <div key={role} className="card">
-              <p className="text-sm text-gray-600">{role}</p>
+              <p className="text-sm text-gray-600">{displayName}</p>
               <p className="text-2xl font-bold text-primary-600 mt-1">{count}</p>
             </div>
           );
@@ -133,7 +146,7 @@ export default function Users() {
         )}
       </div>
 
-      {/* Modal de création (simplifié) */}
+      {/* Modal de création */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -159,14 +172,105 @@ export default function Users() {
                   <option value="">Sélectionner un rôle</option>
                   <option value="ADMIN">Admin</option>
                   <option value="GESTIONNAIRE">Gestionnaire</option>
+                  <option value="GESTIONNAIRE_STOCK">Gestionnaire de Stock</option>
                   <option value="APPELANT">Appelant</option>
                   <option value="LIVREUR">Livreur</option>
                 </select>
-                <input name="password" type="password" placeholder="Mot de passe" className="input" required />
+                <input name="password" type="password" placeholder="Mot de passe (min 6 caractères)" className="input" required />
               </div>
               <div className="flex gap-2 mt-6">
-                <button type="submit" className="btn btn-primary flex-1">Créer</button>
+                <button type="submit" className="btn btn-primary flex-1" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Création...' : 'Créer'}
+                </button>
                 <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary flex-1">Annuler</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Modifier l'utilisateur</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const updateData: any = {
+                nom: formData.get('nom') as string,
+                prenom: formData.get('prenom') as string,
+                telephone: formData.get('telephone') as string,
+                role: formData.get('role') as any,
+                actif: formData.get('actif') === 'true',
+              };
+              
+              const newPassword = formData.get('password') as string;
+              if (newPassword && newPassword.trim()) {
+                updateData.password = newPassword;
+              }
+
+              updateMutation.mutate({ id: editingUser.id, data: updateData });
+            }}>
+              <div className="space-y-4">
+                <input 
+                  name="prenom" 
+                  placeholder="Prénom" 
+                  className="input" 
+                  defaultValue={editingUser.prenom}
+                  required 
+                />
+                <input 
+                  name="nom" 
+                  placeholder="Nom" 
+                  className="input" 
+                  defaultValue={editingUser.nom}
+                  required 
+                />
+                <input 
+                  name="email" 
+                  type="email" 
+                  placeholder="Email" 
+                  className="input bg-gray-100" 
+                  defaultValue={editingUser.email}
+                  disabled
+                  title="L'email ne peut pas être modifié"
+                />
+                <input 
+                  name="telephone" 
+                  placeholder="Téléphone" 
+                  className="input" 
+                  defaultValue={editingUser.telephone || ''}
+                />
+                <select name="role" className="input" defaultValue={editingUser.role} required>
+                  <option value="ADMIN">Admin</option>
+                  <option value="GESTIONNAIRE">Gestionnaire</option>
+                  <option value="GESTIONNAIRE_STOCK">Gestionnaire de Stock</option>
+                  <option value="APPELANT">Appelant</option>
+                  <option value="LIVREUR">Livreur</option>
+                </select>
+                <select name="actif" className="input" defaultValue={editingUser.actif.toString()} required>
+                  <option value="true">Actif</option>
+                  <option value="false">Désactivé</option>
+                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nouveau mot de passe (optionnel)
+                  </label>
+                  <input 
+                    name="password" 
+                    type="password" 
+                    placeholder="Laisser vide pour ne pas changer" 
+                    className="input" 
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Minimum 6 caractères si vous souhaitez le changer</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <button type="submit" className="btn btn-primary flex-1" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? 'Modification...' : 'Modifier'}
+                </button>
+                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-secondary flex-1">Annuler</button>
               </div>
             </form>
           </div>
