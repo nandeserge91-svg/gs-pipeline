@@ -9,6 +9,7 @@ import AppelantOrders from '../appelant/Orders';
 import Tournees from '../stock/Tournees';
 import Products from '../stock/Products';
 import Movements from '../stock/Movements';
+import ExpeditionsExpress from './ExpeditionsExpress';
 
 export default function AdminDashboard() {
   return (
@@ -16,6 +17,7 @@ export default function AdminDashboard() {
       <Route index element={<Overview />} />
       <Route path="orders" element={<Orders />} />
       <Route path="to-call" element={<AppelantOrders />} />
+      <Route path="expeditions" element={<ExpeditionsExpress />} />
       <Route path="users" element={<Users />} />
       <Route path="tournees" element={<Tournees />} />
       <Route path="products" element={<Products />} />

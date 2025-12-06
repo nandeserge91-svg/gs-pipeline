@@ -14,7 +14,8 @@ import {
   History,
   Database,
   CheckCircle,
-  Eye
+  Eye,
+  Zap
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -35,6 +36,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
           { icon: Phone, label: 'À appeler', path: '/admin/to-call' },
           { icon: ShoppingCart, label: 'Commandes', path: '/admin/orders' },
+          { icon: Zap, label: 'Expéditions & EXPRESS', path: '/admin/expeditions' },
           { icon: Users, label: 'Utilisateurs', path: '/admin/users' },
           { icon: Truck, label: 'Gestion des Tournées', path: '/admin/tournees' },
           { icon: Package, label: 'Gestion des Produits', path: '/admin/products' },
