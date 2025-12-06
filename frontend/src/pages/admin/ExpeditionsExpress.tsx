@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Truck, Zap, Package, CheckCircle, Phone, MapPin, DollarSign, Calendar, Users } from 'lucide-react';
+import { Truck, Zap, Package, CheckCircle, Phone, MapPin, DollarSign, Calendar, Users, Search, Filter, X } from 'lucide-react';
 import { ordersApi, usersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/utils/statusHelpers';
 import toast from 'react-hot-toast';
@@ -20,6 +20,17 @@ export default function ExpeditionsExpress() {
     modePaiement: '',
     referencePayment: '',
   });
+
+  // États des filtres
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterVille, setFilterVille] = useState('');
+  const [filterProduit, setFilterProduit] = useState('');
+  const [filterAgence, setFilterAgence] = useState('');
+  const [filterLivreur, setFilterLivreur] = useState('');
+  const [filterPaiement, setFilterPaiement] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -151,11 +162,101 @@ export default function ExpeditionsExpress() {
     });
   };
 
+  // Fonction de filtrage générique
+  const filterOrders = (orders: Order[]) => {
+    if (!orders) return [];
+    
+    return orders.filter((order) => {
+      // Recherche par texte
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = 
+          order.clientNom?.toLowerCase().includes(term) ||
+          order.clientTelephone?.toLowerCase().includes(term) ||
+          order.orderReference?.toLowerCase().includes(term) ||
+          order.produitNom?.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      // Filtre par ville
+      if (filterVille && order.clientVille !== filterVille) return false;
+
+      // Filtre par produit
+      if (filterProduit && !order.produitNom?.toLowerCase().includes(filterProduit.toLowerCase())) return false;
+
+      // Filtre par agence
+      if (filterAgence && order.agenceRetrait !== filterAgence) return false;
+
+      // Filtre par livreur
+      if (filterLivreur) {
+        const livreurId = parseInt(filterLivreur);
+        if (livreurId === 0) {
+          // Filtre "Non assigné"
+          if (order.delivererId !== null) return false;
+        } else {
+          if (order.delivererId !== livreurId) return false;
+        }
+      }
+
+      // Filtre par mode de paiement
+      if (filterPaiement && order.modePaiement !== filterPaiement) return false;
+
+      // Filtre par période
+      if (filterStartDate) {
+        const orderDate = new Date(order.createdAt);
+        const startDate = new Date(filterStartDate);
+        if (orderDate < startDate) return false;
+      }
+      if (filterEndDate) {
+        const orderDate = new Date(order.createdAt);
+        const endDate = new Date(filterEndDate);
+        endDate.setHours(23, 59, 59, 999);
+        if (orderDate > endDate) return false;
+      }
+
+      return true;
+    });
+  };
+
+  // Appliquer les filtres
+  const filteredExpeditions = useMemo(() => filterOrders(allExpeditions), [allExpeditions, searchTerm, filterVille, filterProduit, filterLivreur, filterPaiement, filterStartDate, filterEndDate]);
+  const filteredExpress = useMemo(() => filterOrders(expressData?.orders || []), [expressData, searchTerm, filterVille, filterProduit, filterAgence, filterPaiement, filterStartDate, filterEndDate]);
+  const filteredExpressArrived = useMemo(() => filterOrders(expressArrivedData?.orders || []), [expressArrivedData, searchTerm, filterVille, filterProduit, filterAgence, filterPaiement, filterStartDate, filterEndDate]);
+  const filteredHistory = useMemo(() => filterOrders(historyData?.orders || []), [historyData, searchTerm, filterVille, filterProduit, filterAgence, filterLivreur, filterPaiement, filterStartDate, filterEndDate]);
+
+  // Extraire les valeurs uniques pour les filtres
+  const uniqueVilles = useMemo(() => {
+    const allOrders = [...allExpeditions, ...(expressData?.orders || []), ...(expressArrivedData?.orders || []), ...(historyData?.orders || [])];
+    return Array.from(new Set(allOrders.map(o => o.clientVille).filter(Boolean))).sort();
+  }, [allExpeditions, expressData, expressArrivedData, historyData]);
+
+  const uniqueAgences = useMemo(() => {
+    const allOrders = [...(expressData?.orders || []), ...(expressArrivedData?.orders || []), ...(historyData?.orders || [])];
+    return Array.from(new Set(allOrders.map(o => o.agenceRetrait).filter(Boolean))).sort();
+  }, [expressData, expressArrivedData, historyData]);
+
+  const uniquePaiements = useMemo(() => {
+    const allOrders = [...allExpeditions, ...(expressData?.orders || []), ...(expressArrivedData?.orders || []), ...(historyData?.orders || [])];
+    return Array.from(new Set(allOrders.map(o => o.modePaiement).filter(Boolean))).sort();
+  }, [allExpeditions, expressData, expressArrivedData, historyData]);
+
+  // Réinitialiser les filtres
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterVille('');
+    setFilterProduit('');
+    setFilterAgence('');
+    setFilterLivreur('');
+    setFilterPaiement('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+  };
+
   const tabs = [
-    { id: 'expeditions', label: 'Expéditions', icon: Truck, count: expeditionsData?.orders?.length || 0 },
-    { id: 'express-pending', label: 'EXPRESS - À expédier', icon: Zap, count: expressData?.orders?.length || 0 },
-    { id: 'express-arrived', label: 'EXPRESS - En agence', icon: Package, count: expressArrivedData?.orders?.length || 0 },
-    { id: 'history', label: 'Historique', icon: CheckCircle, count: historyData?.orders?.length || 0 },
+    { id: 'expeditions', label: 'Expéditions', icon: Truck, count: filteredExpeditions.length },
+    { id: 'express-pending', label: 'EXPRESS - À expédier', icon: Zap, count: filteredExpress.length },
+    { id: 'express-arrived', label: 'EXPRESS - En agence', icon: Package, count: filteredExpressArrived.length },
+    { id: 'history', label: 'Historique', icon: CheckCircle, count: filteredHistory.length },
   ];
 
   return (
@@ -163,6 +264,176 @@ export default function ExpeditionsExpress() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Expéditions & EXPRESS</h1>
         <p className="text-gray-600 mt-1">Gestion des livraisons vers les villes éloignées</p>
+      </div>
+
+      {/* Barre de recherche et filtres */}
+      <div className="card">
+        {/* Barre de recherche */}
+        <div className="flex gap-3 items-center mb-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Rechercher (nom, téléphone, référence, produit)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input pl-10"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
+          >
+            <Filter size={20} />
+            Filtres
+            {(filterVille || filterProduit || filterAgence || filterLivreur || filterPaiement || filterStartDate || filterEndDate) && (
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {[filterVille, filterProduit, filterAgence, filterLivreur, filterPaiement, filterStartDate, filterEndDate].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Panneau de filtres */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Filtre par ville */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📍 Ville client
+                </label>
+                <select
+                  value={filterVille}
+                  onChange={(e) => setFilterVille(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Toutes les villes</option>
+                  {uniqueVilles.map((ville) => (
+                    <option key={ville} value={ville}>{ville}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filtre par produit */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📦 Produit
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nom du produit..."
+                  value={filterProduit}
+                  onChange={(e) => setFilterProduit(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              {/* Filtre par agence (pour EXPRESS) */}
+              {(activeTab === 'express-pending' || activeTab === 'express-arrived' || activeTab === 'history') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🏢 Agence de retrait
+                  </label>
+                  <select
+                    value={filterAgence}
+                    onChange={(e) => setFilterAgence(e.target.value)}
+                    className="input"
+                  >
+                    <option value="">Toutes les agences</option>
+                    {uniqueAgences.map((agence) => (
+                      <option key={agence} value={agence}>{agence}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Filtre par livreur (pour EXPÉDITIONS) */}
+              {(activeTab === 'expeditions' || activeTab === 'history') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🚚 Livreur
+                  </label>
+                  <select
+                    value={filterLivreur}
+                    onChange={(e) => setFilterLivreur(e.target.value)}
+                    className="input"
+                  >
+                    <option value="">Tous les livreurs</option>
+                    <option value="0">Non assigné</option>
+                    {deliverers.map((livreur: any) => (
+                      <option key={livreur.id} value={livreur.id}>
+                        {livreur.prenom} {livreur.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Filtre par mode de paiement */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  💳 Mode de paiement
+                </label>
+                <select
+                  value={filterPaiement}
+                  onChange={(e) => setFilterPaiement(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Tous les modes</option>
+                  {uniquePaiements.map((paiement) => (
+                    <option key={paiement} value={paiement}>{paiement}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filtre par date de début */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📅 Date début
+                </label>
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              {/* Filtre par date de fin */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📅 Date fin
+                </label>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+            </div>
+
+            {/* Bouton réinitialiser */}
+            <div className="flex justify-end">
+              <button
+                onClick={resetFilters}
+                className="btn btn-secondary text-sm flex items-center gap-2"
+              >
+                <X size={16} />
+                Réinitialiser les filtres
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Onglets */}
@@ -206,7 +477,12 @@ export default function ExpeditionsExpress() {
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Truck className="text-blue-600" />
-              Expéditions en cours ({allExpeditions.length})
+              Expéditions en cours ({filteredExpeditions.length})
+              {filteredExpeditions.length !== allExpeditions.length && (
+                <span className="text-sm font-normal text-gray-500">
+                  (sur {allExpeditions.length} total)
+                </span>
+              )}
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Commandes avec paiement 100% effectué, en attente de livraison
@@ -216,10 +492,19 @@ export default function ExpeditionsExpress() {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
               </div>
-            ) : allExpeditions.length === 0 ? (
+            ) : filteredExpeditions.length === 0 ? (
               <div className="text-center py-12">
                 <Truck size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500">Aucune expédition en cours</p>
+                <p className="text-gray-500">
+                  {allExpeditions.length === 0 
+                    ? 'Aucune expédition en cours' 
+                    : 'Aucun résultat ne correspond aux filtres'}
+                </p>
+                {allExpeditions.length > 0 && (
+                  <button onClick={resetFilters} className="btn btn-secondary mt-4">
+                    Réinitialiser les filtres
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -237,7 +522,7 @@ export default function ExpeditionsExpress() {
                     </tr>
                   </thead>
                   <tbody>
-                    {allExpeditions.map((order: Order) => {
+                    {filteredExpeditions.map((order: Order) => {
                       const deliverer = order.delivererId 
                         ? deliverers.find((d: any) => d.id === order.delivererId)
                         : null;
@@ -309,7 +594,12 @@ export default function ExpeditionsExpress() {
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Zap className="text-amber-600" />
-              EXPRESS - À expédier ({expressData?.orders?.length || 0})
+              EXPRESS - À expédier ({filteredExpress.length})
+              {filteredExpress.length !== (expressData?.orders?.length || 0) && (
+                <span className="text-sm font-normal text-gray-500">
+                  (sur {expressData?.orders?.length || 0} total)
+                </span>
+              )}
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Commandes avec acompte 10% payé, en attente d'expédition vers l'agence
@@ -319,10 +609,19 @@ export default function ExpeditionsExpress() {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
               </div>
-            ) : expressData?.orders?.length === 0 ? (
+            ) : filteredExpress.length === 0 ? (
               <div className="text-center py-12">
                 <Zap size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500">Aucun EXPRESS en attente</p>
+                <p className="text-gray-500">
+                  {(expressData?.orders?.length || 0) === 0 
+                    ? 'Aucun EXPRESS en attente' 
+                    : 'Aucun résultat ne correspond aux filtres'}
+                </p>
+                {(expressData?.orders?.length || 0) > 0 && (
+                  <button onClick={resetFilters} className="btn btn-secondary mt-4">
+                    Réinitialiser les filtres
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -339,7 +638,7 @@ export default function ExpeditionsExpress() {
                     </tr>
                   </thead>
                   <tbody>
-                    {expressData?.orders?.map((order: Order) => (
+                    {filteredExpress.map((order: Order) => (
                       <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
                         <td className="py-3 px-4">
@@ -384,7 +683,12 @@ export default function ExpeditionsExpress() {
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Package className="text-cyan-600" />
-              EXPRESS - En agence ({expressArrivedData?.orders?.length || 0})
+              EXPRESS - En agence ({filteredExpressArrived.length})
+              {filteredExpressArrived.length !== (expressArrivedData?.orders?.length || 0) && (
+                <span className="text-sm font-normal text-gray-500">
+                  (sur {expressArrivedData?.orders?.length || 0} total)
+                </span>
+              )}
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Colis arrivés en agence, en attente du retrait par le client (paiement des 90% restants)
@@ -394,14 +698,23 @@ export default function ExpeditionsExpress() {
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
               </div>
-            ) : expressArrivedData?.orders?.length === 0 ? (
+            ) : filteredExpressArrived.length === 0 ? (
               <div className="text-center py-12">
                 <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500">Aucun colis en attente de retrait</p>
+                <p className="text-gray-500">
+                  {(expressArrivedData?.orders?.length || 0) === 0 
+                    ? 'Aucun colis en attente de retrait' 
+                    : 'Aucun résultat ne correspond aux filtres'}
+                </p>
+                {(expressArrivedData?.orders?.length || 0) > 0 && (
+                  <button onClick={resetFilters} className="btn btn-secondary mt-4">
+                    Réinitialiser les filtres
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {expressArrivedData?.orders?.map((order: Order) => (
+                {filteredExpressArrived.map((order: Order) => (
                   <div key={order.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
@@ -495,17 +808,31 @@ export default function ExpeditionsExpress() {
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <CheckCircle className="text-green-600" />
-              Historique EXPRESS livrés ({historyData?.orders?.length || 0})
+              Historique EXPRESS livrés ({filteredHistory.length})
+              {filteredHistory.length !== (historyData?.orders?.length || 0) && (
+                <span className="text-sm font-normal text-gray-500">
+                  (sur {historyData?.orders?.length || 0} total)
+                </span>
+              )}
             </h2>
 
             {loadingHistory ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
               </div>
-            ) : historyData?.orders?.length === 0 ? (
+            ) : filteredHistory.length === 0 ? (
               <div className="text-center py-12">
                 <CheckCircle size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500">Aucun historique</p>
+                <p className="text-gray-500">
+                  {(historyData?.orders?.length || 0) === 0 
+                    ? 'Aucun historique' 
+                    : 'Aucun résultat ne correspond aux filtres'}
+                </p>
+                {(historyData?.orders?.length || 0) > 0 && (
+                  <button onClick={resetFilters} className="btn btn-secondary mt-4">
+                    Réinitialiser les filtres
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -521,7 +848,7 @@ export default function ExpeditionsExpress() {
                     </tr>
                   </thead>
                   <tbody>
-                    {historyData?.orders?.map((order: Order) => (
+                    {filteredHistory.map((order: Order) => (
                       <tr key={order.id} className="border-b border-gray-100">
                         <td className="py-3 px-4 text-sm">{order.orderReference}</td>
                         <td className="py-3 px-4 text-sm">{order.clientNom}</td>
