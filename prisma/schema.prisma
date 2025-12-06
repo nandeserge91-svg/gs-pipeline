@@ -245,6 +245,7 @@ enum StockMovementType {
   RETOUR               // Retour de colis non livré
   CORRECTION           // Correction manuelle
   PERTE                // Perte/casse
+  RESERVATION          // Réservation stock pour EXPÉDITION (100% payé)
   RESERVATION_EXPRESS  // Déplacement vers stock EXPRESS (10% payé)
   RETRAIT_EXPRESS      // Sortie du stock EXPRESS (client a retiré)
   ANNULATION_EXPRESS   // Annulation EXPRESS, retour au stock normal
