@@ -673,8 +673,13 @@ router.post('/:id/expedition/livrer', authorize('LIVREUR', 'ADMIN'), async (req,
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
 
-    if (order.status !== 'EXPEDITION') {
-      return res.status(400).json({ error: 'Cette commande n\'est pas une EXPÉDITION.' });
+    if (order.status !== 'EXPEDITION' && order.status !== 'ASSIGNEE') {
+      return res.status(400).json({ error: 'Cette commande n\'est pas une EXPÉDITION ou n\'est pas assignée.' });
+    }
+    
+    // Vérifier que le livreur est bien assigné à cette commande
+    if (req.user.role === 'LIVREUR' && order.delivererId !== req.user.id) {
+      return res.status(403).json({ error: 'Cette expédition ne vous est pas assignée.' });
     }
 
     // Transaction pour gérer le stock
@@ -827,6 +832,65 @@ router.post('/:id/express/finaliser', authorize('ADMIN', 'GESTIONNAIRE'), [
   } catch (error) {
     console.error('Erreur:', error);
     res.status(500).json({ error: 'Erreur lors de la finalisation.' });
+  }
+});
+
+// POST /api/orders/:id/expedition/assign - Assigner un livreur à une EXPÉDITION
+router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
+  body('delivererId').isInt().withMessage('Livreur invalide'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const { delivererId } = req.body;
+    const orderId = parseInt(id);
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+    if (order.status !== 'EXPEDITION') {
+      return res.status(400).json({ error: 'Seules les commandes EXPÉDITION peuvent être assignées.' });
+    }
+
+    // Vérifier que le livreur existe
+    const deliverer = await prisma.user.findUnique({
+      where: { id: parseInt(delivererId) }
+    });
+
+    if (!deliverer || deliverer.role !== 'LIVREUR') {
+      return res.status(400).json({ error: 'Livreur invalide.' });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        delivererId: parseInt(delivererId),
+        status: 'ASSIGNEE', // Passe en ASSIGNEE une fois assignée
+      },
+    });
+
+    await prisma.statusHistory.create({
+      data: {
+        orderId: order.id,
+        oldStatus: order.status,
+        newStatus: 'ASSIGNEE',
+        changedBy: req.user.id,
+        comment: `EXPÉDITION assignée au livreur ${deliverer.prenom} ${deliverer.nom}.`
+      }
+    });
+
+    res.json({ order: updatedOrder, message: 'Livreur assigné avec succès.' });
+  } catch (error) {
+    console.error('Erreur lors de l\'assignation du livreur:', error);
+    res.status(500).json({ error: error.message || 'Erreur lors de l\'assignation du livreur.' });
   }
 });
 

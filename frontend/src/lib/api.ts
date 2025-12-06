@@ -131,6 +131,11 @@ export const ordersApi = {
     const { data} = await api.post(`/orders/${orderId}/express/finaliser`, finalData);
     return data;
   },
+
+  assignExpeditionDeliverer: async (orderId: number, delivererId: number) => {
+    const { data } = await api.post(`/orders/${orderId}/expedition/assign`, { delivererId });
+    return data;
+  },
 };
 
 // Delivery API

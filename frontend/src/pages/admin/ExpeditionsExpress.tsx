@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Truck, Zap, Package, CheckCircle, Phone, MapPin, DollarSign, Calendar } from 'lucide-react';
-import { ordersApi } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tantml:react-query';
+import { Truck, Zap, Package, CheckCircle, Phone, MapPin, DollarSign, Calendar, Users } from 'lucide-react';
+import { ordersApi, usersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/utils/statusHelpers';
 import toast from 'react-hot-toast';
 import type { Order } from '@/types';
@@ -12,6 +12,8 @@ export default function ExpeditionsExpress() {
   const [showDeliverModal, setShowDeliverModal] = useState(false);
   const [showArriveModal, setShowArriveModal] = useState(false);
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedDelivererId, setSelectedDelivererId] = useState<number | null>(null);
   const [finalizeData, setFinalizeData] = useState({
     montantPaye: 0,
     modePaiement: '',
@@ -20,12 +22,33 @@ export default function ExpeditionsExpress() {
 
   const queryClient = useQueryClient();
 
-  // Récupérer toutes les commandes filtrées par statut
+  // Récupérer les livreurs
+  const { data: deliverersData } = useQuery({
+    queryKey: ['deliverers'],
+    queryFn: () => usersApi.getAll({ role: 'LIVREUR', actif: true }),
+  });
+
+  const deliverers = deliverersData?.users || [];
+
+  // Récupérer toutes les commandes EXPÉDITION
   const { data: expeditionsData, isLoading: loadingExpeditions } = useQuery({
     queryKey: ['expeditions'],
     queryFn: () => ordersApi.getAll({ status: 'EXPEDITION', limit: 100 }),
     refetchInterval: 30000,
   });
+
+  // Récupérer les commandes EXPÉDITION assignées
+  const { data: assignedData, isLoading: loadingAssigned } = useQuery({
+    queryKey: ['expeditions-assigned'],
+    queryFn: () => ordersApi.getAll({ status: 'ASSIGNEE', deliveryType: 'EXPEDITION', limit: 100 }),
+    refetchInterval: 30000,
+  });
+
+  // Fusionner les expéditions non assignées et assignées
+  const allExpeditions = [
+    ...(expeditionsData?.orders || []),
+    ...(assignedData?.orders || [])
+  ];
 
   const { data: expressData, isLoading: loadingExpress } = useQuery({
     queryKey: ['express-pending'],
@@ -87,11 +110,39 @@ export default function ExpeditionsExpress() {
     },
   });
 
+  // Mutation pour assigner un livreur à une EXPÉDITION
+  const assignDelivererMutation = useMutation({
+    mutationFn: ({ orderId, delivererId }: { orderId: number; delivererId: number }) => 
+      ordersApi.assignExpeditionDeliverer(orderId, delivererId),
+    onSuccess: () => {
+      toast.success('✅ Livreur assigné avec succès');
+      queryClient.invalidateQueries({ queryKey: ['expeditions'] });
+      queryClient.invalidateQueries({ queryKey: ['expeditions-assigned'] });
+      setShowAssignModal(false);
+      setSelectedOrder(null);
+      setSelectedDelivererId(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de l\'assignation');
+    },
+  });
+
   const handleFinalizeExpress = () => {
     if (!selectedOrder) return;
     finalizeExpressMutation.mutate({
       orderId: selectedOrder.id,
       data: finalizeData,
+    });
+  };
+
+  const handleAssignDeliverer = () => {
+    if (!selectedOrder || !selectedDelivererId) {
+      toast.error('Veuillez sélectionner un livreur');
+      return;
+    }
+    assignDelivererMutation.mutate({
+      orderId: selectedOrder.id,
+      delivererId: selectedDelivererId,
     });
   };
 
@@ -150,17 +201,17 @@ export default function ExpeditionsExpress() {
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Truck className="text-blue-600" />
-              Expéditions en cours ({expeditionsData?.orders?.length || 0})
+              Expéditions en cours ({allExpeditions.length})
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Commandes avec paiement 100% effectué, en attente de livraison
             </p>
 
-            {loadingExpeditions ? (
+            {(loadingExpeditions || loadingAssigned) ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
               </div>
-            ) : expeditionsData?.orders?.length === 0 ? (
+            ) : allExpeditions.length === 0 ? (
               <div className="text-center py-12">
                 <Truck size={48} className="mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-500">Aucune expédition en cours</p>
@@ -176,33 +227,66 @@ export default function ExpeditionsExpress() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Montant payé</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Paiement</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Livreur</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {expeditionsData?.orders?.map((order: Order) => (
-                      <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
-                        <td className="py-3 px-4">
-                          <div className="text-sm font-medium">{order.clientNom}</div>
-                          <div className="text-xs text-gray-500">{order.clientTelephone}</div>
-                        </td>
-                        <td className="py-3 px-4 text-sm">{order.clientVille}</td>
-                        <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
-                        <td className="py-3 px-4 text-sm font-bold text-green-600">
-                          {formatCurrency(order.montantPaye || order.montant)}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <div>{order.modePaiement}</div>
-                          {order.referencePayment && (
-                            <div className="text-xs text-gray-500">{order.referencePayment}</div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-500">
-                          {formatDateTime(order.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
+                    {allExpeditions.map((order: Order) => {
+                      const deliverer = order.delivererId 
+                        ? deliverers.find((d: any) => d.id === order.delivererId)
+                        : null;
+                      
+                      return (
+                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
+                          <td className="py-3 px-4">
+                            <div className="text-sm font-medium">{order.clientNom}</div>
+                            <div className="text-xs text-gray-500">{order.clientTelephone}</div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{order.clientVille}</td>
+                          <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
+                          <td className="py-3 px-4 text-sm font-bold text-green-600">
+                            {formatCurrency(order.montantPaye || order.montant)}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div>{order.modePaiement}</div>
+                            {order.referencePayment && (
+                              <div className="text-xs text-gray-500">{order.referencePayment}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {deliverer ? (
+                              <div className="text-sm">
+                                <div className="font-medium">{deliverer.prenom} {deliverer.nom}</div>
+                                <div className="text-xs text-gray-500">{deliverer.telephone}</div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">Non assigné</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {!order.delivererId && (
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowAssignModal(true);
+                                }}
+                                className="btn btn-sm btn-primary flex items-center gap-1"
+                              >
+                                <Users size={16} />
+                                Assigner livreur
+                              </button>
+                            )}
+                            {order.delivererId && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                ✓ Assignée
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -444,6 +528,74 @@ export default function ExpeditionsExpress() {
           </div>
         )}
       </div>
+
+      {/* Modal: Assigner un livreur */}
+      {showAssignModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Assigner un livreur</h3>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-1">
+                <strong>Référence :</strong> {selectedOrder.orderReference}
+              </p>
+              <p className="text-sm text-blue-800 mb-1">
+                <strong>Client :</strong> {selectedOrder.clientNom}
+              </p>
+              <p className="text-sm text-blue-800 mb-1">
+                <strong>Ville :</strong> {selectedOrder.clientVille}
+              </p>
+              <p className="text-sm text-blue-800">
+                <strong>Produit :</strong> {selectedOrder.produitNom} (x{selectedOrder.quantite})
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sélectionner un livreur <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedDelivererId || ''}
+                onChange={(e) => setSelectedDelivererId(parseInt(e.target.value))}
+                className="input"
+                required
+              >
+                <option value="">Choisir un livreur...</option>
+                {deliverers.map((deliverer: any) => (
+                  <option key={deliverer.id} value={deliverer.id}>
+                    {deliverer.prenom} {deliverer.nom} - {deliverer.telephone}
+                  </option>
+                ))}
+              </select>
+              {deliverers.length === 0 && (
+                <p className="text-sm text-red-600 mt-2">
+                  Aucun livreur disponible. Veuillez créer un compte livreur d'abord.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedOrder(null);
+                  setSelectedDelivererId(null);
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAssignDeliverer}
+                className="btn btn-primary flex-1"
+                disabled={assignDelivererMutation.isPending || !selectedDelivererId}
+              >
+                {assignDelivererMutation.isPending ? 'Assignation...' : 'Assigner'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Marquer EXPRESS comme arrivé */}
       {showArriveModal && selectedOrder && (
