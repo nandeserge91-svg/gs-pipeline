@@ -388,3 +388,4 @@ Le Gestionnaire de Stock est responsable de :
 
 **Le Gestionnaire de Stock aura une interface simplifiée, axée sur la gestion du stock uniquement ! ✨**
 
+

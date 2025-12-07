@@ -643,3 +643,4 @@ Aucun résultat ne correspond aux filtres
 
 **Tous les rôles (Admin, Gestionnaire, Appelant, Gestionnaire Stock) bénéficient des filtres ! ✨**
 
+

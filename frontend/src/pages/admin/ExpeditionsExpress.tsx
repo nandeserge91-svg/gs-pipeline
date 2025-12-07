@@ -256,14 +256,14 @@ export default function ExpeditionsExpress() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Expéditions & EXPRESS</h1>
-        <p className="text-gray-600 mt-1">Gestion des livraisons vers les villes éloignées</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expéditions & EXPRESS</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Gestion des livraisons vers les villes éloignées</p>
       </div>
 
       {/* Barre de recherche et filtres */}
       <div className="card">
         {/* Barre de recherche */}
-        <div className="flex gap-3 items-center mb-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center mb-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -284,10 +284,11 @@ export default function ExpeditionsExpress() {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
+            className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'} flex items-center justify-center gap-2 whitespace-nowrap`}
           >
             <Filter size={20} />
-            Filtres
+            <span className="hidden sm:inline">Filtres</span>
+            <span className="sm:hidden">Filtrer</span>
             {(filterVille || filterProduit || filterAgence || filterLivreur || filterPaiement || filterStartDate || filterEndDate) && (
               <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                 {[filterVille, filterProduit, filterAgence, filterLivreur, filterPaiement, filterStartDate, filterEndDate].filter(Boolean).length}
@@ -431,8 +432,8 @@ export default function ExpeditionsExpress() {
       </div>
 
       {/* Onglets */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -441,18 +442,19 @@ export default function ExpeditionsExpress() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm
+                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap
                   ${isActive
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
               >
-                <Icon size={20} />
-                {tab.label}
+                <Icon size={18} className="sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                 {tab.count > 0 && (
                   <span className={`
-                    ml-2 py-0.5 px-2 rounded-full text-xs font-bold
+                    ml-1 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-xs font-bold
                     ${isActive ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-600'}
                   `}>
                     {tab.count}

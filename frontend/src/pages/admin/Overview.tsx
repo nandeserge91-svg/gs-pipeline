@@ -89,17 +89,17 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Administrateur</h1>
-          <p className="text-gray-600 mt-1">Vue d'ensemble de votre activité</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard Administrateur</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Vue d'ensemble de votre activité</p>
         </div>
         
         {/* Filtre de période */}
-        <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm p-1">
+        <div className="flex items-center gap-1 sm:gap-2 bg-white rounded-lg shadow-sm p-1 overflow-x-auto">
           <button
             onClick={() => setPeriod('today')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               period === 'today'
                 ? 'bg-primary-600 text-white'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -109,7 +109,7 @@ export default function Overview() {
           </button>
           <button
             onClick={() => setPeriod('week')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               period === 'week'
                 ? 'bg-primary-600 text-white'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -119,7 +119,7 @@ export default function Overview() {
           </button>
           <button
             onClick={() => setPeriod('month')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               period === 'month'
                 ? 'bg-primary-600 text-white'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -129,7 +129,7 @@ export default function Overview() {
           </button>
           <button
             onClick={() => setPeriod('all')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               period === 'all'
                 ? 'bg-primary-600 text-white'
                 : 'text-gray-600 hover:bg-gray-100'

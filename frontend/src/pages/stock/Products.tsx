@@ -207,18 +207,19 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Produits</h1>
-          <p className="text-gray-600 mt-1">Inventaire et mouvements de stock</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Gestion des Produits</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Inventaire et mouvements de stock</p>
         </div>
         {canManageProducts && (
           <button
             onClick={() => setShowAddProductModal(true)}
-            className="btn btn-primary flex items-center gap-2"
+            className="btn btn-primary flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <Plus size={20} />
-            Ajouter un produit
+            <span className="hidden sm:inline">Ajouter un produit</span>
+            <span className="sm:hidden">Ajouter</span>
           </button>
         )}
       </div>

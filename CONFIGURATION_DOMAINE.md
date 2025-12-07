@@ -146,3 +146,4 @@ Une fois le domaine configuré et actif :
 
 **Note :** Vous pouvez effectuer ces changements sans risque. Si quelque chose ne fonctionne pas, l'ancien lien Vercel restera toujours accessible.
 
+

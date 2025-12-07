@@ -324,3 +324,4 @@ Le Gestionnaire de Stock a maintenant **exactement l'accès dont il a besoin** :
 
 
 
+

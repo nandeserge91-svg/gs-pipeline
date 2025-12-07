@@ -337,3 +337,4 @@ Total payé           : 9 900 FCFA ✅
 *Développé avec ❤️ pour GS Pipeline*
 *Date : 6 décembre 2025*
 
+

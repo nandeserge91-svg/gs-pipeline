@@ -344,3 +344,4 @@ Pour toute question ou assistance technique :
 
 **Statut du projet:** Base de données prête ✅ | Frontend en attente ⏳ | Backend en attente ⏳
 
+
