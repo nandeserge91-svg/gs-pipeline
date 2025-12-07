@@ -33,7 +33,10 @@ router.get('/lists', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
             clientNom: true,
             clientVille: true,
             montant: true,
-            status: true
+            status: true,
+            deliveryType: true,
+            codeExpedition: true,
+            expedieAt: true
           }
         }
       },
