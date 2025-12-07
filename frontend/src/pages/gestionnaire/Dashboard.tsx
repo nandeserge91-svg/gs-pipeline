@@ -8,6 +8,7 @@ import CallerSupervision from '../common/CallerSupervision';
 import AppelantOrders from '../appelant/Orders';
 import ExpeditionsExpress from '../admin/ExpeditionsExpress';
 import AllOrders from '../admin/Orders';
+import Users from '../admin/Users';
 
 export default function GestionnaireDashboard() {
   return (
@@ -18,6 +19,7 @@ export default function GestionnaireDashboard() {
       <Route path="validated" element={<ValidatedOrders />} />
       <Route path="expeditions" element={<ExpeditionsExpress />} />
       <Route path="deliveries" element={<Deliveries />} />
+      <Route path="users" element={<Users />} />
       <Route path="database" element={<ClientDatabase />} />
       <Route path="supervision" element={<CallerSupervision />} />
       <Route path="stats" element={<Stats />} />
