@@ -19,7 +19,7 @@ export default function Orders() {
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
-    queryFn: () => ordersApi.getAll({ limit: 100 }),
+    queryFn: () => ordersApi.getAll({ limit: 1000 }), // Limite augmentée pour voir TOUTES les commandes à traiter
     refetchInterval: 30000, // Actualisation automatique toutes les 30 secondes
     refetchIntervalInBackground: true, // Continue même si l'onglet n'est pas actif
   });
@@ -89,8 +89,16 @@ export default function Orders() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      // Trier par date de création, les plus récentes en premier
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      // Priorité 1 : Les commandes non traitées (NOUVELLE, A_APPELER) en PREMIER
+      const aPriority = ['NOUVELLE', 'A_APPELER'].includes(a.status) ? 1 : 2;
+      const bPriority = ['NOUVELLE', 'A_APPELER'].includes(b.status) ? 1 : 2;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority; // Les priorité 1 en premier
+      }
+      
+      // Priorité 2 : Dans chaque groupe, les PLUS ANCIENNES en premier (pour traiter les anciennes d'abord)
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
   // Détecter les nouvelles commandes
