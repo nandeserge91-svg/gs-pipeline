@@ -123,6 +123,7 @@ model Order {
   // Gestion EXPEDITION - Code de suivi
   codeExpedition  String?     // Code d'expédition/tracking fourni par le livreur
   photoRecuExpedition String? // Photo du reçu d'expédition (base64 ou URL)
+  photoRecuExpeditionUploadedAt DateTime? // Date d'upload de la photo (pour suppression auto après 7j)
   
   // Gestion EXPRESS - Notification d'arrivée
   clientNotifie   Boolean?    @default(false) // Client notifié de l'arrivée du colis

@@ -12,6 +12,15 @@ export default function Deliveries() {
   const [dateFilter, setDateFilter] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
+  // Vérifier si la photo est expirée (plus de 7 jours)
+  const isPhotoExpired = (uploadedAt: string | undefined) => {
+    if (!uploadedAt) return true;
+    const uploadDate = new Date(uploadedAt);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
+    return diffInDays >= 7;
+  };
+
   const generateWhatsAppMessage = (order: any) => {
     const message = `📦 *Informations d'Expédition*
 
@@ -303,7 +312,7 @@ Merci de votre confiance ! 🙏`;
                           )}
                         </td>
                         <td className="py-2 px-3">
-                          {order.deliveryType === 'EXPEDITION' && order.photoRecuExpedition ? (
+                          {order.deliveryType === 'EXPEDITION' && order.photoRecuExpedition && !isPhotoExpired(order.photoRecuExpeditionUploadedAt) ? (
                             <button
                               onClick={() => setSelectedPhoto(order.photoRecuExpedition)}
                               className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded hover:bg-green-200 transition-colors"
@@ -311,6 +320,8 @@ Merci de votre confiance ! 🙏`;
                               <ImageIcon className="w-3 h-3" />
                               Voir photo
                             </button>
+                          ) : order.deliveryType === 'EXPEDITION' && order.photoRecuExpedition && isPhotoExpired(order.photoRecuExpeditionUploadedAt) ? (
+                            <span className="text-xs text-gray-400 italic">Photo expirée</span>
                           ) : order.deliveryType === 'EXPEDITION' && order.status === 'ASSIGNEE' ? (
                             <span className="text-xs text-gray-400 italic">En attente...</span>
                           ) : (

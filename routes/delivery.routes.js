@@ -40,6 +40,7 @@ router.get('/lists', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'A
             deliveryType: true,
             codeExpedition: true,
             photoRecuExpedition: true,
+            photoRecuExpeditionUploadedAt: true,
             expedieAt: true
           }
         }

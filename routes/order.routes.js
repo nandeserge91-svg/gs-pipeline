@@ -763,6 +763,7 @@ router.post('/:id/expedition/livrer', authorize('LIVREUR', 'ADMIN'), async (req,
         noteLivreur: note || order.noteLivreur,
         codeExpedition: codeExpedition.trim(),
         photoRecuExpedition: photoRecuExpedition.trim(), // ✅ Photo du reçu
+        photoRecuExpeditionUploadedAt: new Date(), // ✅ Date d'upload pour suppression auto
         expedieAt: new Date(),
       },
     });
