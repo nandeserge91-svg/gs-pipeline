@@ -63,10 +63,7 @@ export default function Overview() {
       toast.error('Veuillez saisir le code d\'expédition');
       return;
     }
-    if (!photoRecuExpedition.trim()) {
-      toast.error('Veuillez prendre une photo du reçu d\'expédition');
-      return;
-    }
+    // Photo facultative maintenant
     deliverExpeditionMutation.mutate({
       orderId: selectedExpedition.id,
       codeExpedition: codeExpedition.trim(),
@@ -332,7 +329,7 @@ export default function Overview() {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Photo du reçu d'expédition <span className="text-red-500">*</span>
+                Photo du reçu d'expédition (optionnel)
               </label>
               <input
                 type="file"
@@ -340,10 +337,9 @@ export default function Overview() {
                 capture="environment"
                 onChange={handlePhotoChange}
                 className="input w-full"
-                required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Prenez une photo du reçu comme preuve d'expédition
+                Vous pouvez ajouter une photo du reçu comme preuve (non obligatoire)
               </p>
               
               {photoRecuExpedition && (
@@ -374,7 +370,7 @@ export default function Overview() {
               </button>
               <button
                 onClick={confirmDeliverExpedition}
-                disabled={!codeExpedition.trim() || !photoRecuExpedition.trim() || deliverExpeditionMutation.isPending}
+                disabled={!codeExpedition.trim() || deliverExpeditionMutation.isPending}
                 className="btn btn-primary flex-1"
               >
                 {deliverExpeditionMutation.isPending ? 'Confirmation...' : '✓ Confirmer'}

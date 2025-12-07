@@ -730,11 +730,6 @@ router.post('/:id/expedition/livrer', authorize('LIVREUR', 'ADMIN'), async (req,
       return res.status(400).json({ error: 'Le code d\'expédition est obligatoire.' });
     }
 
-    // Validation : Photo du reçu obligatoire
-    if (!photoRecuExpedition || !photoRecuExpedition.trim()) {
-      return res.status(400).json({ error: 'La photo du reçu d\'expédition est obligatoire.' });
-    }
-
     const order = await prisma.order.findUnique({ 
       where: { id: parseInt(id) },
       include: { product: true }
@@ -762,8 +757,8 @@ router.post('/:id/expedition/livrer', authorize('LIVREUR', 'ADMIN'), async (req,
         delivererId: req.user.id || order.delivererId,
         noteLivreur: note || order.noteLivreur,
         codeExpedition: codeExpedition.trim(),
-        photoRecuExpedition: photoRecuExpedition.trim(), // ✅ Photo du reçu
-        photoRecuExpeditionUploadedAt: new Date(), // ✅ Date d'upload pour suppression auto
+        photoRecuExpedition: photoRecuExpedition ? photoRecuExpedition.trim() : null, // ✅ Photo facultative
+        photoRecuExpeditionUploadedAt: photoRecuExpedition ? new Date() : null, // ✅ Date si photo présente
         expedieAt: new Date(),
       },
     });
