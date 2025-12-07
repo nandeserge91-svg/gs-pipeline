@@ -372,6 +372,65 @@ async function updateStatistics(userId, role, oldStatus, newStatus, montant) {
   }
 }
 
+// POST /api/orders/:id/renvoyer-appel - Renvoyer une commande vers "À appeler"
+// Accessible uniquement par ADMIN et GESTIONNAIRE
+router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motif } = req.body;
+
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+
+    // Empêcher de renvoyer des commandes déjà livrées ou en cours de livraison
+    if (['LIVREE', 'ASSIGNEE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status)) {
+      return res.status(400).json({ 
+        error: 'Impossible de renvoyer une commande en cours de livraison ou déjà livrée.' 
+      });
+    }
+
+    // Réinitialiser la commande au statut A_APPELER
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: 'A_APPELER',
+        callerId: null, // Retirer l'appelant assigné
+        calledAt: null,
+        validatedAt: null,
+        noteAppelant: motif ? `[RENVOYÉE] ${motif}` : order.noteAppelant,
+      },
+      include: {
+        caller: { select: { id: true, nom: true, prenom: true } },
+        deliverer: { select: { id: true, nom: true, prenom: true } }
+      }
+    });
+
+    // Enregistrer l'historique
+    await prisma.statusHistory.create({
+      data: {
+        orderId: parseInt(id),
+        oldStatus: order.status,
+        newStatus: 'A_APPELER',
+        changedBy: req.user.id,
+        comment: `Commande renvoyée vers "À appeler" par ${req.user.prenom} ${req.user.nom}${motif ? ' - Motif: ' + motif : ''}`
+      }
+    });
+
+    res.json({ 
+      order: updatedOrder, 
+      message: 'Commande renvoyée vers "À appeler" avec succès.' 
+    });
+  } catch (error) {
+    console.error('Erreur renvoi commande:', error);
+    res.status(500).json({ error: 'Erreur lors du renvoi de la commande.' });
+  }
+});
+
 // PUT /api/orders/:id - Modifier une commande (Admin/Gestionnaire)
 router.put('/:id', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {

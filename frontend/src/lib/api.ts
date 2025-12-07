@@ -96,6 +96,11 @@ export const ordersApi = {
     return data;
   },
 
+  renvoyerAppel: async (id: number, motif?: string) => {
+    const { data } = await api.post(`/orders/${id}/renvoyer-appel`, { motif });
+    return data;
+  },
+
   delete: async (id: number) => {
     const { data } = await api.delete(`/orders/${id}`);
     return data;

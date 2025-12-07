@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw } from 'lucide-react';
+import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw } from 'lucide-react';
 import { ordersApi, productsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
@@ -23,6 +23,9 @@ export default function Orders() {
   
   // Vérifier si l'utilisateur peut supprimer des commandes (Admin uniquement)
   const canDelete = user?.role === 'ADMIN';
+  
+  // Vérifier si l'utilisateur peut renvoyer à appeler (Admin ou Gestionnaire)
+  const canRenvoyerAppel = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   // Récupérer la liste des produits pour le filtre
   const { data: productsData } = useQuery({
@@ -74,6 +77,18 @@ export default function Orders() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
+    },
+  });
+
+  const renvoyerAppelMutation = useMutation({
+    mutationFn: ({ orderId, motif }: { orderId: number; motif?: string }) => 
+      ordersApi.renvoyerAppel(orderId, motif),
+    onSuccess: () => {
+      toast.success('✅ Commande renvoyée vers "À appeler"');
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors du renvoi');
     },
   });
 
@@ -284,7 +299,7 @@ export default function Orders() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Montant</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Statut</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date</th>
-                    {canDelete && (
+                    {(canDelete || canRenvoyerAppel) && (
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                     )}
                   </tr>
@@ -306,18 +321,42 @@ export default function Orders() {
                       <td className="py-3 px-4 text-sm text-gray-500">
                         {formatDateTime(order.createdAt)}
                       </td>
-                      {canDelete && (
+                      {(canDelete || canRenvoyerAppel) && (
                         <td className="py-3 px-4">
-                          <button
-                            onClick={() => {
-                              setOrderToDelete(order);
-                              setShowDeleteModal(true);
-                            }}
-                            className="text-red-600 hover:text-red-800 transition-colors"
-                            title="Supprimer la commande"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {/* Bouton Renvoyer à appeler - Visible pour Admin et Gestionnaire */}
+                            {canRenvoyerAppel && !['LIVREE', 'ASSIGNEE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status) && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Renvoyer cette commande vers "À appeler" ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\n\nCette action réinitialisera le traitement de la commande.`)) {
+                                    const motif = prompt('Motif du renvoi (optionnel):');
+                                    renvoyerAppelMutation.mutate({ 
+                                      orderId: order.id, 
+                                      motif: motif || undefined 
+                                    });
+                                  }
+                                }}
+                                className="text-orange-600 hover:text-orange-800 transition-colors"
+                                title="Renvoyer vers À appeler"
+                              >
+                                <RotateCcw size={18} />
+                              </button>
+                            )}
+                            
+                            {/* Bouton Supprimer - Visible uniquement pour Admin */}
+                            {canDelete && (
+                              <button
+                                onClick={() => {
+                                  setOrderToDelete(order);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="text-red-600 hover:text-red-800 transition-colors"
+                                title="Supprimer la commande"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
