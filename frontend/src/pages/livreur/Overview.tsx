@@ -79,8 +79,13 @@ export default function Overview() {
     },
   ];
 
-  const pendingOrders = todayOrders?.orders?.filter((o: any) => o.status === 'ASSIGNEE') || [];
-  const completedToday = todayOrders?.orders?.filter((o: any) => o.status === 'LIVREE') || [];
+  // Filtrer les commandes locales uniquement (exclure les EXPEDITION qui ont leur propre section)
+  const pendingOrders = todayOrders?.orders?.filter((o: any) => 
+    o.status === 'ASSIGNEE' && o.deliveryType !== 'EXPEDITION'
+  ) || [];
+  const completedToday = todayOrders?.orders?.filter((o: any) => 
+    o.status === 'LIVREE' && o.deliveryType !== 'EXPEDITION'
+  ) || [];
   const expeditions = expeditionsData?.orders || [];
 
   return (
