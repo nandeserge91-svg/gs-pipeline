@@ -20,11 +20,10 @@ router.get('/', async (req, res) => {
     // Filtres selon le rôle
     if (user.role === 'APPELANT') {
       // L'appelant voit :
-      // 1. TOUTES les commandes en attente de traitement (NOUVELLE, A_APPELER, VALIDEE, ANNULEE, INJOIGNABLE)
-      //    peu importe qui les a commencées - elles restent visibles jusqu'à assignation au livreur
+      // 1. UNIQUEMENT les commandes NOUVELLE et A_APPELER (en attente d'appel)
       // 2. TOUTES les EXPÉDITIONS et EXPRESS (pour gestion)
       where.OR = [
-        { status: { in: ['NOUVELLE', 'A_APPELER', 'VALIDEE', 'ANNULEE', 'INJOIGNABLE'] } },
+        { status: { in: ['NOUVELLE', 'A_APPELER'] } },
         { deliveryType: 'EXPEDITION' },
         { deliveryType: 'EXPRESS' }
       ];

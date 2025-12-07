@@ -71,17 +71,14 @@ export default function Orders() {
 
   const filteredOrders = ordersData?.orders
     ?.filter((order: Order) => {
-      // IMPORTANT : Afficher les commandes en attente de traitement OU récemment traitées
-      // Les commandes restent visibles jusqu'à ce qu'elles soient assignées à un livreur (ASSIGNEE) ou finalisées
+      // IMPORTANT : Afficher UNIQUEMENT les commandes NOUVELLE et A_APPELER
+      // Une fois validée, annulée ou marquée injoignable, la commande disparaît de cette liste
       const isToCall = [
         'NOUVELLE',      // Nouvelle commande reçue
-        'A_APPELER',     // Marquée pour appel
-        'VALIDEE',       // Appel traité - Client a validé (reste visible jusqu'à assignation)
-        'ANNULEE',       // Appel traité - Client a annulé (reste visible)
-        'INJOIGNABLE'    // Appel traité - Client injoignable (reste visible)
+        'A_APPELER'      // Marquée pour appel
       ].includes(order.status);
       
-      if (!isToCall) return false; // Masquer les commandes assignées, livrées, expéditions, etc.
+      if (!isToCall) return false; // Masquer toutes les autres commandes
       
       const matchesSearch = order.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.clientTelephone.includes(searchTerm);
@@ -89,16 +86,8 @@ export default function Orders() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      // Priorité 1 : Les commandes non traitées (NOUVELLE, A_APPELER) en PREMIER
-      const aPriority = ['NOUVELLE', 'A_APPELER'].includes(a.status) ? 1 : 2;
-      const bPriority = ['NOUVELLE', 'A_APPELER'].includes(b.status) ? 1 : 2;
-      
-      if (aPriority !== bPriority) {
-        return aPriority - bPriority; // Les priorité 1 en premier
-      }
-      
-      // Priorité 2 : Dans chaque groupe, les PLUS ANCIENNES en premier (pour traiter les anciennes d'abord)
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      // Trier par date de création : Les plus RÉCENTES en PREMIER
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
   // Détecter les nouvelles commandes
@@ -118,7 +107,7 @@ export default function Orders() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Commandes à appeler</h1>
-          <p className="text-gray-600 mt-1">Commandes en attente d'appel et commandes traitées en attente d'assignation</p>
+          <p className="text-gray-600 mt-1">Liste des commandes en attente de traitement</p>
         </div>
         <div className="flex items-center gap-4">
           {filteredOrders && (
@@ -171,9 +160,6 @@ export default function Orders() {
             <option value="">Tous</option>
             <option value="NOUVELLE">Nouvelle</option>
             <option value="A_APPELER">À appeler</option>
-            <option value="VALIDEE">Validée</option>
-            <option value="ANNULEE">Annulée</option>
-            <option value="INJOIGNABLE">Injoignable</option>
           </select>
         </div>
       </div>
