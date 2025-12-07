@@ -286,12 +286,15 @@ export default function Overview() {
       {/* Modal de confirmation avec code d'expédition */}
       {selectedExpedition && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
-              📦 Confirmer l'expédition
-            </h3>
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">
+                📦 Confirmer l'expédition
+              </h3>
+            </div>
             
-            <div className="space-y-3 mb-6">
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-3 mb-6">
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600">Client</p>
                 <p className="font-medium text-gray-900">{selectedExpedition.clientNom}</p>
@@ -349,13 +352,16 @@ export default function Overview() {
                   <img 
                     src={photoRecuExpedition} 
                     alt="Reçu d'expédition" 
-                    className="w-full h-48 object-contain rounded border border-gray-200"
+                    className="w-full h-32 object-contain rounded border border-gray-200"
                   />
+                  <p className="text-xs text-green-600 mt-1 text-center">✓ Photo ajoutée</p>
                 </div>
               )}
             </div>
+            </div>
 
-            <div className="flex gap-3">
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+              <div className="flex gap-3">
               <button
                 onClick={() => {
                   setSelectedExpedition(null);
@@ -373,6 +379,7 @@ export default function Overview() {
               >
                 {deliverExpeditionMutation.isPending ? 'Confirmation...' : '✓ Confirmer'}
               </button>
+              </div>
             </div>
           </div>
         </div>
