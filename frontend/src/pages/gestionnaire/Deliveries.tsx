@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Truck, Package, Search, Filter } from 'lucide-react';
+import { Truck, Package, Search, Filter, Calendar } from 'lucide-react';
 import { deliveryApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 
@@ -9,6 +9,7 @@ export default function Deliveries() {
   const [typeFilter, setTypeFilter] = useState('');
   const [villeFilter, setVilleFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   const { data: listsData, isLoading } = useQuery({
     queryKey: ['delivery-lists'],
@@ -32,6 +33,14 @@ export default function Deliveries() {
     if (!listsData?.lists) return [];
     
     return listsData.lists
+      .filter((list: any) => {
+        // Filtre par date de la liste
+        if (dateFilter) {
+          const listDate = new Date(list.date).toISOString().split('T')[0];
+          if (listDate !== dateFilter) return false;
+        }
+        return true;
+      })
       .map((list: any) => {
         // Filtrer les commandes dans chaque liste
         const filteredOrders = list.orders.filter((order: any) => {
@@ -56,7 +65,7 @@ export default function Deliveries() {
         };
       })
       .filter((list: any) => list.orders.length > 0); // Ne montrer que les listes avec des commandes
-  }, [listsData, searchTerm, typeFilter, villeFilter, statutFilter]);
+  }, [listsData, searchTerm, typeFilter, villeFilter, statutFilter, dateFilter]);
 
   // Compter le total de commandes filtrées
   const totalCommandesFiltrees = filteredLists.reduce((sum: number, list: any) => sum + list.orders.length, 0);
@@ -81,7 +90,7 @@ export default function Deliveries() {
           <h3 className="text-lg font-semibold text-gray-900">Filtres</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Search className="inline w-4 h-4 mr-1" />
@@ -92,6 +101,19 @@ export default function Deliveries() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Nom client, référence..."
+              className="input w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Calendar className="inline w-4 h-4 mr-1" />
+              Date
+            </label>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
               className="input w-full"
             />
           </div>
@@ -147,7 +169,7 @@ export default function Deliveries() {
         </div>
 
         {/* Bouton reset filtres */}
-        {(searchTerm || typeFilter || villeFilter || statutFilter) && (
+        {(searchTerm || typeFilter || villeFilter || statutFilter || dateFilter) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
@@ -155,6 +177,7 @@ export default function Deliveries() {
                 setTypeFilter('');
                 setVilleFilter('');
                 setStatutFilter('');
+                setDateFilter('');
               }}
               className="text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
