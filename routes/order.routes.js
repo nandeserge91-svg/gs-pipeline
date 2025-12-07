@@ -431,6 +431,150 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
   }
 });
 
+// PUT /api/orders/:id/quantite - Modifier la quantité d'une commande VALIDEE
+// Accessible uniquement par ADMIN et GESTIONNAIRE
+router.put('/:id/quantite', authorize('ADMIN', 'GESTIONNAIRE'), [
+  body('quantite').isInt({ min: 1 }).withMessage('La quantité doit être au minimum 1'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const { quantite } = req.body;
+
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) },
+      include: { product: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+
+    // Vérifier que la commande est VALIDEE ou A_APPELER
+    if (!['VALIDEE', 'A_APPELER'].includes(order.status)) {
+      return res.status(400).json({ 
+        error: 'Seules les commandes VALIDEES ou A_APPELER peuvent être modifiées.' 
+      });
+    }
+
+    // Calculer le nouveau montant basé sur le prix unitaire
+    const prixUnitaire = order.montant / order.quantite;
+    const nouveauMontant = prixUnitaire * quantite;
+
+    // Si la quantité augmente, vérifier le stock disponible
+    if (quantite > order.quantite && order.product) {
+      const differenceQuantite = quantite - order.quantite;
+      
+      if (order.deliveryType === 'EXPRESS') {
+        // Pour EXPRESS, vérifier le stockExpress
+        if (order.product.stockExpress < differenceQuantite) {
+          return res.status(400).json({ 
+            error: `Stock EXPRESS insuffisant. Disponible: ${order.product.stockExpress}` 
+          });
+        }
+      } else if (order.deliveryType === 'LOCAL') {
+        // Pour LOCAL, vérifier le stockActuel
+        if (order.product.stockActuel < differenceQuantite) {
+          return res.status(400).json({ 
+            error: `Stock insuffisant. Disponible: ${order.product.stockActuel}` 
+          });
+        }
+      }
+    }
+
+    // Transaction pour mettre à jour la commande et le stock
+    const result = await prisma.$transaction(async (tx) => {
+      // Ajuster le stock si nécessaire
+      if (order.product && order.status === 'VALIDEE') {
+        const differenceQuantite = quantite - order.quantite;
+        
+        if (order.deliveryType === 'EXPEDITION') {
+          // Pour EXPEDITION, le stock a déjà été réduit lors de la création
+          // Ajuster selon la différence
+          await tx.product.update({
+            where: { id: order.product.id },
+            data: {
+              stockActuel: {
+                decrement: differenceQuantite > 0 ? differenceQuantite : 0,
+                increment: differenceQuantite < 0 ? Math.abs(differenceQuantite) : 0,
+              }
+            }
+          });
+        } else if (order.deliveryType === 'EXPRESS') {
+          // Pour EXPRESS, ajuster le stockExpress
+          await tx.product.update({
+            where: { id: order.product.id },
+            data: {
+              stockExpress: {
+                decrement: differenceQuantite > 0 ? differenceQuantite : 0,
+                increment: differenceQuantite < 0 ? Math.abs(differenceQuantite) : 0,
+              }
+            }
+          });
+        }
+
+        // Enregistrer le mouvement de stock
+        if (differenceQuantite !== 0) {
+          await tx.stockMovement.create({
+            data: {
+              productId: order.product.id,
+              quantite: Math.abs(differenceQuantite),
+              type: differenceQuantite > 0 
+                ? (order.deliveryType === 'EXPRESS' ? 'RESERVATION_EXPRESS' : 'RESERVATION')
+                : (order.deliveryType === 'EXPRESS' ? 'ANNULATION_EXPRESS' : 'RETOUR'),
+              userId: req.user.id,
+              note: `Modification quantité commande ${order.orderReference}: ${order.quantite} → ${quantite}`,
+              orderId: order.id
+            }
+          });
+        }
+      }
+
+      // Mettre à jour la commande
+      const updatedOrder = await tx.order.update({
+        where: { id: parseInt(id) },
+        data: {
+          quantite: quantite,
+          montant: nouveauMontant,
+          montantRestant: order.montantRestant 
+            ? (nouveauMontant - (order.montantPaye || 0)) 
+            : null,
+        },
+        include: {
+          product: true,
+          caller: { select: { id: true, nom: true, prenom: true } },
+          deliverer: { select: { id: true, nom: true, prenom: true } }
+        }
+      });
+
+      // Enregistrer l'historique
+      await tx.statusHistory.create({
+        data: {
+          orderId: parseInt(id),
+          oldStatus: order.status,
+          newStatus: order.status,
+          changedBy: req.user.id,
+          comment: `Quantité modifiée: ${order.quantite} → ${quantite} | Montant: ${order.montant} FCFA → ${nouveauMontant} FCFA`
+        }
+      });
+
+      return updatedOrder;
+    });
+
+    res.json({ 
+      order: result, 
+      message: `Quantité modifiée avec succès: ${order.quantite} → ${quantite}` 
+    });
+  } catch (error) {
+    console.error('Erreur modification quantité:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de la quantité.' });
+  }
+});
+
 // PUT /api/orders/:id - Modifier une commande (Admin/Gestionnaire)
 router.put('/:id', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {

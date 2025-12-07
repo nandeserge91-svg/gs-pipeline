@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Search } from 'lucide-react';
+import { Check, Search, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { deliveryApi, usersApi } from '@/lib/api';
+import { deliveryApi, usersApi, ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
+import { useAuthStore } from '@/store/authStore';
 
 export default function ValidatedOrders() {
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showQuantiteModal, setShowQuantiteModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [newQuantite, setNewQuantite] = useState(1);
   const [searchVille, setSearchVille] = useState('');
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  // Vérifier si l'utilisateur peut modifier la quantité (Admin ou Gestionnaire)
+  const canEditQuantite = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['validated-orders', searchVille],
@@ -35,6 +43,20 @@ export default function ValidatedOrders() {
     },
   });
 
+  const updateQuantiteMutation = useMutation({
+    mutationFn: ({ orderId, quantite }: { orderId: number; quantite: number }) => 
+      ordersApi.updateQuantite(orderId, quantite),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['validated-orders'] });
+      setShowQuantiteModal(false);
+      setSelectedOrder(null);
+      toast.success('✅ Quantité modifiée avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la modification');
+    },
+  });
+
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget as HTMLFormElement);
@@ -53,6 +75,24 @@ export default function ValidatedOrders() {
         ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
+  };
+
+  const handleEditQuantite = (order: Order) => {
+    setSelectedOrder(order);
+    setNewQuantite(order.quantite);
+    setShowQuantiteModal(true);
+  };
+
+  const handleUpdateQuantite = () => {
+    if (!selectedOrder) return;
+    if (newQuantite < 1) {
+      toast.error('La quantité doit être au minimum 1');
+      return;
+    }
+    updateQuantiteMutation.mutate({
+      orderId: selectedOrder.id,
+      quantite: newQuantite,
+    });
   };
 
   return (
@@ -113,8 +153,12 @@ export default function ValidatedOrders() {
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ville</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Adresse</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Qté</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Montant</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Validée le</th>
+                  {canEditQuantite && (
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -141,10 +185,24 @@ export default function ValidatedOrders() {
                       {order.clientAdresse || order.clientCommune || '-'}
                     </td>
                     <td className="py-3 px-4 text-sm">{order.produitNom}</td>
+                    <td className="py-3 px-4 text-sm font-semibold text-primary-600">
+                      {order.quantite}
+                    </td>
                     <td className="py-3 px-4 text-sm font-medium">{formatCurrency(order.montant)}</td>
                     <td className="py-3 px-4 text-sm text-gray-500">
                       {order.validatedAt ? formatDateTime(order.validatedAt) : '-'}
                     </td>
+                    {canEditQuantite && (
+                      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleEditQuantite(order)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Modifier la quantité"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -219,6 +277,74 @@ export default function ValidatedOrders() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modification de quantité */}
+      {showQuantiteModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">📦 Modifier la quantité</h2>
+            
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <p className="text-sm text-gray-600 mb-1">Commande</p>
+              <p className="font-semibold">{selectedOrder.orderReference}</p>
+              
+              <p className="text-sm text-gray-600 mt-2 mb-1">Client</p>
+              <p className="font-semibold">{selectedOrder.clientNom}</p>
+              
+              <p className="text-sm text-gray-600 mt-2 mb-1">Produit</p>
+              <p className="font-semibold">{selectedOrder.produitNom}</p>
+              
+              <p className="text-sm text-gray-600 mt-2 mb-1">Quantité actuelle</p>
+              <p className="font-semibold text-primary-600">{selectedOrder.quantite}</p>
+              
+              <p className="text-sm text-gray-600 mt-2 mb-1">Montant actuel</p>
+              <p className="font-semibold">{formatCurrency(selectedOrder.montant)}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nouvelle quantité <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={newQuantite}
+                onChange={(e) => setNewQuantite(parseInt(e.target.value) || 1)}
+                className="input"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Prix unitaire: {formatCurrency(selectedOrder.montant / selectedOrder.quantite)}
+              </p>
+              {newQuantite !== selectedOrder.quantite && (
+                <p className="text-sm text-primary-600 mt-2 font-semibold">
+                  → Nouveau montant: {formatCurrency((selectedOrder.montant / selectedOrder.quantite) * newQuantite)}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleUpdateQuantite}
+                disabled={newQuantite === selectedOrder.quantite || updateQuantiteMutation.isPending}
+                className="btn btn-primary flex-1"
+              >
+                {updateQuantiteMutation.isPending ? 'Modification...' : '✓ Confirmer'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuantiteModal(false);
+                  setSelectedOrder(null);
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       )}

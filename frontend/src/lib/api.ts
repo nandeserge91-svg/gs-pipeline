@@ -101,6 +101,11 @@ export const ordersApi = {
     return data;
   },
 
+  updateQuantite: async (id: number, quantite: number) => {
+    const { data } = await api.put(`/orders/${id}/quantite`, { quantite });
+    return data;
+  },
+
   delete: async (id: number) => {
     const { data } = await api.delete(`/orders/${id}`);
     return data;

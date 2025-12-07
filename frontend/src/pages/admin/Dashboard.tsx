@@ -11,6 +11,7 @@ import Products from '../stock/Products';
 import Movements from '../stock/Movements';
 import ExpeditionsExpress from './ExpeditionsExpress';
 import Deliveries from '../gestionnaire/Deliveries';
+import ValidatedOrders from '../gestionnaire/ValidatedOrders';
 
 export default function AdminDashboard() {
   return (
@@ -18,6 +19,7 @@ export default function AdminDashboard() {
       <Route index element={<Overview />} />
       <Route path="orders" element={<Orders />} />
       <Route path="to-call" element={<AppelantOrders />} />
+      <Route path="validated" element={<ValidatedOrders />} />
       <Route path="expeditions" element={<ExpeditionsExpress />} />
       <Route path="users" element={<Users />} />
       <Route path="tournees" element={<Tournees />} />

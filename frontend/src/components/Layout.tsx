@@ -39,6 +39,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
           { icon: Phone, label: 'À appeler', path: '/admin/to-call' },
           { icon: ShoppingCart, label: 'Commandes', path: '/admin/orders' },
+          { icon: CheckCircle, label: 'Commandes validées', path: '/admin/validated' },
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/admin/expeditions' },
           { icon: Users, label: 'Utilisateurs', path: '/admin/users' },
           { icon: Truck, label: 'Gestion des Tournées', path: '/admin/tournees' },
