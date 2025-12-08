@@ -180,8 +180,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
     });
 
     const topLivreurs = Object.values(livreurStats)
-      .sort((a, b) => b.montant - a.montant)
-      .slice(0, 5);
+      .sort((a, b) => b.montant - a.montant); // Tous les livreurs, triés par montant décroissant
 
     res.json({
       periode: {
