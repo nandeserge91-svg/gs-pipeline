@@ -771,6 +771,7 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
           referencePayment,
           noteAppelant: note || order.noteAppelant,
           validatedAt: new Date(),
+          expedieAt: new Date(), // ✅ Date de paiement EXPEDITION pour comptabilité
           callerId: req.user.id,
           calledAt: new Date(),
         },
@@ -851,6 +852,7 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
           agenceRetrait,
           noteAppelant: note || order.noteAppelant,
           validatedAt: new Date(),
+          expedieAt: new Date(), // ✅ Date de paiement avance EXPRESS (10%) pour comptabilité
           callerId: req.user.id,
           calledAt: new Date(),
         },
