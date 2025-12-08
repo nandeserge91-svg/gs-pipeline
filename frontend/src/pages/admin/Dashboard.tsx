@@ -13,6 +13,7 @@ import ExpeditionsExpress from './ExpeditionsExpress';
 import Deliveries from '../gestionnaire/Deliveries';
 import ValidatedOrders from '../gestionnaire/ValidatedOrders';
 import Accounting from './Accounting';
+import ExpressAgence from '../gestionnaire/ExpressAgence';
 
 export default function AdminDashboard() {
   return (
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
       <Route path="to-call" element={<AppelantOrders />} />
       <Route path="validated" element={<ValidatedOrders />} />
       <Route path="expeditions" element={<ExpeditionsExpress />} />
+      <Route path="express-agence" element={<ExpressAgence />} />
       <Route path="users" element={<Users />} />
       <Route path="tournees" element={<Tournees />} />
       <Route path="deliveries" element={<Deliveries />} />

@@ -59,9 +59,10 @@ model User {
   // Relations
   ordersAsCaller   Order[]          @relation("CallerOrders")
   ordersAsDeliverer Order[]         @relation("DelivererOrders")
-  deliveryLists    DeliveryList[]
-  callStats        CallStatistic[]
-  deliveryStats    DeliveryStatistic[]
+  deliveryLists       DeliveryList[]
+  callStats           CallStatistic[]
+  deliveryStats       DeliveryStatistic[]
+  expressNotifications ExpressNotification[]
 
   @@map("users")
 }
@@ -144,7 +145,10 @@ model Order {
   arriveAt        DateTime?   // Date d'arrivée en agence (pour EXPRESS)
   
   // Historique des changements de statut
-  statusHistory   StatusHistory[]
+  statusHistory        StatusHistory[]
+  
+  // Notifications EXPRESS
+  expressNotifications ExpressNotification[]
 
   @@map("orders")
   @@index([status])
@@ -223,6 +227,21 @@ model DeliveryStatistic {
 
   @@map("delivery_statistics")
   @@index([userId, date])
+}
+
+// Notifications pour les EXPRESS en agence
+model ExpressNotification {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId      Int      // Appelant qui a notifié
+  user        User     @relation(fields: [userId], references: [id])
+  note        String?  // Raison du non-retrait (occupé, voyage, etc.)
+  notifiedAt  DateTime @default(now())
+
+  @@map("express_notifications")
+  @@index([orderId])
+  @@index([userId])
 }
 
 // ========================================

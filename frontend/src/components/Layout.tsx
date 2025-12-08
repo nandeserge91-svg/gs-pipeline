@@ -18,7 +18,8 @@ import {
   Zap,
   Menu,
   X,
-  DollarSign
+  DollarSign,
+  Bell
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -42,6 +43,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: ShoppingCart, label: 'Commandes', path: '/admin/orders' },
           { icon: CheckCircle, label: 'Commandes validées', path: '/admin/validated' },
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/admin/expeditions' },
+          { icon: Bell, label: 'EXPRESS - En agence', path: '/admin/express-agence' },
           { icon: Users, label: 'Utilisateurs', path: '/admin/users' },
           { icon: Truck, label: 'Gestion des Tournées', path: '/admin/tournees' },
           { icon: TrendingUp, label: 'Listes de livraison', path: '/admin/deliveries' },

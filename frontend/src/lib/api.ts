@@ -283,3 +283,14 @@ export const accountingApi = {
   },
 };
 
+export const expressApi = {
+  getEnAgence: async (params?: { search?: string; agence?: string; statut?: string; nonRetires?: string }) => {
+    const { data } = await api.get('/express/en-agence', { params });
+    return data;
+  },
+  notifierClient: async (id: number, note?: string) => {
+    const { data } = await api.post(`/express/${id}/notifier`, { note });
+    return data;
+  },
+};
+
