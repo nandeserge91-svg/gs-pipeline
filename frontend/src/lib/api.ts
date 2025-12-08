@@ -237,11 +237,6 @@ export const productsApi = {
     return data;
   },
 
-  adjustStockExpress: async (id: number, adjustData: { quantite: number; motif: string }) => {
-    const { data } = await api.post(`/products/${id}/stock-express/adjust`, adjustData);
-    return data;
-  },
-
   delete: async (id: number) => {
     const { data } = await api.delete(`/products/${id}`);
     return data;
@@ -299,6 +294,13 @@ export const expressApi = {
   },
   confirmerRetrait: async (id: number) => {
     const { data } = await api.post(`/express/${id}/confirmer-retrait`);
+    return data;
+  },
+};
+
+export const adminApi = {
+  fixExpressStock: async () => {
+    const { data } = await api.post('/admin/fix-express-stock');
     return data;
   },
 };
