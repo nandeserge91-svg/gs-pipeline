@@ -7,6 +7,7 @@ import ClientDatabase from '../common/ClientDatabase';
 import CallerSupervision from '../common/CallerSupervision';
 import AppelantOrders from '../appelant/Orders';
 import ExpeditionsExpress from '../admin/ExpeditionsExpress';
+import ExpressAgence from './ExpressAgence';
 import AllOrders from '../admin/Orders';
 import Users from '../admin/Users';
 
@@ -18,6 +19,7 @@ export default function GestionnaireDashboard() {
       <Route path="all-orders" element={<AllOrders />} />
       <Route path="validated" element={<ValidatedOrders />} />
       <Route path="expeditions" element={<ExpeditionsExpress />} />
+      <Route path="express-agence" element={<ExpressAgence />} />
       <Route path="deliveries" element={<Deliveries />} />
       <Route path="users" element={<Users />} />
       <Route path="database" element={<ClientDatabase />} />
