@@ -1,6 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authorize } from '../middleware/auth.js';
+import { authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
