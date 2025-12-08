@@ -193,7 +193,7 @@ router.post('/:id/confirmer-retrait', authenticate, authorize('ADMIN', 'GESTIONN
           data: {
             productId: order.productId,
             quantite: order.quantite,
-            type: 'SORTIE',
+            type: 'RETRAIT_EXPRESS',
             stockAvant: stockAvant,
             stockApres: stockApres,
             effectuePar: req.user.id,
