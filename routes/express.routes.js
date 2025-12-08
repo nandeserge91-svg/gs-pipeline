@@ -151,7 +151,10 @@ router.post('/:id/confirmer-retrait', authenticate, authorize('ADMIN', 'GESTIONN
     const { id } = req.params;
 
     const order = await prisma.order.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
+      include: {
+        product: true
+      }
     });
 
     if (!order) {
@@ -162,29 +165,61 @@ router.post('/:id/confirmer-retrait', authenticate, authorize('ADMIN', 'GESTIONN
       return res.status(400).json({ error: 'Cette commande n\'est pas en attente de retrait.' });
     }
 
-    // Mettre à jour le statut à EXPRESS_LIVRE
-    const updatedOrder = await prisma.order.update({
-      where: { id: parseInt(id) },
-      data: {
-        status: 'EXPRESS_LIVRE',
-        deliveredAt: new Date(), // Date de retrait
-      }
-    });
+    // Transaction pour gérer le stock et la commande
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Mettre à jour le statut à EXPRESS_LIVRE
+      const updatedOrder = await tx.order.update({
+        where: { id: parseInt(id) },
+        data: {
+          status: 'EXPRESS_LIVRE',
+          deliveredAt: new Date(), // Date de retrait
+        }
+      });
 
-    // Créer l'historique
-    await prisma.statusHistory.create({
-      data: {
-        orderId: parseInt(id),
-        oldStatus: 'EXPRESS_ARRIVE',
-        newStatus: 'EXPRESS_LIVRE',
-        changedBy: req.user.id,
-        comment: `Colis retiré par le client - Confirmé par ${req.user.prenom} ${req.user.nom}`
+      // 2. Diminuer le stock EXPRESS (réservé) si un produit est associé
+      if (order.productId && order.product) {
+        const stockAvant = order.product.stockExpress || 0;
+        const stockApres = Math.max(0, stockAvant - order.quantite);
+
+        await tx.product.update({
+          where: { id: order.productId },
+          data: {
+            stockExpress: stockApres
+          }
+        });
+
+        // 3. Créer le mouvement de stock
+        await tx.stockMovement.create({
+          data: {
+            productId: order.productId,
+            quantite: order.quantite,
+            type: 'SORTIE',
+            stockAvant: stockAvant,
+            stockApres: stockApres,
+            effectuePar: req.user.id,
+            motif: `Retrait EXPRESS par client - Commande ${order.orderReference}`,
+            orderId: order.id
+          }
+        });
       }
+
+      // 4. Créer l'historique de statut
+      await tx.statusHistory.create({
+        data: {
+          orderId: parseInt(id),
+          oldStatus: 'EXPRESS_ARRIVE',
+          newStatus: 'EXPRESS_LIVRE',
+          changedBy: req.user.id,
+          comment: `Colis retiré par le client - Confirmé par ${req.user.prenom} ${req.user.nom}`
+        }
+      });
+
+      return updatedOrder;
     });
 
     res.json({
-      order: updatedOrder,
-      message: 'Retrait confirmé avec succès.'
+      order: result,
+      message: 'Retrait confirmé avec succès. Stock EXPRESS mis à jour.'
     });
   } catch (error) {
     console.error('Erreur confirmation retrait:', error);
