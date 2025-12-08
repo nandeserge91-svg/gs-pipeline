@@ -298,10 +298,3 @@ export const expressApi = {
   },
 };
 
-export const adminApi = {
-  fixExpressStock: async () => {
-    const { data } = await api.post('/admin/fix-express-stock');
-    return data;
-  },
-};
-
