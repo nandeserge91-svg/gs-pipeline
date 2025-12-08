@@ -1,13 +1,13 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authorize } from '../middlewares/auth.middleware.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // GET /api/accounting/stats - Statistiques comptables détaillées
 // Accessible uniquement par ADMIN
-router.get('/stats', authorize('ADMIN'), async (req, res) => {
+router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
 
