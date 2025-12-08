@@ -490,7 +490,7 @@ router.post('/:id/attente-paiement', authorize('APPELANT', 'ADMIN', 'GESTIONNAIR
   }
 });
 
-// PUT /api/orders/:id/quantite - Modifier la quantité d'une commande VALIDEE
+// PUT /api/orders/:id/quantite - Modifier la quantité d'une commande (NOUVELLE, A_APPELER, VALIDEE)
 // Accessible uniquement par ADMIN et GESTIONNAIRE
 router.put('/:id/quantite', authorize('ADMIN', 'GESTIONNAIRE'), [
   body('quantite').isInt({ min: 1 }).withMessage('La quantité doit être au minimum 1'),
@@ -513,10 +513,10 @@ router.put('/:id/quantite', authorize('ADMIN', 'GESTIONNAIRE'), [
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
 
-    // Vérifier que la commande est VALIDEE ou A_APPELER
-    if (!['VALIDEE', 'A_APPELER'].includes(order.status)) {
+    // Vérifier que la commande est NOUVELLE, A_APPELER ou VALIDEE
+    if (!['NOUVELLE', 'A_APPELER', 'VALIDEE'].includes(order.status)) {
       return res.status(400).json({ 
-        error: 'Seules les commandes VALIDEES ou A_APPELER peuvent être modifiées.' 
+        error: 'Seules les commandes NOUVELLE, A_APPELER ou VALIDEES peuvent être modifiées.' 
       });
     }
 
