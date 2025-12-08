@@ -96,6 +96,20 @@ router.post('/assign', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
       return res.status(400).json({ error: 'Livreur invalide.' });
     }
 
+    // Vérifier qu'aucune des commandes n'est une EXPEDITION ou EXPRESS
+    const ordersToAssign = await prisma.order.findMany({
+      where: {
+        id: { in: orderIds.map(id => parseInt(id)) }
+      }
+    });
+
+    const invalidOrders = ordersToAssign.filter(o => o.deliveryType === 'EXPEDITION' || o.deliveryType === 'EXPRESS');
+    if (invalidOrders.length > 0) {
+      return res.status(400).json({ 
+        error: `${invalidOrders.length} commande(s) EXPEDITION/EXPRESS détectée(s). Utilisez la route d'assignation spécifique pour ces commandes.` 
+      });
+    }
+
     // Créer la liste de livraison
     const deliveryList = await prisma.deliveryList.create({
       data: {
