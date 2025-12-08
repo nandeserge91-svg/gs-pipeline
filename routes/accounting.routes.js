@@ -15,26 +15,41 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
     const startDate = dateDebut ? new Date(dateDebut) : new Date(new Date().setHours(0, 0, 0, 0));
     const endDate = dateFin ? new Date(dateFin) : new Date(new Date().setHours(23, 59, 59, 999));
 
-    // Récupérer toutes les commandes livrées dans la période
+    // Récupérer toutes les commandes dans la période (tous types)
     const commandes = await prisma.order.findMany({
       where: {
         OR: [
+          // Livraisons locales
           {
+            deliveryType: 'LOCAL',
             status: 'LIVREE',
             deliveredAt: {
               gte: startDate,
               lte: endDate
             }
           },
+          // Expéditions (paiement 100% avant envoi)
           {
+            deliveryType: 'EXPEDITION',
             status: 'EXPEDITION',
             expedieAt: {
               gte: startDate,
               lte: endDate
             }
           },
+          // Express - Envoyés (10% payé)
           {
-            status: 'ARRIVEE',
+            deliveryType: 'EXPRESS',
+            status: 'EXPRESS',
+            expedieAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          },
+          // Express - Arrivés en agence (90% à payer)
+          {
+            deliveryType: 'EXPRESS',
+            status: { in: ['EXPRESS_ARRIVE', 'EXPRESS_LIVRE'] },
             arriveAt: {
               gte: startDate,
               lte: endDate
@@ -47,34 +62,34 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
         deliverer: { select: { nom: true, prenom: true } }
       },
       orderBy: {
-        deliveredAt: 'desc'
+        createdAt: 'desc'
       }
     });
 
     // 1. LIVRAISONS LOCALES (LIVREE + deliveryType = LOCAL)
     const livraisonsLocales = commandes.filter(
-      c => c.status === 'LIVREE' && c.deliveryType === 'LOCAL'
+      c => c.deliveryType === 'LOCAL' && c.status === 'LIVREE'
     );
     const totalLivraisonsLocales = livraisonsLocales.reduce((sum, c) => sum + c.montant, 0);
     const nombreLivraisonsLocales = livraisonsLocales.length;
 
     // 2. EXPEDITIONS (paiement 100% avant envoi)
     const expeditions = commandes.filter(
-      c => (c.status === 'EXPEDITION' || c.status === 'ARRIVEE') && c.deliveryType === 'EXPEDITION'
+      c => c.deliveryType === 'EXPEDITION' && c.status === 'EXPEDITION'
     );
     const totalExpeditions = expeditions.reduce((sum, c) => sum + c.montant, 0);
     const nombreExpeditions = expeditions.length;
 
     // 3. EXPRESS - Paiement en avance (10%)
     const expressAvance = commandes.filter(
-      c => c.deliveryType === 'EXPRESS' && c.expedieAt && !c.arriveAt
+      c => c.deliveryType === 'EXPRESS' && c.status === 'EXPRESS'
     );
     const totalExpressAvance = expressAvance.reduce((sum, c) => sum + (c.montant * 0.10), 0);
     const nombreExpressAvance = expressAvance.length;
 
     // 4. EXPRESS - Retrait en agence (90% restant)
     const expressRetrait = commandes.filter(
-      c => c.status === 'ARRIVEE' && c.deliveryType === 'EXPRESS'
+      c => c.deliveryType === 'EXPRESS' && (c.status === 'EXPRESS_ARRIVE' || c.status === 'EXPRESS_LIVRE')
     );
     const totalExpressRetrait = expressRetrait.reduce((sum, c) => sum + (c.montant * 0.90), 0);
     const nombreExpressRetrait = expressRetrait.length;
@@ -98,19 +113,19 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
       });
 
       const local = commandesJour
-        .filter(c => c.status === 'LIVREE' && c.deliveryType === 'LOCAL')
+        .filter(c => c.deliveryType === 'LOCAL' && c.status === 'LIVREE')
         .reduce((sum, c) => sum + c.montant, 0);
 
       const expedition = commandesJour
-        .filter(c => c.deliveryType === 'EXPEDITION')
+        .filter(c => c.deliveryType === 'EXPEDITION' && c.status === 'EXPEDITION')
         .reduce((sum, c) => sum + c.montant, 0);
 
       const expressAvanceJour = commandesJour
-        .filter(c => c.deliveryType === 'EXPRESS' && c.expedieAt && !c.arriveAt)
+        .filter(c => c.deliveryType === 'EXPRESS' && c.status === 'EXPRESS')
         .reduce((sum, c) => sum + (c.montant * 0.10), 0);
 
       const expressRetraitJour = commandesJour
-        .filter(c => c.status === 'ARRIVEE' && c.deliveryType === 'EXPRESS')
+        .filter(c => c.deliveryType === 'EXPRESS' && (c.status === 'EXPRESS_ARRIVE' || c.status === 'EXPRESS_LIVRE'))
         .reduce((sum, c) => sum + (c.montant * 0.90), 0);
 
       evolutionJournaliere.push({
