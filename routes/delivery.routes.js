@@ -165,7 +165,8 @@ router.get('/my-orders', authorize('LIVREUR'), async (req, res) => {
   try {
     const { date, status } = req.query;
     const where = {
-      delivererId: req.user.id
+      delivererId: req.user.id,
+      deliveryType: 'LOCAL' // ✅ Exclure EXPEDITION (gérées séparément dans le frontend)
     };
 
     if (date) {
