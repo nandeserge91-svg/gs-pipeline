@@ -845,6 +845,7 @@ export default function Tournees() {
                           <th className="px-3 py-2 text-left">Produit</th>
                           <th className="px-3 py-2 text-center">Qté</th>
                           <th className="px-3 py-2 text-right">Montant</th>
+                          <th className="px-3 py-2 text-left">Note</th>
                           <th className="px-3 py-2 text-center">Statut</th>
                         </tr>
                       </thead>
@@ -863,6 +864,15 @@ export default function Tournees() {
                             </td>
                             <td className="px-3 py-2 text-right">
                               <span className="font-medium">{formatCurrency(order.montant)}</span>
+                            </td>
+                            <td className="px-3 py-2 text-xs max-w-xs">
+                              {order.noteAppelant ? (
+                                <span className="text-gray-600 line-clamp-1" title={order.noteAppelant}>
+                                  💬 {order.noteAppelant}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-center">
                               <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>

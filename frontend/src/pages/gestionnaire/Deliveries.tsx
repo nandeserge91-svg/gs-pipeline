@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Truck, Package, Search, Filter, Calendar, Image as ImageIcon, Share2 } from 'lucide-react';
+import { Truck, Package, Search, Filter, Calendar, Image as ImageIcon, Share2, MessageSquare } from 'lucide-react';
 import { deliveryApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 
@@ -283,6 +283,7 @@ Merci de votre confiance ! 🙏`;
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Client</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Ville</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Montant</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Note</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Statut</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Code Expédition</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Photo Reçu</th>
@@ -295,6 +296,18 @@ Merci de votre confiance ! 🙏`;
                         <td className="py-2 px-3 text-sm">{order.clientNom}</td>
                         <td className="py-2 px-3 text-sm">{order.clientVille}</td>
                         <td className="py-2 px-3 text-sm font-medium">{formatCurrency(order.montant)}</td>
+                        <td className="py-2 px-3 text-xs max-w-xs">
+                          {order.noteAppelant ? (
+                            <div className="flex items-start gap-1" title={order.noteAppelant}>
+                              <MessageSquare size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-gray-700 line-clamp-1">
+                                {order.noteAppelant}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
                         <td className="py-2 px-3">
                           <span className={`badge ${getStatusColor(order.status)}`}>
                             {getStatusLabel(order.status)}
