@@ -15,7 +15,9 @@ const RAISONS_RETOUR = {
 };
 
 export default function Tournees() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const [dateDebut, setDateDebut] = useState(today);
+  const [dateFin, setDateFin] = useState(today);
   const [selectedTournee, setSelectedTournee] = useState<any>(null);
   const [colisRemis, setColisRemis] = useState('');
   const [colisRetour, setColisRetour] = useState('');
@@ -32,11 +34,49 @@ export default function Tournees() {
   
   const queryClient = useQueryClient();
 
+  // Fonctions pour les raccourcis de dates
+  const setToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setDateDebut(today);
+    setDateFin(today);
+  };
+
+  const setThisWeek = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    setDateDebut(monday.toISOString().split('T')[0]);
+    setDateFin(sunday.toISOString().split('T')[0]);
+  };
+
+  const setThisMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    setDateDebut(firstDay.toISOString().split('T')[0]);
+    setDateFin(lastDay.toISOString().split('T')[0]);
+  };
+
+  const setThisYear = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), 0, 1);
+    const lastDay = new Date(now.getFullYear(), 11, 31);
+    
+    setDateDebut(firstDay.toISOString().split('T')[0]);
+    setDateFin(lastDay.toISOString().split('T')[0]);
+  };
+
   const { data: tourneesData, isLoading } = useQuery({
-    queryKey: ['stock-tournees', selectedDate],
+    queryKey: ['stock-tournees', dateDebut, dateFin],
     queryFn: async () => {
       const { data } = await api.get('/stock/tournees', {
-        params: { date: selectedDate }
+        params: { dateDebut, dateFin }
       });
       return data;
     },
@@ -345,7 +385,7 @@ export default function Tournees() {
         <div className="card bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Package size={24} className="text-primary-600" />
-            📊 Vue d'ensemble - {selectedDate ? formatDate(selectedDate) : 'Toutes les dates'}
+            📊 Vue d'ensemble - {dateDebut === dateFin ? formatDate(dateDebut) : `${formatDate(dateDebut)} → ${formatDate(dateFin)}`}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -396,15 +436,30 @@ export default function Tournees() {
             />
           </div>
 
-          {/* Filtre par date */}
+          {/* Date de début */}
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
               className="input pl-10 w-full"
+              placeholder="Date de début"
             />
+            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600">Du</label>
+          </div>
+
+          {/* Date de fin */}
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="date"
+              value={dateFin}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="input pl-10 w-full"
+              placeholder="Date de fin"
+            />
+            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600">Au</label>
           </div>
 
           {/* Filtre par statut */}
@@ -476,6 +531,37 @@ export default function Tournees() {
               }`}
             >
               📊 Détaillé
+            </button>
+          </div>
+        </div>
+
+        {/* Raccourcis de dates */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-sm font-medium text-gray-700 mb-2">📅 Raccourcis :</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={setToday}
+              className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+            >
+              📅 Aujourd'hui
+            </button>
+            <button
+              onClick={setThisWeek}
+              className="px-3 py-1 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+            >
+              📆 Cette semaine
+            </button>
+            <button
+              onClick={setThisMonth}
+              className="px-3 py-1 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
+            >
+              🗓️ Ce mois
+            </button>
+            <button
+              onClick={setThisYear}
+              className="px-3 py-1 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
+            >
+              📊 Cette année
             </button>
           </div>
         </div>

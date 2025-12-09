@@ -11,15 +11,32 @@ router.use(authenticate);
 // GET /api/stock/tournees - Liste des tournées pour gestion stock
 router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
-    const { date, delivererId, status } = req.query;
+    const { date, dateDebut, dateFin, delivererId, status } = req.query;
 
     const where = {};
-    if (date) {
-      const selectedDate = new Date(date);
+    
+    // Gestion de la plage de dates
+    if (dateDebut && dateFin) {
+      // Plage de dates
+      const startDate = new Date(`${dateDebut}T00:00:00.000Z`);
+      const endDate = new Date(`${dateFin}T23:59:59.999Z`);
+      where.date = { gte: startDate, lte: endDate };
+    } else if (dateDebut) {
+      // Date de début uniquement
+      const startDate = new Date(`${dateDebut}T00:00:00.000Z`);
+      where.date = { gte: startDate };
+    } else if (dateFin) {
+      // Date de fin uniquement
+      const endDate = new Date(`${dateFin}T23:59:59.999Z`);
+      where.date = { lte: endDate };
+    } else if (date) {
+      // Ancien format : une seule date (pour rétrocompatibilité)
+      const selectedDate = new Date(`${date}T00:00:00.000Z`);
       const nextDay = new Date(selectedDate);
       nextDay.setDate(nextDay.getDate() + 1);
       where.date = { gte: selectedDate, lt: nextDay };
     }
+    
     if (delivererId) where.delivererId = parseInt(delivererId);
 
     const deliveryLists = await prisma.deliveryList.findMany({
