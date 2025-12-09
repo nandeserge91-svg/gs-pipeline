@@ -35,6 +35,14 @@ export default function Tournees() {
   const queryClient = useQueryClient();
 
   // Fonctions pour les raccourcis de dates
+  const setYesterday = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    setDateDebut(yesterdayStr);
+    setDateFin(yesterdayStr);
+  };
+
   const setToday = () => {
     const today = new Date().toISOString().split('T')[0];
     setDateDebut(today);
@@ -539,6 +547,12 @@ export default function Tournees() {
         <div className="mt-4 pt-4 border-t border-gray-200">
           <p className="text-sm font-medium text-gray-700 mb-2">📅 Raccourcis :</p>
           <div className="flex flex-wrap gap-2">
+            <button
+              onClick={setYesterday}
+              className="px-3 py-1 text-sm bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+            >
+              ⏮️ Hier
+            </button>
             <button
               onClick={setToday}
               className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
