@@ -34,6 +34,14 @@ export default function Deliveries() {
 
   const handleUpdateStatus = (status: string) => {
     if (!selectedOrder) return;
+    
+    // Vérifier si le délai de 24h n'est pas dépassé
+    if (selectedOrder.status !== 'ASSIGNEE' && !canModifyOrder(selectedOrder)) {
+      toast.error('Le délai de 24h pour modifier cette livraison est dépassé');
+      setSelectedOrder(null);
+      return;
+    }
+    
     updateStatusMutation.mutate({
       id: selectedOrder.id,
       status,
@@ -45,6 +53,30 @@ export default function Deliveries() {
   const completedOrders = ordersData?.orders?.filter((o: Order) => 
     ['LIVREE', 'REFUSEE', 'ANNULEE_LIVRAISON', 'RETOURNE'].includes(o.status)
   ) || [];
+
+  // Fonction pour vérifier si une commande peut être modifiée (moins de 24h)
+  const canModifyOrder = (order: Order) => {
+    if (!order.updatedAt) return false;
+    const updatedAt = new Date(order.updatedAt);
+    const now = new Date();
+    const diffInHours = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
+    return diffInHours < 24;
+  };
+
+  // Fonction pour calculer le temps restant pour modifier
+  const getTimeRemaining = (order: Order) => {
+    if (!order.updatedAt) return '';
+    const updatedAt = new Date(order.updatedAt);
+    const now = new Date();
+    const diffInHours = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
+    const hoursRemaining = 24 - diffInHours;
+    
+    if (hoursRemaining < 1) {
+      const minutesRemaining = Math.floor(hoursRemaining * 60);
+      return `${minutesRemaining} min`;
+    }
+    return `${Math.floor(hoursRemaining)}h`;
+  };
 
   return (
     <div className="space-y-6">
@@ -157,7 +189,7 @@ export default function Deliveries() {
               <h2 className="text-xl font-semibold mb-4">
                 Complétées ({completedOrders.length})
                 <span className="ml-2 text-sm font-normal text-gray-600">
-                  • Vous pouvez modifier une livraison en cas d'erreur
+                  • Modification possible pendant 24h ⏰
                 </span>
               </h2>
               <div className="card">
@@ -179,17 +211,30 @@ export default function Deliveries() {
                             {getStatusLabel(order.status)}
                           </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setNote(order.noteLivreur || '');
-                          }}
-                          className="btn btn-secondary px-3 py-2 flex items-center gap-1"
-                          title="Modifier la livraison"
-                        >
-                          <Edit2 size={16} />
-                          Modifier
-                        </button>
+                        {canModifyOrder(order) ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setNote(order.noteLivreur || '');
+                              }}
+                              className="btn btn-secondary px-3 py-2 flex items-center gap-1"
+                              title="Modifier la livraison"
+                            >
+                              <Edit2 size={16} />
+                              Modifier
+                            </button>
+                            <span className="text-xs text-orange-600">
+                              ⏰ {getTimeRemaining(order)} restant
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-right">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              🔒 Délai dépassé
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
