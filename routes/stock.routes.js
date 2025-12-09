@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.use(authenticate);
 
 // GET /api/stock/tournees - Liste des tournées pour gestion stock
-router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) => {
+router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
     const { date, delivererId, status } = req.query;
 
@@ -39,12 +39,31 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, re
     });
 
     // Calculer les statistiques pour chaque tournée
+    const now = new Date();
     const tourneesWithStats = deliveryLists.map(list => {
       const totalOrders = list.orders.length;
       const livrees = list.orders.filter(o => o.status === 'LIVREE').length;
       const refusees = list.orders.filter(o => o.status === 'REFUSEE').length;
       const annulees = list.orders.filter(o => o.status === 'ANNULEE_LIVRAISON').length;
       const enAttente = list.orders.filter(o => o.status === 'ASSIGNEE').length;
+      const colisRemis = list.tourneeStock?.colisRemis || totalOrders;
+      
+      // Calcul de la durée des colis chez le livreur
+      let joursChezLivreur = 0;
+      let dateRemise = list.tourneeStock?.colisRemisAt || list.createdAt || list.date;
+      if (dateRemise && !list.tourneeStock?.colisRetourConfirme) {
+        const diffTime = now.getTime() - new Date(dateRemise).getTime();
+        joursChezLivreur = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      }
+      
+      // Colis restants (non livrés et non retournés)
+      const colisRestants = list.tourneeStock?.colisRetourConfirme 
+        ? 0 
+        : (colisRemis - livrees);
+      
+      // Alertes
+      const alerteRetard = joursChezLivreur > 2 && colisRestants > 0; // Plus de 2 jours
+      const alerteCritique = joursChezLivreur > 5 && colisRestants > 0; // Plus de 5 jours
 
       return {
         ...list,
@@ -54,10 +73,16 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, re
           refusees,
           annulees,
           enAttente,
-          colisRemis: list.tourneeStock?.colisRemis || 0,
+          colisRemis,
           colisRetour: list.tourneeStock?.colisRetour || 0,
+          colisRestants,
           remisConfirme: list.tourneeStock?.colisRemisConfirme || false,
-          retourConfirme: list.tourneeStock?.colisRetourConfirme || false
+          retourConfirme: list.tourneeStock?.colisRetourConfirme || false,
+          dateRemise: list.tourneeStock?.colisRemisAt || list.createdAt,
+          dateRetour: list.tourneeStock?.colisRetourAt,
+          joursChezLivreur,
+          alerteRetard,
+          alerteCritique
         }
       };
     });
@@ -70,7 +95,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, re
 });
 
 // GET /api/stock/tournees/:id - Détail d'une tournée
-router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) => {
+router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -111,20 +136,49 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req
           produitNom: order.produitNom,
           quantiteTotal: 0,
           quantiteLivree: 0,
-          quantiteRetour: 0
+          quantiteRetour: 0,
+          quantiteEnCours: 0
         };
       }
       produitsSummary[key].quantiteTotal += order.quantite;
       if (order.status === 'LIVREE') {
         produitsSummary[key].quantiteLivree += order.quantite;
-      } else if (['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status)) {
+      } else if (['REFUSEE', 'ANNULEE_LIVRAISON', 'RETOURNE'].includes(order.status)) {
         produitsSummary[key].quantiteRetour += order.quantite;
+      } else if (order.status === 'ASSIGNEE') {
+        produitsSummary[key].quantiteEnCours += order.quantite;
       }
     });
-
+    
+    // Calcul des durées et statistiques détaillées
+    const now = new Date();
+    const dateRemise = deliveryList.tourneeStock?.colisRemisAt || deliveryList.createdAt || deliveryList.date;
+    const dateRetour = deliveryList.tourneeStock?.colisRetourAt;
+    
+    let joursChezLivreur = 0;
+    if (dateRemise && !dateRetour) {
+      const diffTime = now.getTime() - new Date(dateRemise).getTime();
+      joursChezLivreur = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    const colisRemis = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
+    const colisLivres = deliveryList.orders.filter(o => o.status === 'LIVREE').length;
+    const colisRestants = dateRetour ? 0 : (colisRemis - colisLivres);
+    
     res.json({ 
       tournee: deliveryList,
-      produitsSummary: Object.values(produitsSummary)
+      produitsSummary: Object.values(produitsSummary),
+      stats: {
+        colisRemis,
+        colisLivres,
+        colisRetour: deliveryList.tourneeStock?.colisRetour || 0,
+        colisRestants,
+        dateRemise,
+        dateRetour,
+        joursChezLivreur,
+        alerteRetard: joursChezLivreur > 2 && colisRestants > 0,
+        alerteCritique: joursChezLivreur > 5 && colisRestants > 0
+      }
     });
   } catch (error) {
     console.error('Erreur récupération détail tournée:', error);
@@ -133,7 +187,7 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req
 });
 
 // POST /api/stock/tournees/:id/confirm-remise - Confirmer la remise des colis
-router.post('/tournees/:id/confirm-remise', authorize('GESTIONNAIRE_STOCK'), [
+router.post('/tournees/:id/confirm-remise', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), [
   body('colisRemis').isInt({ min: 0 }).withMessage('Nombre de colis invalide')
 ], async (req, res) => {
   try {
@@ -183,7 +237,7 @@ router.post('/tournees/:id/confirm-remise', authorize('GESTIONNAIRE_STOCK'), [
 });
 
 // POST /api/stock/tournees/:id/confirm-retour - Confirmer le retour des colis
-router.post('/tournees/:id/confirm-retour', authorize('GESTIONNAIRE_STOCK'), [
+router.post('/tournees/:id/confirm-retour', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), [
   body('colisRetour').isInt({ min: 0 }).withMessage('Nombre de colis invalide')
 ], async (req, res) => {
   try {

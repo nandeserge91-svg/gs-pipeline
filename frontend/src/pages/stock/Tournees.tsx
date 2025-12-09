@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, CheckCircle, Truck, Calendar, Search, Filter, User } from 'lucide-react';
+import { Package, CheckCircle, Truck, Calendar, Search, Filter, User, Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
@@ -205,11 +205,58 @@ export default function Tournees() {
     if (tournee.stats.remisConfirme && tournee.stats.retourConfirme) {
       return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✓ Terminée</span>;
     } else if (tournee.stats.remisConfirme) {
-      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">En livraison</span>;
+      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">🚚 En livraison</span>;
     } else {
       return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">⏳ En attente</span>;
     }
   };
+  
+  const getAlerteBadge = (tournee: any) => {
+    if (!tournee.stats.remisConfirme || tournee.stats.retourConfirme) return null;
+    
+    if (tournee.stats.alerteCritique) {
+      return (
+        <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded-full flex items-center gap-1 animate-pulse">
+          <AlertCircle size={14} /> CRITIQUE ({tournee.stats.joursChezLivreur}j)
+        </span>
+      );
+    }
+    
+    if (tournee.stats.alerteRetard) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full flex items-center gap-1">
+          <AlertTriangle size={14} /> Retard ({tournee.stats.joursChezLivreur}j)
+        </span>
+      );
+    }
+    
+    if (tournee.stats.joursChezLivreur > 0) {
+      return (
+        <span className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full flex items-center gap-1">
+          <Clock size={14} /> {tournee.stats.joursChezLivreur}j chez livreur
+        </span>
+      );
+    }
+    
+    return null;
+  };
+
+  // Calcul des KPIs globaux
+  const kpis = useMemo(() => {
+    if (!filteredTournees) return null;
+    
+    const totalColisRemis = filteredTournees.reduce((sum: number, t: any) => sum + t.stats.colisRemis, 0);
+    const totalColisLivres = filteredTournees.reduce((sum: number, t: any) => sum + t.stats.livrees, 0);
+    const totalColisRestants = filteredTournees.reduce((sum: number, t: any) => sum + t.stats.colisRestants, 0);
+    const tauxLivraison = totalColisRemis > 0 ? ((totalColisLivres / totalColisRemis) * 100).toFixed(1) : 0;
+    
+    return {
+      totalColisRemis,
+      totalColisLivres,
+      totalColisRestants,
+      tauxLivraison
+    };
+  }, [filteredTournees]);
 
   return (
     <div className="space-y-6">
@@ -221,27 +268,84 @@ export default function Tournees() {
         </div>
         
         {/* Statistiques rapides */}
-        <div className="flex gap-3">
-          <div className="bg-orange-50 px-4 py-2 rounded-lg">
-            <p className="text-xs text-gray-600">En attente</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="bg-orange-50 px-4 py-2 rounded-lg border border-orange-200">
+            <p className="text-xs text-gray-600">⏳ En attente</p>
             <p className="text-xl font-bold text-orange-600">
               {filteredTournees.filter((t: any) => !t.stats.remisConfirme).length}
             </p>
           </div>
-          <div className="bg-blue-50 px-4 py-2 rounded-lg">
-            <p className="text-xs text-gray-600">En livraison</p>
+          <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
+            <p className="text-xs text-gray-600">🚚 En livraison</p>
             <p className="text-xl font-bold text-blue-600">
               {filteredTournees.filter((t: any) => t.stats.remisConfirme && !t.stats.retourConfirme).length}
             </p>
           </div>
-          <div className="bg-green-50 px-4 py-2 rounded-lg">
-            <p className="text-xs text-gray-600">Terminées</p>
+          <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+            <p className="text-xs text-gray-600">✓ Terminées</p>
             <p className="text-xl font-bold text-green-600">
               {filteredTournees.filter((t: any) => t.stats.retourConfirme).length}
             </p>
           </div>
+          <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200">
+            <p className="text-xs text-gray-600 flex items-center gap-1">
+              <AlertTriangle size={12} /> Retards
+            </p>
+            <p className="text-xl font-bold text-yellow-600">
+              {filteredTournees.filter((t: any) => t.stats.alerteRetard).length}
+            </p>
+          </div>
+          <div className="bg-red-50 px-4 py-2 rounded-lg border border-red-200 animate-pulse">
+            <p className="text-xs text-gray-600 flex items-center gap-1">
+              <AlertCircle size={12} /> Critiques
+            </p>
+            <p className="text-xl font-bold text-red-600">
+              {filteredTournees.filter((t: any) => t.stats.alerteCritique).length}
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Dashboard KPIs Globaux */}
+      {kpis && (
+        <div className="card bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Package size={24} className="text-primary-600" />
+            📊 Vue d'ensemble - {selectedDate ? formatDate(selectedDate) : 'Toutes les dates'}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <p className="text-xs text-gray-600 mb-1">📦 Total Remis</p>
+              <p className="text-3xl font-bold text-blue-600">{kpis.totalColisRemis}</p>
+              <p className="text-xs text-gray-500 mt-1">colis confiés aux livreurs</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <p className="text-xs text-gray-600 mb-1">✅ Total Livrés</p>
+              <p className="text-3xl font-bold text-green-600">{kpis.totalColisLivres}</p>
+              <p className="text-xs text-gray-500 mt-1">colis livrés aux clients</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <p className="text-xs text-gray-600 mb-1">⏳ Total Restants</p>
+              <p className={`text-3xl font-bold ${kpis.totalColisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                {kpis.totalColisRestants}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">colis encore en circulation</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <p className="text-xs text-gray-600 mb-1">📈 Taux de Livraison</p>
+              <p className={`text-3xl font-bold ${parseFloat(kpis.tauxLivraison as string) >= 80 ? 'text-green-600' : parseFloat(kpis.tauxLivraison as string) >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {kpis.tauxLivraison}%
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div 
+                  className={`h-2 rounded-full ${parseFloat(kpis.tauxLivraison as string) >= 80 ? 'bg-green-600' : parseFloat(kpis.tauxLivraison as string) >= 60 ? 'bg-yellow-600' : 'bg-red-600'}`}
+                  style={{ width: `${kpis.tauxLivraison}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtres et recherche */}
       <div className="card">
@@ -368,52 +472,65 @@ export default function Tournees() {
       ) : viewMode === 'compact' ? (
         /* MODE COMPACT - Tableau */
         <div className="card overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tournée</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livreur</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livrées</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Refusées</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tournée</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livreur</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Remis</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livrés</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Restants</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Durée</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredTournees.map((tournee: any) => (
-                <tr key={tournee.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <tr key={tournee.id} className={`hover:bg-gray-50 ${tournee.stats.alerteCritique ? 'bg-red-50' : tournee.stats.alerteRetard ? 'bg-orange-50' : ''}`}>
+                  <td className="px-3 py-3">
                     <div>
                       <p className="font-medium text-gray-900">{tournee.nom}</p>
                       {tournee.zone && (
                         <p className="text-xs text-gray-500">Zone: {tournee.zone}</p>
                       )}
+                      {tournee.stats.dateRemise && (
+                        <p className="text-xs text-gray-400">
+                          📅 Remise: {formatDate(tournee.stats.dateRemise)}
+                        </p>
+                      )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <p className="text-sm text-gray-900">
                       {tournee.deliverer.prenom} {tournee.deliverer.nom}
                     </p>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="font-semibold text-blue-600">{tournee.stats.totalOrders}</span>
+                  <td className="px-3 py-3 text-center">
+                    <span className="font-semibold text-blue-600">{tournee.stats.colisRemis}</span>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-3 text-center">
                     <span className="font-semibold text-green-600">{tournee.stats.livrees}</span>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="font-semibold text-red-600">{tournee.stats.refusees + tournee.stats.annulees}</span>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`font-semibold ${tournee.stats.colisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                      {tournee.stats.colisRestants}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      {getAlerteBadge(tournee)}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
                     {getStatusBadge(tournee)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       {!tournee.stats.remisConfirme ? (
                         <button
                           onClick={() => openRemiseModal(tournee)}
-                          className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                          className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                           title="Confirmer la remise"
                         >
                           Remise
@@ -421,7 +538,7 @@ export default function Tournees() {
                       ) : !tournee.stats.retourConfirme ? (
                         <button
                           onClick={() => openRetourModal(tournee)}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                          className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
                           title="Confirmer le retour"
                         >
                           Retour
@@ -432,7 +549,7 @@ export default function Tournees() {
                           setSelectedTournee(tournee);
                           setModalType('detail');
                         }}
-                        className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+                        className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
                         title="Voir détails"
                       >
                         Détails
@@ -448,23 +565,32 @@ export default function Tournees() {
         /* MODE DÉTAILLÉ - Cartes */
         <div className="space-y-4">
           {filteredTournees.map((tournee: any) => (
-            <div key={tournee.id} className="card">
+            <div key={tournee.id} className={`card ${tournee.stats.alerteCritique ? 'border-2 border-red-500' : tournee.stats.alerteRetard ? 'border-2 border-orange-400' : ''}`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="bg-primary-100 p-3 rounded-lg text-primary-600">
+                  <div className={`p-3 rounded-lg ${tournee.stats.alerteCritique ? 'bg-red-100 text-red-600' : tournee.stats.alerteRetard ? 'bg-orange-100 text-orange-600' : 'bg-primary-100 text-primary-600'}`}>
                     <Truck size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{tournee.nom}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">{tournee.nom}</h3>
+                      {getAlerteBadge(tournee)}
+                    </div>
                     <p className="text-sm text-gray-600">
                       {tournee.deliverer.prenom} {tournee.deliverer.nom}
                       {tournee.zone && ` • Zone: ${tournee.zone}`}
                     </p>
+                    {tournee.stats.dateRemise && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        📅 Remise: {formatDate(tournee.stats.dateRemise)}
+                        {tournee.stats.dateRetour && ` → Retour: ${formatDate(tournee.stats.dateRetour)}`}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary-600">
-                    {tournee.stats.totalOrders} colis
+                    {tournee.stats.colisRemis} colis remis
                   </p>
                   <p className="text-sm text-gray-600">
                     {formatDate(tournee.date)}
@@ -476,25 +602,31 @@ export default function Tournees() {
               </div>
 
               {/* Statut de la tournée */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
                 <div className="p-3 bg-blue-50 rounded-lg text-center">
-                  <p className="text-xs text-gray-600">Total</p>
-                  <p className="text-xl font-bold text-blue-600">{tournee.stats.totalOrders}</p>
+                  <p className="text-xs text-gray-600">Remis</p>
+                  <p className="text-xl font-bold text-blue-600">{tournee.stats.colisRemis}</p>
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg text-center">
-                  <p className="text-xs text-gray-600">Livrées</p>
+                  <p className="text-xs text-gray-600">Livrés</p>
                   <p className="text-xl font-bold text-green-600">{tournee.stats.livrees}</p>
                 </div>
-                <div className="p-3 bg-orange-50 rounded-lg text-center">
+                <div className={`p-3 rounded-lg text-center ${tournee.stats.colisRestants > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                  <p className="text-xs text-gray-600">Restants</p>
+                  <p className={`text-xl font-bold ${tournee.stats.colisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                    {tournee.stats.colisRestants}
+                  </p>
+                </div>
+                <div className="p-3 bg-yellow-50 rounded-lg text-center">
                   <p className="text-xs text-gray-600">En attente</p>
-                  <p className="text-xl font-bold text-orange-600">{tournee.stats.enAttente}</p>
+                  <p className="text-xl font-bold text-yellow-600">{tournee.stats.enAttente}</p>
                 </div>
                 <div className="p-3 bg-red-50 rounded-lg text-center">
-                  <p className="text-xs text-gray-600">Refusées</p>
+                  <p className="text-xs text-gray-600">Refusés</p>
                   <p className="text-xl font-bold text-red-600">{tournee.stats.refusees}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg text-center">
-                  <p className="text-xs text-gray-600">Annulées</p>
+                  <p className="text-xs text-gray-600">Annulés</p>
                   <p className="text-xl font-bold text-gray-600">{tournee.stats.annulees}</p>
                 </div>
               </div>
@@ -781,36 +913,88 @@ export default function Tournees() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Informations de la tournée</h3>
+                {/* Alertes en haut du modal */}
+                {selectedTournee.stats.alerteCritique && (
+                  <div className="mb-4 p-4 bg-red-50 border-2 border-red-500 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-800">
+                      <AlertCircle size={24} className="animate-pulse" />
+                      <div>
+                        <p className="font-bold">⚠️ SITUATION CRITIQUE</p>
+                        <p className="text-sm">Colis chez le livreur depuis {selectedTournee.stats.joursChezLivreur} jours ! {selectedTournee.stats.colisRestants} colis non livrés.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {selectedTournee.stats.alerteRetard && !selectedTournee.stats.alerteCritique && (
+                  <div className="mb-4 p-4 bg-orange-50 border-2 border-orange-400 rounded-lg">
+                    <div className="flex items-center gap-2 text-orange-800">
+                      <AlertTriangle size={20} />
+                      <div>
+                        <p className="font-semibold">Retard détecté</p>
+                        <p className="text-sm">Colis chez le livreur depuis {selectedTournee.stats.joursChezLivreur} jours.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-700 mb-3">📦 Colis remis</h3>
                     <div className="space-y-2 text-sm">
-                      <p><strong>Livreur:</strong> {selectedTournee.deliverer.prenom} {selectedTournee.deliverer.nom}</p>
-                      <p><strong>Date:</strong> {formatDate(selectedTournee.date)}</p>
-                      {selectedTournee.zone && <p><strong>Zone:</strong> {selectedTournee.zone}</p>}
-                      <p><strong>Total colis:</strong> {selectedTournee.stats.totalOrders}</p>
+                      <div className="flex justify-between items-center">
+                        <span>Total remis:</span>
+                        <span className="font-bold text-blue-600 text-xl">{selectedTournee.stats.colisRemis}</span>
+                      </div>
+                      {selectedTournee.stats.dateRemise && (
+                        <p className="text-xs text-gray-600">
+                          📅 {formatDate(selectedTournee.stats.dateRemise)}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Statuts des livraisons</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Livrées:</span>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-700 mb-3">✓ Statuts</h3>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Livrés:</span>
                         <span className="font-semibold text-green-600">{selectedTournee.stats.livrees}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Refusées:</span>
+                      <div className="flex justify-between">
+                        <span>Refusés:</span>
                         <span className="font-semibold text-red-600">{selectedTournee.stats.refusees}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Annulées:</span>
+                      <div className="flex justify-between">
+                        <span>Annulés:</span>
                         <span className="font-semibold text-gray-600">{selectedTournee.stats.annulees}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">En attente:</span>
+                      <div className="flex justify-between">
+                        <span>En attente:</span>
                         <span className="font-semibold text-orange-600">{selectedTournee.stats.enAttente}</span>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className={`border rounded-lg p-4 ${selectedTournee.stats.colisRestants > 0 ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <h3 className="font-semibold text-gray-700 mb-3">⏳ Suivi</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between items-center">
+                        <span>Restants:</span>
+                        <span className={`font-bold text-xl ${selectedTournee.stats.colisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                          {selectedTournee.stats.colisRestants}
+                        </span>
+                      </div>
+                      {selectedTournee.stats.joursChezLivreur > 0 && !selectedTournee.stats.retourConfirme && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Clock size={12} />
+                          <span>{selectedTournee.stats.joursChezLivreur} jour(s) chez livreur</span>
+                        </div>
+                      )}
+                      {selectedTournee.stats.dateRetour && (
+                        <p className="text-xs text-gray-600">
+                          ✓ Retour: {formatDate(selectedTournee.stats.dateRetour)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
