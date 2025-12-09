@@ -241,8 +241,8 @@ router.put('/:id/status', async (req, res) => {
         }
       });
 
-      // RÈGLE MÉTIER : Décrémenter le stock uniquement si la commande est LIVRÉE
-      if (status === 'LIVREE' && order.productId) {
+      // RÈGLE MÉTIER 1 : Décrémenter le stock uniquement si la commande passe à LIVRÉE
+      if (status === 'LIVREE' && order.status !== 'LIVREE' && order.productId) {
         const product = await tx.product.findUnique({
           where: { id: order.productId }
         });
@@ -268,6 +268,39 @@ router.put('/:id/status', async (req, res) => {
               orderId: order.id,
               effectuePar: user.id,
               motif: `Livraison commande ${order.orderReference} - ${order.clientNom}`
+            }
+          });
+        }
+      }
+
+      // RÈGLE MÉTIER 2 : Réincrémenter le stock si la commande était LIVRÉE et change vers un autre statut
+      // (Le livreur corrige son erreur : la livraison n'a pas été effectuée)
+      if (order.status === 'LIVREE' && status !== 'LIVREE' && order.productId) {
+        const product = await tx.product.findUnique({
+          where: { id: order.productId }
+        });
+
+        if (product) {
+          const stockAvant = product.stockActuel;
+          const stockApres = stockAvant + order.quantite; // RÉINCRÉMENTER
+
+          // Mettre à jour le stock du produit
+          await tx.product.update({
+            where: { id: order.productId },
+            data: { stockActuel: stockApres }
+          });
+
+          // Créer le mouvement de stock (RETOUR)
+          await tx.stockMovement.create({
+            data: {
+              productId: order.productId,
+              type: 'RETOUR',
+              quantite: order.quantite, // Positif car on rajoute
+              stockAvant,
+              stockApres,
+              orderId: order.id,
+              effectuePar: user.id,
+              motif: `Correction statut ${order.orderReference} - ${order.status} → ${status} - ${order.clientNom}`
             }
           });
         }
