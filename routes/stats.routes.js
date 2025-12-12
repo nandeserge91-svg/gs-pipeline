@@ -87,48 +87,82 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
 });
 
 // GET /api/stats/callers - Statistiques des appelants (Admin/Gestionnaire)
+// ✅ CORRIGÉ : Calcul depuis les commandes, pas depuis CallStatistic
 router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
     const { startDate, endDate, callerId } = req.query;
 
-    const where = {};
+    // Filtres de date et appelant
+    const where = {
+      callerId: callerId ? parseInt(callerId) : { not: null }
+    };
+    
     if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date.gte = new Date(startDate);
-      if (endDate) where.date.lte = new Date(endDate);
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
     }
-    if (callerId) where.userId = parseInt(callerId);
 
-    const stats = await prisma.callStatistic.findMany({
+    // Récupérer toutes les commandes avec appelant
+    const orders = await prisma.order.findMany({
       where,
-      include: {
-        user: {
-          select: { id: true, nom: true, prenom: true }
+      select: {
+        id: true,
+        callerId: true,
+        status: true,
+        deliveryType: true,
+        expedieAt: true,
+        caller: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true
+          }
         }
-      },
-      orderBy: { date: 'desc' }
+      }
     });
 
-    // Agréger par appelant
+    // Calculer les statistiques par appelant
     const callerStats = {};
-    stats.forEach(stat => {
-      const userId = stat.userId;
-      if (!callerStats[userId]) {
-        callerStats[userId] = {
-          user: stat.user,
+    
+    orders.forEach(order => {
+      const callerId = order.callerId;
+      if (!callerId || !order.caller) return;
+      
+      if (!callerStats[callerId]) {
+        callerStats[callerId] = {
+          user: order.caller,
           totalAppels: 0,
           totalValides: 0,
           totalAnnules: 0,
-          totalInjoignables: 0
+          totalInjoignables: 0,
+          totalExpeditions: 0,
+          totalExpress: 0
         };
       }
-      callerStats[userId].totalAppels += stat.totalAppels;
-      callerStats[userId].totalValides += stat.totalValides;
-      callerStats[userId].totalAnnules += stat.totalAnnules;
-      callerStats[userId].totalInjoignables += stat.totalInjoignables;
+      
+      const stats = callerStats[callerId];
+      
+      // Compter selon le statut
+      if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+        stats.totalAppels++;
+      } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
+        stats.totalValides++;
+      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
+        stats.totalAnnules++;
+      } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
+        stats.totalInjoignables++;
+      }
+      
+      // Compter EXPEDITION et EXPRESS
+      if (order.deliveryType === 'EXPEDITION' && order.expedieAt) {
+        stats.totalExpeditions++;
+      } else if (order.deliveryType === 'EXPRESS' && order.expedieAt) {
+        stats.totalExpress++;
+      }
     });
 
-    // Récupérer TOUS les appelants actifs pour s'assurer qu'on ne manque personne
+    // Récupérer TOUS les appelants actifs (même sans commandes)
     const allCallers = await prisma.user.findMany({
       where: {
         role: 'APPELANT',
@@ -141,7 +175,7 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
       }
     });
 
-    // Ajouter les appelants qui n'ont pas encore de stats dans CallStatistic
+    // Ajouter les appelants sans stats
     allCallers.forEach(caller => {
       if (!callerStats[caller.id]) {
         callerStats[caller.id] = {
@@ -149,53 +183,23 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
           totalAppels: 0,
           totalValides: 0,
           totalAnnules: 0,
-          totalInjoignables: 0
+          totalInjoignables: 0,
+          totalExpeditions: 0,
+          totalExpress: 0
         };
       }
     });
 
-    // Récupérer les statistiques EXPRESS et EXPEDITION depuis les commandes
-    const orderDateFilter = {};
-    if (startDate || endDate) {
-      orderDateFilter.expedieAt = {}; // Utiliser expedieAt au lieu de createdAt car c'est la date de création EXPEDITION/EXPRESS
-      if (startDate) orderDateFilter.expedieAt.gte = new Date(startDate);
-      if (endDate) orderDateFilter.expedieAt.lte = new Date(endDate);
-    }
-
-    const orders = await prisma.order.findMany({
-      where: {
-        ...orderDateFilter,
-        callerId: callerId ? parseInt(callerId) : { not: null },
-        deliveryType: { in: ['EXPEDITION', 'EXPRESS'] },
-        expedieAt: { not: null } // S'assurer que c'est bien une EXPEDITION/EXPRESS validée
-      },
-      select: {
-        callerId: true,
-        deliveryType: true,
-        status: true
-      }
+    // Formater le résultat
+    const result = Object.values(callerStats).map(caller => {
+      const totalTraite = caller.totalValides + caller.totalAnnules + caller.totalInjoignables;
+      return {
+        ...caller,
+        tauxValidation: totalTraite > 0 
+          ? ((caller.totalValides / totalTraite) * 100).toFixed(2)
+          : 0
+      };
     });
-
-    // Ajouter les stats EXPRESS et EXPEDITION
-    orders.forEach(order => {
-      const userId = order.callerId;
-      if (callerStats[userId]) {
-        if (order.deliveryType === 'EXPEDITION') {
-          callerStats[userId].totalExpeditions = (callerStats[userId].totalExpeditions || 0) + 1;
-        } else if (order.deliveryType === 'EXPRESS') {
-          callerStats[userId].totalExpress = (callerStats[userId].totalExpress || 0) + 1;
-        }
-      }
-    });
-
-    const result = Object.values(callerStats).map(caller => ({
-      ...caller,
-      totalExpeditions: caller.totalExpeditions || 0,
-      totalExpress: caller.totalExpress || 0,
-      tauxValidation: caller.totalAppels > 0 
-        ? ((caller.totalValides / caller.totalAppels) * 100).toFixed(2)
-        : 0
-    }));
 
     res.json({ stats: result });
   } catch (error) {
@@ -205,47 +209,71 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
 });
 
 // GET /api/stats/deliverers - Statistiques des livreurs (Admin/Gestionnaire)
+// ✅ CORRIGÉ : Calcul depuis les commandes, pas depuis DeliveryStatistic
 router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
     const { startDate, endDate, delivererId } = req.query;
 
-    const where = {};
+    // Filtres de date et livreur
+    const where = {
+      delivererId: delivererId ? parseInt(delivererId) : { not: null }
+    };
+    
     if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date.gte = new Date(startDate);
-      if (endDate) where.date.lte = new Date(endDate);
+      where.deliveredAt = {}; // Date de livraison
+      if (startDate) where.deliveredAt.gte = new Date(startDate);
+      if (endDate) where.deliveredAt.lte = new Date(endDate);
     }
-    if (delivererId) where.userId = parseInt(delivererId);
 
-    const stats = await prisma.deliveryStatistic.findMany({
+    // Récupérer toutes les commandes avec livreur
+    const orders = await prisma.order.findMany({
       where,
-      include: {
-        user: {
-          select: { id: true, nom: true, prenom: true }
+      select: {
+        id: true,
+        delivererId: true,
+        status: true,
+        montant: true,
+        deliverer: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true
+          }
         }
-      },
-      orderBy: { date: 'desc' }
+      }
     });
 
-    // Agréger par livreur
+    // Calculer les statistiques par livreur
     const delivererStats = {};
-    stats.forEach(stat => {
-      const userId = stat.userId;
-      if (!delivererStats[userId]) {
-        delivererStats[userId] = {
-          user: stat.user,
+    
+    orders.forEach(order => {
+      const delivererId = order.delivererId;
+      if (!delivererId || !order.deliverer) return;
+      
+      if (!delivererStats[delivererId]) {
+        delivererStats[delivererId] = {
+          user: order.deliverer,
           totalLivraisons: 0,
           totalRefusees: 0,
           totalAnnulees: 0,
           montantLivre: 0
         };
       }
-      delivererStats[userId].totalLivraisons += stat.totalLivraisons;
-      delivererStats[userId].totalRefusees += stat.totalRefusees;
-      delivererStats[userId].totalAnnulees += stat.totalAnnulees;
-      delivererStats[userId].montantLivre += stat.montantLivre;
+      
+      const stats = delivererStats[delivererId];
+      
+      // Compter selon le statut
+      if (order.status === 'LIVREE') {
+        stats.totalLivraisons++;
+        stats.montantLivre += order.montant;
+      } else if (order.status === 'REFUSEE') {
+        stats.totalRefusees++;
+      } else if (order.status === 'ANNULEE_LIVRAISON') {
+        stats.totalAnnulees++;
+      }
     });
 
+    // Formater le résultat
     const result = Object.values(delivererStats).map(deliverer => {
       const total = deliverer.totalLivraisons + deliverer.totalRefusees + deliverer.totalAnnulees;
       return {
@@ -264,6 +292,7 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
 });
 
 // GET /api/stats/my-stats - Statistiques personnelles (Appelant/Livreur)
+// ✅ CORRIGÉ : Calcul depuis les commandes
 router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
   try {
     const { period = 'today' } = req.query;
@@ -281,62 +310,95 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
     }
 
     if (user.role === 'APPELANT') {
-      const stats = await prisma.callStatistic.findMany({
-        where: {
-          userId: user.id,
-          date: { gte: startDate }
-        },
-        orderBy: { date: 'desc' }
-      });
-
-      const totals = stats.reduce((acc, stat) => ({
-        totalAppels: acc.totalAppels + stat.totalAppels,
-        totalValides: acc.totalValides + stat.totalValides,
-        totalAnnules: acc.totalAnnules + stat.totalAnnules,
-        totalInjoignables: acc.totalInjoignables + stat.totalInjoignables
-      }), { totalAppels: 0, totalValides: 0, totalAnnules: 0, totalInjoignables: 0 });
-
-      // Récupérer les statistiques EXPRESS et EXPEDITION
+      // Récupérer les commandes de l'appelant
       const orders = await prisma.order.findMany({
         where: {
           callerId: user.id,
-          expedieAt: { gte: startDate }, // Utiliser expedieAt pour la date de création EXPEDITION/EXPRESS
-          deliveryType: { in: ['EXPEDITION', 'EXPRESS'] }
+          createdAt: { gte: startDate }
         },
         select: {
-          deliveryType: true
+          id: true,
+          status: true,
+          deliveryType: true,
+          expedieAt: true,
+          createdAt: true
         }
       });
 
-      totals.totalExpeditions = orders.filter(o => o.deliveryType === 'EXPEDITION').length;
-      totals.totalExpress = orders.filter(o => o.deliveryType === 'EXPRESS').length;
-      totals.tauxValidation = totals.totalAppels > 0 
-        ? ((totals.totalValides / totals.totalAppels) * 100).toFixed(2)
-        : 0;
+      // Calculer les statistiques
+      const totals = {
+        totalAppels: 0,
+        totalValides: 0,
+        totalAnnules: 0,
+        totalInjoignables: 0,
+        totalExpeditions: 0,
+        totalExpress: 0
+      };
 
-      res.json({ stats: totals, details: stats });
-    } else if (user.role === 'LIVREUR') {
-      const stats = await prisma.deliveryStatistic.findMany({
-        where: {
-          userId: user.id,
-          date: { gte: startDate }
-        },
-        orderBy: { date: 'desc' }
+      orders.forEach(order => {
+        if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+          totals.totalAppels++;
+        } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
+          totals.totalValides++;
+        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
+          totals.totalAnnules++;
+        } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
+          totals.totalInjoignables++;
+        }
+
+        if (order.deliveryType === 'EXPEDITION' && order.expedieAt) {
+          totals.totalExpeditions++;
+        } else if (order.deliveryType === 'EXPRESS' && order.expedieAt) {
+          totals.totalExpress++;
+        }
       });
 
-      const totals = stats.reduce((acc, stat) => ({
-        totalLivraisons: acc.totalLivraisons + stat.totalLivraisons,
-        totalRefusees: acc.totalRefusees + stat.totalRefusees,
-        totalAnnulees: acc.totalAnnulees + stat.totalAnnulees,
-        montantLivre: acc.montantLivre + stat.montantLivre
-      }), { totalLivraisons: 0, totalRefusees: 0, totalAnnulees: 0, montantLivre: 0 });
+      const totalTraite = totals.totalValides + totals.totalAnnules + totals.totalInjoignables;
+      totals.tauxValidation = totalTraite > 0 
+        ? ((totals.totalValides / totalTraite) * 100).toFixed(2)
+        : 0;
+
+      res.json({ stats: totals, details: [] }); // details vide car pas besoin
+    } else if (user.role === 'LIVREUR') {
+      // Récupérer les commandes du livreur
+      const orders = await prisma.order.findMany({
+        where: {
+          delivererId: user.id,
+          deliveredAt: { gte: startDate }
+        },
+        select: {
+          id: true,
+          status: true,
+          montant: true,
+          deliveredAt: true
+        }
+      });
+
+      // Calculer les statistiques
+      const totals = {
+        totalLivraisons: 0,
+        totalRefusees: 0,
+        totalAnnulees: 0,
+        montantLivre: 0
+      };
+
+      orders.forEach(order => {
+        if (order.status === 'LIVREE') {
+          totals.totalLivraisons++;
+          totals.montantLivre += order.montant;
+        } else if (order.status === 'REFUSEE') {
+          totals.totalRefusees++;
+        } else if (order.status === 'ANNULEE_LIVRAISON') {
+          totals.totalAnnulees++;
+        }
+      });
 
       const total = totals.totalLivraisons + totals.totalRefusees + totals.totalAnnulees;
       totals.tauxReussite = total > 0 
         ? ((totals.totalLivraisons / total) * 100).toFixed(2)
         : 0;
 
-      res.json({ stats: totals, details: stats });
+      res.json({ stats: totals, details: [] });
     }
   } catch (error) {
     console.error('Erreur récupération statistiques personnelles:', error);
