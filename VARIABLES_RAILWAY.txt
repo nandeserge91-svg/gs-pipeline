@@ -1,0 +1,72 @@
+═══════════════════════════════════════════════════════════════════
+    🚂 VARIABLES À CONFIGURER SUR RAILWAY
+═══════════════════════════════════════════════════════════════════
+
+📋 COPIEZ-COLLEZ CES VARIABLES DANS RAILWAY
+────────────────────────────────────────────────────────────────
+
+Variable 1 :
+───────────
+Name  : NODE_ENV
+Value : production
+
+Variable 2 :
+───────────
+Name  : PORT
+Value : 5000
+
+Variable 3 :
+───────────
+Name  : JWT_SECRET
+Value : gs_pipeline_2024_jwt_secret_production_change_this_to_secure_random_string_min_32_chars
+
+Variable 4 :
+───────────
+Name  : CORS_ORIGINS
+Value : http://localhost:3000,https://gs-pipeline.vercel.app
+
+⚠️  NOTE pour CORS_ORIGINS :
+   Après avoir déployé sur Vercel, revenez ici et mettez à jour
+   avec votre vraie URL Vercel !
+
+Variable 5 (OPTIONNELLE) :
+─────────────────────────
+Name  : MAKE_API_KEY
+Value : your_make_api_key_here
+
+────────────────────────────────────────────────────────────────
+
+📌 DATABASE_URL
+────────────────────────────────────────────────────────────────
+
+❗ NE PAS AJOUTER MANUELLEMENT ❗
+
+Railway configure automatiquement DATABASE_URL quand vous
+ajoutez PostgreSQL au projet.
+
+La variable apparaîtra automatiquement comme :
+${{Postgres.DATABASE_URL}}
+
+────────────────────────────────────────────────────────────────
+
+✅ APRÈS AVOIR AJOUTÉ LES VARIABLES
+────────────────────────────────────────────────────────────────
+
+1. Copiez l'URL DATABASE_URL depuis Railway
+   (Elle ressemble à : postgresql://postgres:pass@containers-us...)
+
+2. Dans PowerShell, exécutez :
+
+   $env:DATABASE_URL="COLLEZ_ICI_L_URL_RAILWAY"
+   npx prisma migrate deploy
+   npm run prisma:seed
+
+3. Vérifiez les logs Railway - Le service doit redéployer
+
+4. Générez un domaine public :
+   Settings → Networking → Generate Domain
+
+5. NOTEZ L'URL : ____________________________________
+
+════════════════════════════════════════════════════════════════
+
