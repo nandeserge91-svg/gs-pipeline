@@ -128,6 +128,32 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
       callerStats[userId].totalInjoignables += stat.totalInjoignables;
     });
 
+    // Récupérer TOUS les appelants actifs pour s'assurer qu'on ne manque personne
+    const allCallers = await prisma.user.findMany({
+      where: {
+        role: 'APPELANT',
+        actif: true
+      },
+      select: {
+        id: true,
+        nom: true,
+        prenom: true
+      }
+    });
+
+    // Ajouter les appelants qui n'ont pas encore de stats dans CallStatistic
+    allCallers.forEach(caller => {
+      if (!callerStats[caller.id]) {
+        callerStats[caller.id] = {
+          user: caller,
+          totalAppels: 0,
+          totalValides: 0,
+          totalAnnules: 0,
+          totalInjoignables: 0
+        };
+      }
+    });
+
     // Récupérer les statistiques EXPRESS et EXPEDITION depuis les commandes
     const orderDateFilter = {};
     if (startDate || endDate) {
