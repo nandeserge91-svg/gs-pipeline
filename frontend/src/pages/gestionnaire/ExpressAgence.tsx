@@ -604,8 +604,9 @@ export default function ExpressAgence() {
                   </div>
                 </details>
               )}
-            </div>
-          ))}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
