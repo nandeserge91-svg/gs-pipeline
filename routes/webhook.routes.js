@@ -224,7 +224,8 @@ router.post('/google-sheet', [
       ville,         // Ville
       offre,         // Nom de l'offre/produit
       tag,           // Tag optionnel
-      quantite       // Quantité du produit
+      quantite,      // Quantité du produit
+      notes          // 🆕 Notes (taille, code, etc.)
     } = req.body;
 
     console.log('📥 Commande reçue depuis Google Sheet:', {
@@ -308,6 +309,9 @@ router.post('/google-sheet', [
         // Source
         sourceCampagne: 'Google Sheet - Bee Venom',
         sourcePage: tag || offre || null,
+        
+        // 🆕 Notes (taille, code, etc.)
+        noteGestionnaire: notes || null,
         
         // Statut initial = NOUVELLE (pour "À appeler")
         status: 'NOUVELLE'

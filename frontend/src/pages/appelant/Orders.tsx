@@ -327,6 +327,12 @@ export default function Orders() {
                 <div className="text-sm text-gray-600">
                   <strong>Quantité:</strong> {order.quantite}
                 </div>
+                {/* 🆕 Afficher noteGestionnaire (taille, code, etc.) */}
+                {(order as any).noteGestionnaire && (
+                  <div className="p-2 bg-purple-50 rounded border border-purple-200">
+                    <p className="text-xs text-purple-600 font-medium">👕 {(order as any).noteGestionnaire}</p>
+                  </div>
+                )}
                 <div className="text-sm font-medium text-gray-900">
                   <strong>Montant:</strong> {formatCurrency(order.montant)}
                 </div>
@@ -380,6 +386,13 @@ export default function Orders() {
               <p className="text-sm">
                 <strong>Montant:</strong> {formatCurrency(selectedOrder.montant)}
               </p>
+              {/* 🆕 Afficher noteGestionnaire (taille, code, etc.) */}
+              {(selectedOrder as any).noteGestionnaire && (
+                <div className="mt-3 p-2 bg-purple-50 rounded border border-purple-200">
+                  <p className="text-xs text-purple-600 font-medium mb-1">📝 Détails produit</p>
+                  <p className="text-sm text-gray-700">{(selectedOrder as any).noteGestionnaire}</p>
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
