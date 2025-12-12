@@ -15,8 +15,18 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.lte = new Date(endDate);
+      if (startDate) {
+        // Début de journée : 00:00:00
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.createdAt.gte = start;
+      }
+      if (endDate) {
+        // Fin de journée : 23:59:59
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.lte = end;
+      }
     }
 
     // Statistiques globales
@@ -99,8 +109,18 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
     
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) where.createdAt.gte = new Date(startDate);
-      if (endDate) where.createdAt.lte = new Date(endDate);
+      if (startDate) {
+        // Début de journée : 00:00:00
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.createdAt.gte = start;
+      }
+      if (endDate) {
+        // Fin de journée : 23:59:59
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
     }
 
     // Récupérer toutes les commandes avec appelant
@@ -221,8 +241,18 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
     
     if (startDate || endDate) {
       where.deliveredAt = {}; // Date de livraison
-      if (startDate) where.deliveredAt.gte = new Date(startDate);
-      if (endDate) where.deliveredAt.lte = new Date(endDate);
+      if (startDate) {
+        // Début de journée : 00:00:00
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.deliveredAt.gte = start;
+      }
+      if (endDate) {
+        // Fin de journée : 23:59:59
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.deliveredAt.lte = end;
+      }
     }
 
     // Récupérer toutes les commandes avec livreur
@@ -414,8 +444,18 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.lte = new Date(endDate);
+      if (startDate) {
+        // Début de journée : 00:00:00
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.createdAt.gte = start;
+      }
+      if (endDate) {
+        // Fin de journée : 23:59:59
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.lte = end;
+      }
     }
 
     let data;
