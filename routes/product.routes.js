@@ -1,10 +1,10 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 router.use(authenticate);
 
@@ -273,5 +273,8 @@ router.get('/alerts/low-stock', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async 
 });
 
 export default router;
+
+
+
 
 

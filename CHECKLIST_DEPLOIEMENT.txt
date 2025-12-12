@@ -1,0 +1,207 @@
+═══════════════════════════════════════════════════════════════════
+    ✅ CHECKLIST DE DÉPLOIEMENT - GS PIPELINE
+═══════════════════════════════════════════════════════════════════
+
+📋 AVANT DE COMMENCER
+────────────────────────────────────────────────────────────────
+[ ] Application testée en local
+[ ] Backend fonctionne (http://localhost:5000)
+[ ] Frontend fonctionne (http://localhost:3000)
+[ ] Connexion API testée
+[ ] Comptes GitHub, Railway, Vercel créés
+[ ] Documentation lue (DEPLOIEMENT_RAPIDE.md)
+
+════════════════════════════════════════════════════════════════
+
+ÉTAPE 1️⃣ : GITHUB (2 minutes)
+────────────────────────────────────────────────────────────────
+[ ] Repository créé sur GitHub
+    • Nom : gs-pipeline (ou autre)
+    • Visibilité : Private (recommandé)
+
+[ ] Code poussé sur GitHub
+    • Commande : .\deploy-github.ps1
+    • OU : git add . && git commit -m "Deploy" && git push
+
+[ ] Vérification GitHub
+    • Repository visible sur github.com
+    • Tous les fichiers présents
+    • .env NOT présent (sécurité ✅)
+
+════════════════════════════════════════════════════════════════
+
+ÉTAPE 2️⃣ : RAILWAY - Backend + PostgreSQL (5 minutes)
+────────────────────────────────────────────────────────────────
+[ ] Projet Railway créé
+    • railway.app → New Project
+    • Deploy from GitHub repo
+    • Repository sélectionné
+
+[ ] PostgreSQL ajouté
+    • New → Database → PostgreSQL
+    • Base de données créée
+
+[ ] Variables d'environnement configurées
+    [ ] NODE_ENV=production
+    [ ] PORT=5000
+    [ ] DATABASE_URL=${{Postgres.DATABASE_URL}}
+    [ ] JWT_SECRET=... (32+ caractères sécurisés)
+    [ ] CORS_ORIGINS=https://... (URL Vercel - voir étape 3)
+
+[ ] Build réussi
+    • Logs sans erreur
+    • Service déployé ✅
+
+[ ] Migrations appliquées
+    [ ] npx prisma migrate deploy
+    [ ] npm run prisma:seed
+    [ ] Données de test insérées
+
+[ ] Domaine généré
+    • Settings → Networking → Generate Domain
+    • URL notée : _______________________________
+
+[ ] Test backend
+    • curl https://votre-backend.railway.app
+    • Retourne {"message":"API GS Pipeline..."}
+
+════════════════════════════════════════════════════════════════
+
+ÉTAPE 3️⃣ : VERCEL - Frontend (3 minutes)
+────────────────────────────────────────────────────────────────
+[ ] Projet Vercel créé
+    • vercel.com → New Project
+    • Import GitHub repository
+    • Repository sélectionné
+
+[ ] Configuration correcte
+    [ ] Framework Preset : Vite
+    [ ] Root Directory : frontend
+    [ ] Build Command : npm run build
+    [ ] Output Directory : dist
+
+[ ] Variable d'environnement ajoutée
+    [ ] VITE_API_URL=https://votre-backend.railway.app
+    (⚠️ URL Railway de l'étape 2)
+
+[ ] Déploiement réussi
+    • Build terminé sans erreur
+    • URL notée : _______________________________
+
+[ ] Test frontend
+    • Ouvrir https://votre-app.vercel.app
+    • Page de connexion affichée
+
+════════════════════════════════════════════════════════════════
+
+ÉTAPE 4️⃣ : CONFIGURATION FINALE (1 minute)
+────────────────────────────────────────────────────────────────
+[ ] CORS mis à jour sur Railway
+    • Variables → CORS_ORIGINS
+    • https://votre-app.vercel.app,https://votre-app-git-main.vercel.app
+    (⚠️ URLs Vercel de l'étape 3)
+
+[ ] Backend redéployé
+    • Railway → Redeploy
+    • Nouveau build réussi
+
+════════════════════════════════════════════════════════════════
+
+ÉTAPE 5️⃣ : TESTS FINAUX (2 minutes)
+────────────────────────────────────────────────────────────────
+[ ] Test API directe
+    POST https://votre-backend.railway.app/api/auth/login
+    Body: {"email":"admin@gs-pipeline.com","password":"admin123"}
+    → Retourne token JWT ✅
+
+[ ] Test connexion frontend
+    • Ouvrir https://votre-app.vercel.app
+    • Se connecter : admin@gs-pipeline.com / admin123
+    • Dashboard s'affiche ✅
+
+[ ] Test navigation
+    [ ] Voir les commandes
+    [ ] Créer une commande
+    [ ] Voir les produits
+    [ ] Navigation fluide
+
+[ ] Test sur mobile
+    [ ] Page responsive
+    [ ] Connexion fonctionne
+
+════════════════════════════════════════════════════════════════
+
+🔐 SÉCURITÉ POST-DÉPLOIEMENT
+────────────────────────────────────────────────────────────────
+[ ] Mots de passe changés
+    • admin@gs-pipeline.com → Nouveau mot de passe fort
+    • Tous les comptes de test
+
+[ ] JWT_SECRET sécurisé
+    • Minimum 32 caractères
+    • Mélange de caractères
+
+[ ] 2FA activé sur
+    [ ] GitHub
+    [ ] Railway
+    [ ] Vercel
+
+[ ] Backups configurés
+    • Railway : Backups automatiques activés
+    • Export manuel des données importantes
+
+════════════════════════════════════════════════════════════════
+
+📝 DOCUMENTATION
+────────────────────────────────────────────────────────────────
+[ ] URLs notées
+    Frontend : ___________________________________
+    Backend  : ___________________________________
+
+[ ] Credentials sauvegardés (gestionnaire de mots de passe)
+    [ ] Compte admin
+    [ ] Accès Railway
+    [ ] Accès Vercel
+    [ ] Accès GitHub
+
+[ ] Documentation mise à jour
+    [ ] README avec les URLs de production
+    [ ] Variables d'environnement documentées
+
+════════════════════════════════════════════════════════════════
+
+🎉 DÉPLOIEMENT TERMINÉ !
+────────────────────────────────────────────────────────────────
+[ ] Application accessible 24/7
+[ ] Backend + BDD sur Railway
+[ ] Frontend sur Vercel
+[ ] Déploiement automatique configuré (git push)
+[ ] Monitoring actif
+[ ] Équipe informée des URLs
+
+════════════════════════════════════════════════════════════════
+
+📊 RÉSUMÉ
+────────────────────────────────────────────────────────────────
+Frontend URL : _________________________________________
+Backend URL  : _________________________________________
+Database     : Railway PostgreSQL
+Déployé le   : _________________________________________
+
+Temps total  : _____ minutes
+Statut       : ✅ EN PRODUCTION
+
+════════════════════════════════════════════════════════════════
+
+🔄 PROCHAINS DÉPLOIEMENTS
+────────────────────────────────────────────────────────────────
+Pour les futurs déploiements, c'est automatique :
+
+1. Modifier le code localement
+2. git add . && git commit -m "Changements"
+3. git push
+
+→ Railway et Vercel déploient automatiquement ! ✅
+
+════════════════════════════════════════════════════════════════
+

@@ -1,9 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 router.use(authenticate);
 
@@ -389,6 +389,9 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
 });
 
 export default router;
+
+
+
 
 
 

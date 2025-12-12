@@ -1,6 +1,5 @@
 import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 /**
  * Job de nettoyage automatique des photos d'expédition
@@ -80,3 +79,5 @@ export {
   cleanupExpiredPhotos,
   scheduleCleanupJob
 };
+
+

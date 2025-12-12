@@ -1,7 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 // Middleware pour vérifier le token JWT
 export const authenticate = async (req, res, next) => {
@@ -62,6 +60,8 @@ export const authorize = (...roles) => {
     next();
   };
 };
+
+
 
 
 

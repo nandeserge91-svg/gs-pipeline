@@ -1,6 +1,9 @@
+// IMPORTANT: Charger dotenv EN PREMIER avant tout import
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import orderRoutes from './routes/order.routes.js';
@@ -14,10 +17,6 @@ import stockRoutes from './routes/stock.routes.js';
 import rdvRoutes from './routes/rdv.routes.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -25,11 +24,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'http://localhost:5000',
-    'https://gs-pipeline-app.vercel.app',
-    'https://obgestion.com',
-    'https://www.obgestion.com',
-    /https:\/\/gs-pipeline-app-.*\.vercel\.app$/
+    'http://localhost:5173',
+    'http://localhost:5000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY'],

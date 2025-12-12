@@ -1,9 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 // GET /api/express/en-agence - Récupérer tous les EXPRESS en agence avec stats
 router.get('/en-agence', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
@@ -236,4 +236,7 @@ router.post('/:id/confirmer-retrait', authenticate, authorize('ADMIN', 'GESTIONN
 });
 
 export default router;
+
+
+
 

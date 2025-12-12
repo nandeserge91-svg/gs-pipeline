@@ -1,0 +1,82 @@
+╔════════════════════════════════════════════════════════════════╗
+║                    GS PIPELINE - DÉMARRAGE RAPIDE              ║
+╚════════════════════════════════════════════════════════════════╝
+
+✅ CONFIGURATION TERMINÉE !
+
+Votre application est prête à être utilisée en local.
+Toutes les références à Railway et Vercel ont été supprimées.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 DÉMARRER L'APPLICATION
+
+   Option 1 - Script Automatique (RECOMMANDÉ) :
+   ────────────────────────────────────────────
+   .\start-app.ps1
+
+   Option 2 - Manuel :
+   ───────────────────
+   Terminal 1 : npm run dev
+   Terminal 2 : cd frontend; npm run dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 ACCÉDER À L'APPLICATION
+
+   Frontend : http://localhost:5173
+   Backend  : http://localhost:5000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔐 COMPTES DE TEST (mot de passe : admin123)
+
+   Admin              : admin@gs-pipeline.com
+   Gestionnaire       : gestionnaire@gs-pipeline.com
+   Gestionnaire Stock : stock@gs-pipeline.com
+   Appelant           : appelant@gs-pipeline.com
+   Livreur            : livreur@gs-pipeline.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 ARRÊTER L'APPLICATION
+
+   .\stop-app.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTATION
+
+   README_INSTALLATION.md  - Guide complet d'installation
+   NOUVEAU_DEMARRAGE.md    - Guide détaillé des fonctionnalités
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 COMMANDES UTILES
+
+   Docker :
+   ────────
+   docker ps                    # Voir les conteneurs
+   docker-compose up -d         # Démarrer PostgreSQL
+   docker-compose down          # Arrêter PostgreSQL
+
+   Base de données :
+   ─────────────────
+   npm run prisma:studio        # Interface graphique BDD
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ STATUT ACTUEL
+
+   ✅ Docker PostgreSQL : EN COURS (port 5433)
+   ✅ Base de données   : CRÉÉE (gs_pipeline)
+   ✅ Migrations        : APPLIQUÉES (12/12)
+   ✅ Données de test   : INSÉRÉES
+   ✅ Backend           : EN COURS (port 5000)
+   ⏳ Frontend          : À DÉMARRER
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 Bon développement !
+
+

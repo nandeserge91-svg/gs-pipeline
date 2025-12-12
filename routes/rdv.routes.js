@@ -1,9 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 // POST /api/rdv/:id/programmer - Programmer un RDV pour une commande
 router.post('/:id/programmer', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
@@ -277,4 +277,7 @@ router.delete('/:id', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT
 });
 
 export default router;
+
+
+
 

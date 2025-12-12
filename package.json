@@ -6,13 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "DATABASE_URL='postgresql://postgres:glYSWKajbSnYigvOjpbSJFWnPFICIZHi@switchyard.proxy.rlwy.net:37551/railway' npx prisma migrate deploy && DATABASE_URL='postgresql://postgres:glYSWKajbSnYigvOjpbSJFWnPFICIZHi@switchyard.proxy.rlwy.net:37551/railway' node server.js",
+    "start": "node server.js",
     "build": "npx prisma generate",
     "postinstall": "npx prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "prisma:reset": "prisma migrate reset --force"
   },
   "keywords": [
     "ecommerce",
@@ -33,9 +35,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
-    "prisma": "^5.7.0"
+    "prisma": "5.7.0"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
+  },
+  "engines": {
+    "node": ">=18.x",
+    "npm": ">=9.x"
   }
 }

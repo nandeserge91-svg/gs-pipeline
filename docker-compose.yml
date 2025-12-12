@@ -6,7 +6,7 @@ services:
     container_name: gs-pipeline-db
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       POSTGRES_DB: gs_pipeline
       POSTGRES_USER: postgres

@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════════════════════
+    VARIABLES D'ENVIRONNEMENT - GS PIPELINE
+═══════════════════════════════════════════════════════════════════
+
+📦 RAILWAY (Backend)
+────────────────────────────────────────────────────────────────
+
+Variables à configurer dans Railway → Settings → Variables :
+
+NODE_ENV=production
+
+PORT=5000
+
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+(⚠️ Cette variable est automatique si vous ajoutez PostgreSQL)
+
+JWT_SECRET=VotreSecretJWTTresSecurise123456789
+(⚠️ Générez un secret fort : https://www.grc.com/passwords.htm)
+
+CORS_ORIGINS=https://votre-app.vercel.app,https://votre-app-git-main.vercel.app
+(⚠️ Remplacez par votre URL Vercel - voir étape 3)
+
+MAKE_API_KEY=votre_api_key_make_optionnelle
+(Optionnel - Pour les webhooks Make.com)
+
+────────────────────────────────────────────────────────────────
+
+▲ VERCEL (Frontend)
+────────────────────────────────────────────────────────────────
+
+Variable à configurer dans Vercel → Settings → Environment Variables :
+
+VITE_API_URL=https://votre-backend.railway.app
+(⚠️ Remplacez par votre URL Railway - voir étape 2)
+
+────────────────────────────────────────────────────────────────
+
+📝 NOTES IMPORTANTES
+────────────────────────────────────────────────────────────────
+
+1. JWT_SECRET :
+   - Ne PAS utiliser "admin123" ou des mots simples
+   - Minimum 32 caractères
+   - Mélange de lettres, chiffres, symboles
+   - Exemple : https://www.grc.com/passwords.htm
+
+2. CORS_ORIGINS :
+   - Doit inclure l'URL exacte de Vercel
+   - Inclure aussi les URLs de preview (git-main)
+   - Séparer par des virgules sans espaces
+
+3. VITE_API_URL :
+   - Doit pointer vers Railway
+   - SANS slash à la fin
+   - Format : https://votre-app.railway.app
+
+4. DATABASE_URL :
+   - Généré automatiquement par Railway
+   - Ne PAS modifier manuellement
+   - Utilisez ${{Postgres.DATABASE_URL}}
+
+────────────────────────────────────────────────────────────────
+
+🔄 ORDRE DE CONFIGURATION
+────────────────────────────────────────────────────────────────
+
+1. Déployez sur Railway
+   → Récupérez l'URL Railway
+
+2. Configurez Vercel avec l'URL Railway
+   → Déployez le frontend
+   → Récupérez l'URL Vercel
+
+3. Retournez sur Railway
+   → Mettez à jour CORS_ORIGINS avec l'URL Vercel
+   → Redéployez le backend
+
+────────────────────────────────────────────────────────────────
+
+✅ VÉRIFICATION
+────────────────────────────────────────────────────────────────
+
+Après configuration, testez :
+
+1. Backend seul :
+   curl https://votre-backend.railway.app
+   → Doit retourner {"message":"API GS Pipeline..."}
+
+2. Connexion API :
+   POST https://votre-backend.railway.app/api/auth/login
+   Body: {"email":"admin@gs-pipeline.com","password":"admin123"}
+   → Doit retourner un token JWT
+
+3. Frontend complet :
+   https://votre-app.vercel.app
+   → Connectez-vous avec admin@gs-pipeline.com / admin123
+
+────────────────────────────────────────────────────────────────
+
+🔐 SÉCURITÉ EN PRODUCTION
+────────────────────────────────────────────────────────────────
+
+⚠️ APRÈS LE PREMIER DÉPLOIEMENT :
+
+1. Changez les mots de passe :
+   - Connectez-vous à la base Railway
+   - Utilisez des mots de passe forts
+   - Utilisez un gestionnaire de mots de passe
+
+2. Activez 2FA sur :
+   - GitHub
+   - Railway
+   - Vercel
+
+3. Configurez les backups :
+   - Railway fait des backups automatiques
+   - Exportez régulièrement les données importantes
+
+4. Monitoring :
+   - Activez les alertes Railway
+   - Surveillez les logs Vercel
+   - Configurez un uptime monitor
+
+═══════════════════════════════════════════════════════════════════
+

@@ -1,10 +1,10 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 // Toutes les routes nécessitent authentification
 router.use(authenticate);
@@ -1403,4 +1403,7 @@ router.delete('/:id', authorize('ADMIN'), async (req, res) => {
 });
 
 export default router;
+
+
+
 
