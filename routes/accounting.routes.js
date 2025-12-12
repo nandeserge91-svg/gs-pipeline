@@ -216,7 +216,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           id: c.id,
           reference: c.orderReference,
           client: c.clientNom,
-          produit: c.product.nom,
+          produit: c.product ? c.product.nom : c.produitNom,
           montant: c.montant,
           date: c.deliveredAt,
           livreur: c.deliverer ? `${c.deliverer.prenom} ${c.deliverer.nom}` : 'N/A'
@@ -226,7 +226,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           reference: c.orderReference,
           client: c.clientNom,
           ville: c.clientVille,
-          produit: c.product.nom,
+          produit: c.product ? c.product.nom : c.produitNom,
           montant: c.montant,
           date: c.expedieAt || c.arriveAt,
           codeExpedition: c.codeExpedition
@@ -236,7 +236,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           reference: c.orderReference,
           client: c.clientNom,
           ville: c.clientVille,
-          produit: c.product.nom,
+          produit: c.product ? c.product.nom : c.produitNom,
           montantTotal: c.montant,
           avance: c.montant * 0.10,
           date: c.expedieAt
@@ -247,7 +247,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           client: c.clientNom,
           ville: c.clientVille,
           agence: c.agenceRetrait,
-          produit: c.product.nom,
+          produit: c.product ? c.product.nom : c.produitNom,
           montantTotal: c.montant,
           retrait: c.montant * 0.90,
           date: c.arriveAt
