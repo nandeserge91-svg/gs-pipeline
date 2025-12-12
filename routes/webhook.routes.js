@@ -223,14 +223,16 @@ router.post('/google-sheet', [
       telephone,     // Téléphone
       ville,         // Ville
       offre,         // Nom de l'offre/produit
-      tag            // Tag optionnel
+      tag,           // Tag optionnel
+      quantite       // Quantité du produit
     } = req.body;
 
     console.log('📥 Commande reçue depuis Google Sheet:', {
       nom,
       telephone,
       ville,
-      offre: offre || tag
+      offre: offre || tag,
+      quantite: quantite || 1
     });
 
     // Chercher un produit correspondant à l'offre
@@ -258,17 +260,20 @@ router.post('/google-sheet', [
       }
     }
     
+    // Quantité (par défaut 1 si non spécifiée)
+    const orderQuantity = parseInt(quantite) || 1;
+    
     // Si aucun produit trouvé, utiliser un produit par défaut ou créer sans produit
     const productData = product ? {
       produitNom: product.nom,
       productId: product.id,
-      montant: product.prixUnitaire * 1, // Quantité par défaut = 1
-      quantite: 1
+      montant: product.prixUnitaire * orderQuantity,
+      quantite: orderQuantity
     } : {
       produitNom: offre || tag || 'Produit non spécifié',
       productId: null,
       montant: 0,
-      quantite: 1
+      quantite: orderQuantity
     };
 
     // Créer la commande avec statut NOUVELLE (apparaîtra dans "À appeler")
