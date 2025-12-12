@@ -242,13 +242,20 @@ router.post('/google-sheet', [
     if (offre || tag) {
       const searchTerm = offre || tag;
       
+      console.log('🔍 Recherche produit avec terme:', searchTerm);
+      
       // Essayer de trouver par code exact
       product = await prisma.product.findFirst({
         where: { code: searchTerm }
       });
       
+      if (product) {
+        console.log('✅ Produit trouvé par code:', product.code, '|', product.nom, '| ID:', product.id);
+      }
+      
       // Si pas trouvé, chercher par nom (contient)
       if (!product) {
+        console.log('⚠️ Pas trouvé par code, recherche par nom...');
         product = await prisma.product.findFirst({
           where: { 
             nom: {
@@ -257,7 +264,16 @@ router.post('/google-sheet', [
             }
           }
         });
+        
+        if (product) {
+          console.log('✅ Produit trouvé par nom:', product.code, '|', product.nom, '| ID:', product.id);
+        } else {
+          console.log('❌ PRODUIT NON TROUVÉ pour:', searchTerm);
+          console.log('💡 Vérifiez que le produit existe avec code "BEE" ou nom contenant "Bee Venom"');
+        }
       }
+    } else {
+      console.log('⚠️ Aucun tag ou offre fourni');
     }
     
     // Quantité (par défaut 1 si non spécifiée)

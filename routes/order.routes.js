@@ -242,7 +242,11 @@ router.put('/:id/status', async (req, res) => {
       });
 
       // RÈGLE MÉTIER 1 : Décrémenter le stock uniquement si la commande passe à LIVRÉE
+      console.log('🔍 Vérification stock - Statut:', status, '| Ancien statut:', order.status, '| ProductID:', order.productId);
+      
       if (status === 'LIVREE' && order.status !== 'LIVREE' && order.productId) {
+        console.log('✅ Conditions remplies pour décrémenter le stock');
+        
         const product = await tx.product.findUnique({
           where: { id: order.productId }
         });
@@ -250,6 +254,8 @@ router.put('/:id/status', async (req, res) => {
         if (product) {
           const stockAvant = product.stockActuel;
           const stockApres = stockAvant - order.quantite;
+          
+          console.log(`📦 STOCK UPDATE: ${product.nom} | Avant: ${stockAvant} | Après: ${stockApres} | Quantité: -${order.quantite}`);
 
           // Mettre à jour le stock du produit
           await tx.product.update({
@@ -270,7 +276,15 @@ router.put('/:id/status', async (req, res) => {
               motif: `Livraison commande ${order.orderReference} - ${order.clientNom}`
             }
           });
+          
+          console.log('✅ Stock mis à jour et mouvement créé');
+        } else {
+          console.log('❌ Produit non trouvé avec ID:', order.productId);
         }
+      } else {
+        if (status !== 'LIVREE') console.log('⚠️ Statut n\'est pas LIVREE');
+        if (order.status === 'LIVREE') console.log('⚠️ Commande déjà LIVREE');
+        if (!order.productId) console.log('❌ PROBLÈME: Commande sans productId - Stock ne sera pas mis à jour');
       }
 
       // RÈGLE MÉTIER 2 : Réincrémenter le stock si la commande était LIVRÉE et change vers un autre statut
