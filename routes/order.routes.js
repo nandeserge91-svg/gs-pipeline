@@ -557,26 +557,8 @@ router.put('/:id/quantite', authorize('ADMIN', 'GESTIONNAIRE'), [
     const prixUnitaire = order.montant / order.quantite;
     const nouveauMontant = prixUnitaire * quantite;
 
-    // Si la quantité augmente, vérifier le stock disponible
-    if (quantite > order.quantite && order.product) {
-      const differenceQuantite = quantite - order.quantite;
-      
-      if (order.deliveryType === 'EXPRESS') {
-        // Pour EXPRESS, vérifier le stockExpress
-        if (order.product.stockExpress < differenceQuantite) {
-          return res.status(400).json({ 
-            error: `Stock EXPRESS insuffisant. Disponible: ${order.product.stockExpress}` 
-          });
-        }
-      } else if (order.deliveryType === 'LOCAL') {
-        // Pour LOCAL, vérifier le stockActuel
-        if (order.product.stockActuel < differenceQuantite) {
-          return res.status(400).json({ 
-            error: `Stock insuffisant. Disponible: ${order.product.stockActuel}` 
-          });
-        }
-      }
-    }
+    // Pas de vérification de stock - on autorise les modifications même avec stock insuffisant
+    // Le stock sera renouvelé plus tard
 
     // Transaction pour mettre à jour la commande et le stock
     const result = await prisma.$transaction(async (tx) => {
@@ -830,11 +812,10 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
         throw new Error('Produit introuvable');
       }
 
-      if (product.stockActuel < order.quantite) {
-        throw new Error(`Stock insuffisant. Disponible: ${product.stockActuel}, Demandé: ${order.quantite}`);
-      }
-
-      // Réduire le stock immédiatement
+      // Pas de blocage si stock insuffisant - on autorise le stock négatif pour EXPEDITION
+      // Le stock sera renouvelé plus tard
+      
+      // Réduire le stock immédiatement (peut devenir négatif)
       const stockAvant = product.stockActuel;
       const stockApres = stockAvant - order.quantite;
 

@@ -216,9 +216,8 @@ router.post('/:id/stock/adjust', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), [
     const stockAvant = product.stockActuel;
     const stockApres = stockAvant + qte;
 
-    if (stockApres < 0) {
-      return res.status(400).json({ error: 'Le stock ne peut pas être négatif.' });
-    }
+    // Pas de vérification - on autorise le stock négatif
+    // Le stock sera renouvelé plus tard
 
     // Transaction pour assurer la cohérence
     const result = await prisma.$transaction(async (tx) => {
