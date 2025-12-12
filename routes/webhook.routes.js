@@ -201,6 +201,126 @@ router.get('/products', verifyApiKey, async (req, res) => {
   }
 });
 
+// POST /api/webhook/google-sheet - Réception depuis Google Apps Script (Bee Venom)
+router.post('/google-sheet', [
+  body('nom').notEmpty().withMessage('nom requis'),
+  body('telephone').notEmpty().withMessage('telephone requis'),
+  body('ville').notEmpty().withMessage('ville requis'),
+], async (req, res) => {
+  try {
+    // Validation des données
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Données invalides',
+        details: errors.array() 
+      });
+    }
+
+    const {
+      nom,           // Nom du client
+      telephone,     // Téléphone
+      ville,         // Ville
+      offre,         // Nom de l'offre/produit
+      tag            // Tag optionnel
+    } = req.body;
+
+    console.log('📥 Commande reçue depuis Google Sheet:', {
+      nom,
+      telephone,
+      ville,
+      offre: offre || tag
+    });
+
+    // Chercher un produit correspondant à l'offre
+    // On cherche d'abord par code, sinon par nom (recherche partielle)
+    let product = null;
+    
+    if (offre || tag) {
+      const searchTerm = offre || tag;
+      
+      // Essayer de trouver par code exact
+      product = await prisma.product.findFirst({
+        where: { code: searchTerm }
+      });
+      
+      // Si pas trouvé, chercher par nom (contient)
+      if (!product) {
+        product = await prisma.product.findFirst({
+          where: { 
+            nom: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          }
+        });
+      }
+    }
+    
+    // Si aucun produit trouvé, utiliser un produit par défaut ou créer sans produit
+    const productData = product ? {
+      produitNom: product.nom,
+      productId: product.id,
+      montant: product.prixUnitaire * 1, // Quantité par défaut = 1
+      quantite: 1
+    } : {
+      produitNom: offre || tag || 'Produit non spécifié',
+      productId: null,
+      montant: 0,
+      quantite: 1
+    };
+
+    // Créer la commande avec statut NOUVELLE (apparaîtra dans "À appeler")
+    const order = await prisma.order.create({
+      data: {
+        // Informations client
+        clientNom: nom,
+        clientTelephone: telephone,
+        clientVille: ville,
+        clientCommune: null,
+        clientAdresse: null,
+        
+        // Informations produit
+        ...productData,
+        
+        // Source
+        sourceCampagne: 'Google Sheet - Bee Venom',
+        sourcePage: tag || offre || null,
+        
+        // Statut initial = NOUVELLE (pour "À appeler")
+        status: 'NOUVELLE'
+      },
+      include: {
+        product: true
+      }
+    });
+
+    console.log('✅ Commande créée depuis Google Sheet:', {
+      orderId: order.id,
+      orderReference: order.orderReference,
+      customer: nom,
+      product: productData.produitNom
+    });
+
+    // Réponse pour Google Apps Script
+    res.json({
+      success: true,
+      order_id: order.id,
+      order_reference: order.orderReference,
+      message: 'Commande ajoutée dans "À appeler"'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur création commande depuis Google Sheet:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 export default router;
 
 
