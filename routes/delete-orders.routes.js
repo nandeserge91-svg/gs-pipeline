@@ -51,7 +51,7 @@ router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req,
       },
       select: {
         id: true,
-        reference: true,
+        orderReference: true,
         clientNom: true,
         produitNom: true,
         status: true
@@ -60,7 +60,7 @@ router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req,
 
     console.log('📋 Commandes à supprimer :');
     commandes.forEach(cmd => {
-      console.log(`   - ${cmd.reference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
+      console.log(`   - ${cmd.orderReference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
     });
 
     // 3. Supprimer les commandes
@@ -78,7 +78,7 @@ router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req,
       success: true,
       message: `${result.count} commande(s) supprimée(s) avec succès.`,
       count: result.count,
-      deletedReferences: commandes.map(c => c.reference)
+      deletedReferences: commandes.map(c => c.orderReference)
     });
 
   } catch (error) {
@@ -126,7 +126,7 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
       },
       select: {
         id: true,
-        reference: true,
+        orderReference: true,
         clientNom: true,
         produitNom: true,
         status: true
@@ -143,7 +143,7 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
     console.log(`📊 ${commandes.length} commande(s) trouvée(s)`);
     console.log('📋 Commandes à supprimer :');
     commandes.forEach(cmd => {
-      console.log(`   - ${cmd.reference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
+      console.log(`   - ${cmd.orderReference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
     });
 
     // 2. Supprimer en transaction (relations d'abord, puis commandes)
@@ -208,7 +208,7 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
         notifications: result.notificationsDeleted,
         rdv: result.rdvDeleted
       },
-      deletedReferences: commandes.map(c => c.reference)
+      deletedReferences: commandes.map(c => c.orderReference)
     });
 
   } catch (error) {
@@ -245,7 +245,7 @@ router.delete('/delete-a-appeler-safe', authenticate, authorize('ADMIN'), async 
       },
       select: {
         id: true,
-        reference: true,
+        orderReference: true,
         clientNom: true,
         produitNom: true,
         status: true
@@ -266,7 +266,7 @@ router.delete('/delete-a-appeler-safe', authenticate, authorize('ADMIN'), async 
 
     console.log('📋 Commandes à supprimer :');
     commandes.forEach(cmd => {
-      console.log(`   - ${cmd.reference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
+      console.log(`   - ${cmd.orderReference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
     });
 
     // 2. Supprimer en transaction (relations d'abord, puis commandes)
@@ -319,7 +319,7 @@ router.delete('/delete-a-appeler-safe', authenticate, authorize('ADMIN'), async 
         history: result.historyDeleted,
         notifications: result.notificationsDeleted
       },
-      deletedReferences: commandes.map(c => c.reference)
+      deletedReferences: commandes.map(c => c.orderReference)
     });
 
   } catch (error) {
