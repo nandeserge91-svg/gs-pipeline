@@ -46,8 +46,24 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
           select: { id: true, nom: true, prenom: true, telephone: true }
         },
         orders: {
-          include: {
-            product: true
+          select: {
+            id: true,
+            clientNom: true,
+            clientVille: true,
+            produitNom: true,
+            productId: true,
+            quantite: true,
+            montant: true,
+            status: true,
+            deliveryType: true,
+            noteGestionnaire: true,
+            product: {
+              select: {
+                id: true,
+                code: true,
+                nom: true
+              }
+            }
           }
         },
         tourneeStock: true
@@ -123,8 +139,31 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
           select: { id: true, nom: true, prenom: true, telephone: true }
         },
         orders: {
-          include: {
-            product: true
+          select: {
+            id: true,
+            clientNom: true,
+            clientTelephone: true,
+            clientVille: true,
+            clientCommune: true,
+            clientAdresse: true,
+            produitNom: true,
+            productId: true,
+            quantite: true,
+            montant: true,
+            status: true,
+            deliveryType: true,
+            noteAppelant: true,
+            noteLivreur: true,
+            noteGestionnaire: true,
+            createdAt: true,
+            product: {
+              select: {
+                id: true,
+                code: true,
+                nom: true,
+                prixUnitaire: true
+              }
+            }
           }
         },
         tourneeStock: {

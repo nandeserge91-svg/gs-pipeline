@@ -1204,7 +1204,20 @@ export default function Tournees() {
                               <span className="font-medium">{formatCurrency(order.montant)}</span>
                             </td>
                             <td className="px-3 py-2 text-xs max-w-xs">
-                              {order.noteAppelant ? (
+                              {order.noteGestionnaire ? (
+                                <div className="space-y-1">
+                                  <div className="bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                                    <span className="text-xs text-purple-900 font-medium">
+                                      📝 {order.noteGestionnaire}
+                                    </span>
+                                  </div>
+                                  {order.noteAppelant && (
+                                    <span className="text-gray-600 line-clamp-1" title={order.noteAppelant}>
+                                      💬 {order.noteAppelant}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : order.noteAppelant ? (
                                 <span className="text-gray-600 line-clamp-1" title={order.noteAppelant}>
                                   💬 {order.noteAppelant}
                                 </span>
