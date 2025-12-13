@@ -168,15 +168,8 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
       });
       console.log(`   ✅ ${deletedNotifications.count} notifications supprimées`);
 
-      // Supprimer les RDV programmés (si existants)
-      const deletedRdv = await tx.rdvProgramme.deleteMany({
-        where: {
-          orderId: {
-            in: orderIds
-          }
-        }
-      });
-      console.log(`   ✅ ${deletedRdv.count} RDV supprimés`);
+      // Note: Les RDV sont des champs dans Order, pas une table séparée
+      // Ils seront supprimés avec la commande
 
       // Supprimer les commandes
       const deletedOrders = await tx.order.deleteMany({
@@ -191,8 +184,7 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
       return {
         ordersDeleted: deletedOrders.count,
         historyDeleted: deletedHistory.count,
-        notificationsDeleted: deletedNotifications.count,
-        rdvDeleted: deletedRdv.count
+        notificationsDeleted: deletedNotifications.count
       };
     });
 
@@ -205,8 +197,7 @@ router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, re
       details: {
         orders: result.ordersDeleted,
         history: result.historyDeleted,
-        notifications: result.notificationsDeleted,
-        rdv: result.rdvDeleted
+        notifications: result.notificationsDeleted
       },
       deletedReferences: commandes.map(c => c.orderReference)
     });
@@ -290,6 +281,9 @@ router.delete('/delete-a-appeler-safe', authenticate, authorize('ADMIN'), async 
         }
       });
       console.log(`   ✅ ${deletedNotifications.count} notifications supprimées`);
+
+      // Note: Les RDV sont des champs dans Order, pas une table séparée
+      // Ils seront supprimés avec la commande
 
       // Supprimer les commandes
       const deletedOrders = await tx.order.deleteMany({
