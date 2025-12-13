@@ -70,10 +70,10 @@ async function supprimerCommandesAAppeler() {
       return;
     }
 
-    // 4. Supprimer les commandes
-    console.log('\n🗑️  Suppression en cours...\n');
+    // 4. Supprimer les commandes (version sécurisée)
+    console.log('\n🗑️  Suppression en cours (mode sécurisé)...\n');
 
-    const deleteResponse = await fetch(`${API_URL}/api/orders/delete-a-appeler`, {
+    const deleteResponse = await fetch(`${API_URL}/api/orders/delete-a-appeler-safe`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
