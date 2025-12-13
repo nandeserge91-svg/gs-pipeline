@@ -65,6 +65,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: CheckCircle, label: 'Commandes validées', path: '/gestionnaire/validated' },
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/gestionnaire/expeditions' },
           { icon: Bell, label: 'EXPRESS - En agence', path: '/gestionnaire/express-agence' },
+          { icon: Warehouse, label: 'Gestion des tournées', path: '/gestionnaire/tournees' },
           { icon: Truck, label: 'Livraisons', path: '/gestionnaire/deliveries' },
           { icon: Users, label: 'Utilisateurs', path: '/gestionnaire/users' },
           { icon: Database, label: 'Base Clients', path: '/gestionnaire/database' },
