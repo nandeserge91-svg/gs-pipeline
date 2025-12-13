@@ -40,8 +40,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/orders', deleteOrdersRoutes); // 🗑️ Route de suppression (AVANT orderRoutes pour priorité)
 app.use('/api/orders', orderRoutes);
-app.use('/api/orders', deleteOrdersRoutes); // 🗑️ Route de suppression
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/webhook', webhookRoutes);
