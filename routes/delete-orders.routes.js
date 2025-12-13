@@ -9,7 +9,7 @@
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -19,7 +19,7 @@ const prisma = new PrismaClient();
  * Supprime toutes les commandes en statut NOUVELLE ou A_APPELER
  * Accessible uniquement par ADMIN
  */
-router.delete('/delete-a-appeler', authenticateToken, authorize('ADMIN'), async (req, res) => {
+router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     console.log('🗑️  Demande de suppression des commandes "À appeler"...');
 
