@@ -82,11 +82,17 @@ router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req,
     });
 
   } catch (error) {
-    console.error('❌ Erreur lors de la suppression des commandes :', error);
+    console.error('❌ Erreur lors de la suppression des commandes :');
+    console.error('   Message:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Stack:', error.stack);
+    
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la suppression des commandes.',
-      details: error.message
+      details: error.message,
+      code: error.code,
+      meta: error.meta
     });
   }
 });
