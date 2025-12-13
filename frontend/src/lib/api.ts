@@ -120,6 +120,11 @@ export const ordersApi = {
     return data;
   },
 
+  deleteMultiple: async (orderIds: number[]) => {
+    const { data } = await api.post('/orders/delete-multiple', { orderIds });
+    return data;
+  },
+
   // EXPÉDITION & EXPRESS
   createExpedition: async (orderId: number, expeditionData: any) => {
     const { data } = await api.post(`/orders/${orderId}/expedition`, expeditionData);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2 } from 'lucide-react';
+import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, rdvApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
@@ -21,11 +21,16 @@ export default function Orders() {
   const [rdvNote, setRdvNote] = useState('');
   const [showQuantiteModal, setShowQuantiteModal] = useState(false);
   const [newQuantite, setNewQuantite] = useState(1);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
   // Vérifier si l'utilisateur peut modifier la quantité (Admin ou Gestionnaire)
   const canEditQuantite = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
+  
+  // Vérifier si l'utilisateur peut supprimer des commandes (Admin uniquement)
+  const canDeleteOrders = user?.role === 'ADMIN';
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
@@ -115,6 +120,19 @@ export default function Orders() {
     },
   });
 
+  const deleteOrdersMutation = useMutation({
+    mutationFn: (orderIds: number[]) => ordersApi.deleteMultiple(orderIds),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      setSelectedOrderIds([]);
+      setShowDeleteConfirmModal(false);
+      toast.success(`✅ ${data.deletedCount} commande(s) supprimée(s) avec succès`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
+    },
+  });
+
   const handleUpdateStatus = (status: string) => {
     if (!selectedOrder) return;
     updateStatusMutation.mutate({
@@ -173,6 +191,34 @@ export default function Orders() {
     });
   };
 
+  const handleToggleOrder = (orderId: number) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const handleToggleAll = () => {
+    if (selectedOrderIds.length === filteredOrders?.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(filteredOrders?.map((o: Order) => o.id) || []);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedOrderIds.length === 0) {
+      toast.error('Aucune commande sélectionnée');
+      return;
+    }
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDelete = () => {
+    deleteOrdersMutation.mutate(selectedOrderIds);
+  };
+
   const filteredOrders = ordersData?.orders
     ?.filter((order: Order) => {
       // IMPORTANT : Afficher UNIQUEMENT les commandes NOUVELLE et A_APPELER
@@ -222,6 +268,11 @@ export default function Orders() {
             <div className="text-right">
               <p className="text-2xl font-bold text-primary-600">{filteredOrders.length}</p>
               <p className="text-sm text-gray-600">commande(s)</p>
+              {canDeleteOrders && selectedOrderIds.length > 0 && (
+                <p className="text-sm text-red-600 font-medium mt-1">
+                  {selectedOrderIds.length} sélectionnée(s)
+                </p>
+              )}
             </div>
           )}
           <div className="flex flex-col items-end gap-2">
@@ -235,21 +286,48 @@ export default function Orders() {
                 Mis à jour il y a {secondsSinceUpdate}s
               </span>
             )}
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="btn btn-secondary flex items-center gap-2 text-sm py-2"
-              title="Actualiser les commandes"
-            >
-              <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-              Actualiser
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="btn btn-secondary flex items-center gap-2 text-sm py-2"
+                title="Actualiser les commandes"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                Actualiser
+              </button>
+              {canDeleteOrders && selectedOrderIds.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={deleteOrdersMutation.isPending}
+                  className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2 text-sm py-2"
+                  title="Supprimer les commandes sélectionnées"
+                >
+                  <Trash2 size={16} />
+                  Supprimer ({selectedOrderIds.length})
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="card">
         <div className="flex flex-col md:flex-row gap-4">
+          {canDeleteOrders && filteredOrders && filteredOrders.length > 0 && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="select-all"
+                checked={selectedOrderIds.length === filteredOrders.length}
+                onChange={handleToggleAll}
+                className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+              />
+              <label htmlFor="select-all" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Tout sélectionner
+              </label>
+            </div>
+          )}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -284,11 +362,25 @@ export default function Orders() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredOrders?.map((order: Order) => (
-            <div key={order.id} className="card hover:shadow-lg transition-shadow">
+            <div 
+              key={order.id} 
+              className={`card hover:shadow-lg transition-all ${selectedOrderIds.includes(order.id) ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+            >
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900">{order.clientNom}</h3>
-                  <p className="text-sm text-gray-600">{order.clientVille}</p>
+                <div className="flex items-start gap-2 flex-1">
+                  {canDeleteOrders && (
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.includes(order.id)}
+                      onChange={() => handleToggleOrder(order.id)}
+                      className="mt-1 w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-900">{order.clientNom}</h3>
+                    <p className="text-sm text-gray-600">{order.clientVille}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2 items-start">
                   {canEditQuantite && (
@@ -640,6 +732,52 @@ export default function Orders() {
                   setShowQuantiteModal(false);
                   setSelectedOrder(null);
                 }}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Confirmer la suppression</h2>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 mb-4">
+                Êtes-vous sûr de vouloir supprimer <span className="font-bold text-red-600">{selectedOrderIds.length} commande(s)</span> ?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium mb-2">⚠️ Attention !</p>
+                <ul className="text-sm text-red-700 space-y-1">
+                  <li>• Cette action est <strong>irréversible</strong></li>
+                  <li>• Les commandes seront définitivement supprimées</li>
+                  <li>• Les données ne pourront pas être récupérées</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={confirmDelete}
+                disabled={deleteOrdersMutation.isPending}
+                className="btn bg-red-600 text-white hover:bg-red-700 flex-1 flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                {deleteOrdersMutation.isPending ? 'Suppression...' : 'Confirmer la suppression'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                disabled={deleteOrdersMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
                 Annuler

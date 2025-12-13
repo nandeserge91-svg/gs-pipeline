@@ -98,6 +98,136 @@ router.delete('/delete-a-appeler', authenticate, authorize('ADMIN'), async (req,
 });
 
 /**
+ * POST /api/orders/delete-multiple
+ * Supprime plusieurs commandes spécifiques par leurs IDs
+ * Accessible uniquement par ADMIN
+ */
+router.post('/delete-multiple', authenticate, authorize('ADMIN'), async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+
+    // Validation
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez fournir un tableau d\'IDs de commandes à supprimer.'
+      });
+    }
+
+    console.log(`🗑️  Demande de suppression de ${orderIds.length} commande(s)...`);
+    console.log('   IDs:', orderIds);
+
+    // 1. Vérifier que toutes les commandes existent
+    const commandes = await prisma.order.findMany({
+      where: {
+        id: {
+          in: orderIds
+        }
+      },
+      select: {
+        id: true,
+        reference: true,
+        clientNom: true,
+        produitNom: true,
+        status: true
+      }
+    });
+
+    if (commandes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Aucune commande trouvée avec les IDs fournis.'
+      });
+    }
+
+    console.log(`📊 ${commandes.length} commande(s) trouvée(s)`);
+    console.log('📋 Commandes à supprimer :');
+    commandes.forEach(cmd => {
+      console.log(`   - ${cmd.reference}: ${cmd.clientNom} (${cmd.produitNom}) - ${cmd.status}`);
+    });
+
+    // 2. Supprimer en transaction (relations d'abord, puis commandes)
+    const result = await prisma.$transaction(async (tx) => {
+      // Supprimer l'historique de statut
+      const deletedHistory = await tx.statusHistory.deleteMany({
+        where: {
+          orderId: {
+            in: orderIds
+          }
+        }
+      });
+      console.log(`   ✅ ${deletedHistory.count} entrées d'historique supprimées`);
+
+      // Supprimer les notifications EXPRESS
+      const deletedNotifications = await tx.expressNotification.deleteMany({
+        where: {
+          orderId: {
+            in: orderIds
+          }
+        }
+      });
+      console.log(`   ✅ ${deletedNotifications.count} notifications supprimées`);
+
+      // Supprimer les RDV programmés (si existants)
+      const deletedRdv = await tx.rdvProgramme.deleteMany({
+        where: {
+          orderId: {
+            in: orderIds
+          }
+        }
+      });
+      console.log(`   ✅ ${deletedRdv.count} RDV supprimés`);
+
+      // Supprimer les commandes
+      const deletedOrders = await tx.order.deleteMany({
+        where: {
+          id: {
+            in: orderIds
+          }
+        }
+      });
+      console.log(`   ✅ ${deletedOrders.count} commandes supprimées`);
+
+      return {
+        ordersDeleted: deletedOrders.count,
+        historyDeleted: deletedHistory.count,
+        notificationsDeleted: deletedNotifications.count,
+        rdvDeleted: deletedRdv.count
+      };
+    });
+
+    console.log(`✅ Suppression terminée avec succès`);
+
+    res.json({
+      success: true,
+      message: `${result.ordersDeleted} commande(s) supprimée(s) avec succès.`,
+      deletedCount: result.ordersDeleted,
+      details: {
+        orders: result.ordersDeleted,
+        history: result.historyDeleted,
+        notifications: result.notificationsDeleted,
+        rdv: result.rdvDeleted
+      },
+      deletedReferences: commandes.map(c => c.reference)
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la suppression des commandes :');
+    console.error('   Message:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Stack:', error.stack);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la suppression des commandes.',
+      details: error.message,
+      code: error.code,
+      meta: error.meta
+    });
+  }
+});
+
+/**
  * DELETE /api/orders/delete-a-appeler-safe
  * Version sécurisée : supprime les relations avant les commandes
  * Accessible uniquement par ADMIN
