@@ -15,6 +15,7 @@ import accountingRoutes from './routes/accounting.routes.js';
 import expressRoutes from './routes/express.routes.js';
 import stockRoutes from './routes/stock.routes.js';
 import rdvRoutes from './routes/rdv.routes.js';
+import deleteOrdersRoutes from './routes/delete-orders.routes.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 
 const app = express();
@@ -40,6 +41,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/orders', deleteOrdersRoutes); // 🗑️ Route de suppression
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/webhook', webhookRoutes);
