@@ -93,6 +93,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: TrendingUp, label: 'Listes de livraison', path: '/appelant/deliveries' },
           { icon: CheckCircle, label: 'Mes commandes traitées', path: '/appelant/processed' },
           { icon: Database, label: 'Base Clients', path: '/appelant/database' },
+          { icon: Eye, label: 'Performance des Appelants', path: '/appelant/supervision' },
           { icon: BarChart3, label: 'Mes statistiques', path: '/appelant/stats' },
         ];
       case 'LIVREUR':
