@@ -298,6 +298,7 @@ export default function Orders() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ville</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Montant</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Appelant</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Note Appelant</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Statut</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date</th>
@@ -315,6 +316,15 @@ export default function Orders() {
                       <td className="py-3 px-4 text-sm">{order.clientVille}</td>
                       <td className="py-3 px-4 text-sm">{order.produitNom}</td>
                       <td className="py-3 px-4 text-sm font-medium">{formatCurrency(order.montant)}</td>
+                      <td className="py-3 px-4 text-sm">
+                        {order.caller ? (
+                          <span className="text-gray-900 font-medium" title={`${order.caller.prenom} ${order.caller.nom}`}>
+                            {order.caller.prenom} {order.caller.nom}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic">Non assigné</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-sm max-w-xs">
                         {order.noteAppelant ? (
                           <div className="flex items-start gap-2">
