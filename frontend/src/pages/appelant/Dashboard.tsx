@@ -4,7 +4,7 @@ import Orders from './Orders';
 import MyProcessedOrders from './MyProcessedOrders';
 import Stats from './Stats';
 import ClientDatabase from '../common/ClientDatabase';
-import CallerSupervision from '../common/CallerSupervision';
+import PerformanceAppelants from './PerformanceAppelants';
 import ExpeditionsExpress from '../admin/ExpeditionsExpress';
 import ExpressAgence from '../gestionnaire/ExpressAgence';
 import AllOrders from '../admin/Orders';
@@ -23,7 +23,7 @@ export default function AppelantDashboard() {
       <Route path="rdv" element={<RDV />} />
       <Route path="processed" element={<MyProcessedOrders />} />
       <Route path="database" element={<ClientDatabase />} />
-      <Route path="supervision" element={<CallerSupervision />} />
+      <Route path="supervision" element={<PerformanceAppelants />} />
       <Route path="stats" element={<Stats />} />
     </Routes>
   );
