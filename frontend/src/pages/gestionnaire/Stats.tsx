@@ -33,7 +33,7 @@ export default function Stats() {
               </tr>
             </thead>
             <tbody>
-              {callersData?.stats?.map((stat: any) => (
+              {callersData?.callers?.map((stat: any) => (
                 <tr key={stat.user.id} className="border-b border-gray-100">
                   <td className="py-3 px-4 text-sm font-medium">
                     {stat.user.prenom} {stat.user.nom}
@@ -63,7 +63,7 @@ export default function Stats() {
               </tr>
             </thead>
             <tbody>
-              {deliverersData?.stats?.map((stat: any) => (
+              {deliverersData?.deliverers?.map((stat: any) => (
                 <tr key={stat.user.id} className="border-b border-gray-100">
                   <td className="py-3 px-4 text-sm font-medium">
                     {stat.user.prenom} {stat.user.nom}

@@ -30,7 +30,7 @@ export default function Stats() {
 
   // Filtrer et trier les appelants
   const filteredCallers = useMemo(() => {
-    let filtered = callersData?.stats || [];
+    let filtered = callersData?.callers || [];
     
     if (searchCaller) {
       filtered = filtered.filter((stat: any) =>
@@ -57,7 +57,7 @@ export default function Stats() {
 
   // Filtrer et trier les livreurs
   const filteredDeliverers = useMemo(() => {
-    let filtered = deliverersData?.stats || [];
+    let filtered = deliverersData?.deliverers || [];
     
     if (searchDeliverer) {
       filtered = filtered.filter((stat: any) =>

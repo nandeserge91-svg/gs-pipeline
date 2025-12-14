@@ -164,12 +164,24 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
       
       const stats = callerStats[callerId];
       
+      // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
+      stats.totalAppels++;
+      
       // Compter selon le statut
-      if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
-        stats.totalAppels++;
-      } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
+      // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
+      if (
+        order.status === 'VALIDEE' || 
+        order.status === 'ASSIGNEE' || 
+        order.status === 'EN_LIVRAISON' || 
+        order.status === 'LIVREE' || 
+        order.status === 'EXPEDITION' || 
+        order.status === 'EXPRESS' || 
+        order.status === 'EXPRESS_ARRIVE' || 
+        order.status === 'EXPRESS_LIVRE' ||
+        order.status === 'RETOURNE'
+      ) {
         stats.totalValides++;
-      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
+      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
         stats.totalAnnules++;
       } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
         stats.totalInjoignables++;
@@ -213,16 +225,16 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
 
     // Formater le résultat
     const result = Object.values(callerStats).map(caller => {
-      const totalTraite = caller.totalValides + caller.totalAnnules + caller.totalInjoignables;
+      // ✅ CORRECTION : Taux basé sur le total d'appels
       return {
         ...caller,
-        tauxValidation: totalTraite > 0 
-          ? ((caller.totalValides / totalTraite) * 100).toFixed(2)
+        tauxValidation: caller.totalAppels > 0 
+          ? ((caller.totalValides / caller.totalAppels) * 100).toFixed(2)
           : 0
       };
     });
 
-    res.json({ stats: result });
+    res.json({ callers: result });
   } catch (error) {
     console.error('Erreur récupération statistiques appelants:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des appelants.' });
@@ -315,7 +327,7 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
       };
     });
 
-    res.json({ stats: result });
+    res.json({ deliverers: result });
   } catch (error) {
     console.error('Erreur récupération statistiques livreurs:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des livreurs.' });
@@ -367,11 +379,23 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
       };
 
       orders.forEach(order => {
-        if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
-          totals.totalAppels++;
-        } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
+        // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
+        totals.totalAppels++;
+        
+        // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
+        if (
+          order.status === 'VALIDEE' || 
+          order.status === 'ASSIGNEE' || 
+          order.status === 'EN_LIVRAISON' || 
+          order.status === 'LIVREE' || 
+          order.status === 'EXPEDITION' || 
+          order.status === 'EXPRESS' || 
+          order.status === 'EXPRESS_ARRIVE' || 
+          order.status === 'EXPRESS_LIVRE' ||
+          order.status === 'RETOURNE'
+        ) {
           totals.totalValides++;
-        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
+        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
           totals.totalAnnules++;
         } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
           totals.totalInjoignables++;
@@ -384,9 +408,9 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
         }
       });
 
-      const totalTraite = totals.totalValides + totals.totalAnnules + totals.totalInjoignables;
-      totals.tauxValidation = totalTraite > 0 
-        ? ((totals.totalValides / totalTraite) * 100).toFixed(2)
+      // ✅ CORRECTION : Taux basé sur le total d'appels
+      totals.tauxValidation = totals.totalAppels > 0 
+        ? ((totals.totalValides / totals.totalAppels) * 100).toFixed(2)
         : 0;
 
       res.json({ stats: totals, details: [] }); // details vide car pas besoin

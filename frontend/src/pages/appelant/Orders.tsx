@@ -66,6 +66,7 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
       queryClient.invalidateQueries({ queryKey: ['appelant-my-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caller-stats'] }); // ✅ AJOUTÉ : Invalider aussi les stats de Performance des Appelants
       setSelectedOrder(null);
       setNote('');
       toast.success('Commande mise à jour avec succès');
@@ -81,6 +82,7 @@ export default function Orders() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
       queryClient.invalidateQueries({ queryKey: ['appelant-my-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caller-stats'] }); // ✅ AJOUTÉ : Invalider aussi les stats de Performance des Appelants
       setSelectedOrder(null);
       setNote('');
       toast.success('✅ Commande marquée en attente de paiement');

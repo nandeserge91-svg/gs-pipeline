@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 
 export default function PerformanceAppelants() {
@@ -9,13 +9,15 @@ export default function PerformanceAppelants() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Récupérer les stats des appelants
-  const { data: callersData, isLoading: loadingCallers } = useQuery({
+  const { data: callersData, isLoading: loadingCallers, refetch } = useQuery({
     queryKey: ['caller-stats'],
     queryFn: async () => {
       const { data } = await api.get('/stats/callers');
       return data;
     },
-    refetchInterval: 10000, // Actualisation toutes les 10 secondes
+    refetchInterval: 5000, // ✅ Actualisation toutes les 5 secondes (réduit de 10s)
+    refetchOnWindowFocus: true, // ✅ Rafraîchir quand l'utilisateur revient sur l'onglet
+    staleTime: 0, // ✅ Considérer les données comme obsolètes immédiatement
   });
 
   // Filtrer et trier les appelants
@@ -63,7 +65,17 @@ export default function PerformanceAppelants() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Performance des Appelants</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => refetch()}
+              disabled={loadingCallers}
+              className="btn btn-secondary flex items-center gap-2 text-sm"
+              title="Rafraîchir les statistiques"
+            >
+              <RefreshCw size={16} className={loadingCallers ? 'animate-spin' : ''} />
+              Rafraîchir
+            </button>
+            <span className="text-sm text-gray-400">|</span>
             <span className="text-sm text-gray-600">{totalCallers} appelant(s)</span>
             <span className="text-sm text-gray-400">|</span>
             <span className="text-sm font-medium text-green-600">
