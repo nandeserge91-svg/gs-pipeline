@@ -34,14 +34,15 @@ export default function Orders() {
   });
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['admin-orders', page, statusFilter, productFilter, startDate, endDate],
+    queryKey: ['admin-orders', page, statusFilter, productFilter, startDate, endDate, searchTerm],
     queryFn: () => ordersApi.getAll({ 
       page, 
       limit: 20, 
       status: statusFilter || undefined,
       produit: productFilter || undefined,
       startDate: startDate || undefined,
-      endDate: endDate || undefined
+      endDate: endDate || undefined,
+      search: searchTerm || undefined, // ✅ AJOUTÉ : Recherche côté serveur
     }),
     refetchInterval: 30000, // Actualisation automatique toutes les 30 secondes
     refetchIntervalInBackground: true, // Continue même si l'onglet n'est pas actif
@@ -107,13 +108,10 @@ export default function Orders() {
     setPage(1);
   };
 
-  const hasActiveFilters = statusFilter || productFilter || startDate || endDate;
+  const hasActiveFilters = statusFilter || productFilter || startDate || endDate || searchTerm;
 
-  const filteredOrders = data?.orders?.filter((order: Order) =>
-    order.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.clientTelephone.includes(searchTerm) ||
-    order.orderReference.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ✅ MODIFICATION : Plus de filtrage côté client, tout se fait côté serveur
+  const filteredOrders = data?.orders || [];
 
   return (
     <div className="space-y-6">
@@ -157,7 +155,10 @@ export default function Orders() {
                 type="text"
                 placeholder="Rechercher par nom, téléphone ou référence..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // ✅ Retour à la page 1 lors d'une recherche
+                }}
                 className="input pl-10"
               />
             </div>
@@ -167,7 +168,7 @@ export default function Orders() {
             >
               <Filter size={20} />
               Filtres avancés
-              {hasActiveFilters && (
+              {(statusFilter || productFilter || startDate || endDate) && (
                 <span className="bg-white text-primary-600 rounded-full px-2 py-0.5 text-xs font-bold">
                   {[statusFilter, productFilter, startDate, endDate].filter(Boolean).length}
                 </span>
@@ -265,7 +266,7 @@ export default function Orders() {
           {hasActiveFilters && (
             <div className="flex items-center justify-between pt-2 border-t border-gray-200">
               <div className="text-sm text-gray-600">
-                {[statusFilter, productFilter, startDate, endDate].filter(Boolean).length} filtre(s) actif(s)
+                {[statusFilter, productFilter, startDate, endDate, searchTerm].filter(Boolean).length} filtre(s) actif(s)
               </div>
               <button
                 onClick={resetFilters}

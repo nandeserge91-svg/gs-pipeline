@@ -12,21 +12,24 @@ router.use(authenticate);
 // GET /api/orders - Liste des commandes (avec filtres selon rôle)
 router.get('/', async (req, res) => {
   try {
-    const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, page = 1, limit = 1000 } = req.query;
+    const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, search, page = 1, limit = 1000 } = req.query;
     const user = req.user;
 
     const where = {};
+    const andConditions = [];
 
     // Filtres selon le rôle
     if (user.role === 'APPELANT') {
       // L'appelant voit :
       // 1. UNIQUEMENT les commandes NOUVELLE et A_APPELER (en attente d'appel)
       // 2. TOUTES les EXPÉDITIONS et EXPRESS (pour gestion)
-      where.OR = [
-        { status: { in: ['NOUVELLE', 'A_APPELER'] } },
-        { deliveryType: 'EXPEDITION' },
-        { deliveryType: 'EXPRESS' }
-      ];
+      andConditions.push({
+        OR: [
+          { status: { in: ['NOUVELLE', 'A_APPELER'] } },
+          { deliveryType: 'EXPEDITION' },
+          { deliveryType: 'EXPRESS' }
+        ]
+      });
     } else if (user.role === 'LIVREUR') {
       // Le livreur voit uniquement ses commandes assignées
       where.delivererId = user.id;
@@ -37,6 +40,17 @@ router.get('/', async (req, res) => {
       // L'admin voit tout (pas de restriction)
     }
 
+    // ✅ NOUVEAU : Recherche globale (nom, téléphone, référence)
+    if (search) {
+      andConditions.push({
+        OR: [
+          { clientNom: { contains: search, mode: 'insensitive' } },
+          { clientTelephone: { contains: search } },
+          { orderReference: { contains: search, mode: 'insensitive' } }
+        ]
+      });
+    }
+
     // Filtres supplémentaires
     if (status) where.status = status;
     if (ville) where.clientVille = { contains: ville, mode: 'insensitive' };
@@ -44,6 +58,11 @@ router.get('/', async (req, res) => {
     if (callerId) where.callerId = parseInt(callerId);
     if (delivererId) where.delivererId = parseInt(delivererId);
     if (deliveryType) where.deliveryType = deliveryType; // ✅ Appliquer le filtre deliveryType
+    
+    // Combiner les conditions AND
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
     
     if (startDate || endDate) {
       where.createdAt = {};
