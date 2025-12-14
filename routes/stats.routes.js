@@ -96,9 +96,10 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
   }
 });
 
-// GET /api/stats/callers - Statistiques des appelants (Admin/Gestionnaire)
+// GET /api/stats/callers - Statistiques des appelants (Admin/Gestionnaire/Appelant)
 // ✅ CORRIGÉ : Calcul depuis les commandes, pas depuis CallStatistic
-router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+// ✅ APPELANT ajouté pour voir les performances de l'équipe
+router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
   try {
     const { startDate, endDate, callerId } = req.query;
 
