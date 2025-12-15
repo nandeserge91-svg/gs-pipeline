@@ -131,10 +131,12 @@ export default function Products() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setShowEditProductModal(false);
       setSelectedProduct(null);
-      toast.success('Produit modifié avec succès');
+      toast.success('✅ Produit modifié avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Erreur lors de la modification');
+      console.error('Erreur modification produit:', error);
+      const errorMessage = error.response?.data?.error || 'Erreur lors de la modification du produit';
+      toast.error(errorMessage);
     },
   });
 
@@ -205,6 +207,19 @@ export default function Products() {
   const handleUpdateProduct = () => {
     if (!editProduct.code || !editProduct.nom || !editProduct.prix || !editProduct.stockAlerte) {
       toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    // Validation des prix
+    const prix = parseFloat(editProduct.prix);
+    if (isNaN(prix) || prix <= 0) {
+      toast.error('Le prix unitaire doit être un nombre valide supérieur à 0');
+      return;
+    }
+
+    const stockAlerte = parseInt(editProduct.stockAlerte);
+    if (isNaN(stockAlerte) || stockAlerte < 0) {
+      toast.error('Le seuil d\'alerte doit être un nombre valide');
       return;
     }
 

@@ -126,6 +126,25 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     const { id } = req.params;
     const { nom, description, prixUnitaire, prix1, prix2, prix3, stockAlerte, actif, code } = req.body;
 
+    // Vérifier que le produit existe
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!existingProduct) {
+      return res.status(404).json({ error: 'Produit non trouvé.' });
+    }
+
+    // Si le code change, vérifier qu'il n'existe pas déjà
+    if (code && code !== existingProduct.code) {
+      const codeExists = await prisma.product.findUnique({
+        where: { code: code }
+      });
+      if (codeExists) {
+        return res.status(400).json({ error: `Le code "${code}" est déjà utilisé par un autre produit.` });
+      }
+    }
+
     const updateData = {};
     if (code) updateData.code = code;
     if (nom) updateData.nom = nom;
@@ -145,7 +164,19 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     res.json({ product, message: 'Produit modifié avec succès.' });
   } catch (error) {
     console.error('Erreur modification produit:', error);
-    res.status(500).json({ error: 'Erreur lors de la modification du produit.' });
+    
+    // Gérer les erreurs Prisma spécifiques
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Ce code produit est déjà utilisé.' });
+    }
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Produit non trouvé.' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erreur lors de la modification du produit.',
+      details: error.message 
+    });
   }
 });
 
