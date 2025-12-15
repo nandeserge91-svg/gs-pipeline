@@ -100,6 +100,7 @@ export default function Layout({ children }: LayoutProps) {
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/livreur' },
           { icon: Package, label: 'Mes livraisons', path: '/livreur/deliveries' },
+          { icon: Truck, label: 'Mes Expéditions', path: '/livreur/expeditions' },
           { icon: BarChart3, label: 'Mes statistiques', path: '/livreur/stats' },
         ];
       default:

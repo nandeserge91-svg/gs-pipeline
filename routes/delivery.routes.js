@@ -274,6 +274,57 @@ router.get('/validated-orders', authorize('ADMIN', 'GESTIONNAIRE'), async (req, 
   }
 });
 
+// GET /api/delivery/my-expeditions - Mes expéditions (EXPEDITION & EXPRESS) pour le livreur
+router.get('/my-expeditions', authorize('LIVREUR'), async (req, res) => {
+  try {
+    const delivererId = req.user.id;
+    const { date, status } = req.query;
+
+    const where = {
+      delivererId: delivererId,
+      OR: [
+        { deliveryType: 'EXPEDITION' },
+        { status: 'EXPRESS' } // Commandes EXPRESS assignées
+      ]
+    };
+
+    // Filtre par date
+    if (date) {
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(selectedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      where.deliveryDate = {
+        gte: selectedDate,
+        lt: nextDay
+      };
+    }
+
+    // Filtre par statut
+    if (status) {
+      where.status = status;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        deliveryList: {
+          include: {
+            tourneeStock: true
+          }
+        }
+      },
+      orderBy: { deliveryDate: 'desc' }
+    });
+
+    res.json({ orders });
+  } catch (error) {
+    console.error('Erreur récupération expéditions livreur:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des expéditions.' });
+  }
+});
+
 export default router;
 
 

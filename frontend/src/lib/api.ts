@@ -189,6 +189,11 @@ export const deliveryApi = {
     const { data } = await api.get('/delivery/my-orders', { params });
     return data;
   },
+
+  getMyExpeditions: async (params?: any) => {
+    const { data } = await api.get('/delivery/my-expeditions', { params });
+    return data;
+  },
 };
 
 // Stats API
