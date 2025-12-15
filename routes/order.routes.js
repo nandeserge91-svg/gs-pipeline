@@ -6,6 +6,25 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+// 💰 Fonction pour calculer le prix total selon la quantité et les prix variantes
+function calculatePriceByQuantity(product, quantity) {
+  const qty = parseInt(quantity) || 1;
+  
+  // Si le produit a des prix variantes définis
+  if (product.prix1 || product.prix2 || product.prix3) {
+    if (qty === 1 && product.prix1) {
+      return product.prix1; // Prix pour 1 unité
+    } else if (qty === 2 && product.prix2) {
+      return product.prix2; // Prix pour 2 unités
+    } else if (qty >= 3 && product.prix3) {
+      return product.prix3; // Prix pour 3+ unités
+    }
+  }
+  
+  // Sinon, utiliser le prix unitaire × quantité
+  return product.prixUnitaire * qty;
+}
+
 // Toutes les routes nécessitent authentification
 router.use(authenticate);
 
@@ -25,9 +44,9 @@ router.get('/', async (req, res) => {
       // 2. TOUTES les EXPÉDITIONS et EXPRESS (pour gestion)
       andConditions.push({
         OR: [
-          { status: { in: ['NOUVELLE', 'A_APPELER'] } },
-          { deliveryType: 'EXPEDITION' },
-          { deliveryType: 'EXPRESS' }
+        { status: { in: ['NOUVELLE', 'A_APPELER'] } },
+        { deliveryType: 'EXPEDITION' },
+        { deliveryType: 'EXPRESS' }
         ]
       });
     } else if (user.role === 'LIVREUR') {
@@ -1354,7 +1373,7 @@ router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
     // ✅ Assigner le livreur sans changer le statut pour EXPRESS (reste EXPRESS)
     // Pour EXPEDITION, passe en ASSIGNEE
     const newStatus = order.status === 'EXPRESS' ? 'EXPRESS' : 'ASSIGNEE';
-    
+
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {

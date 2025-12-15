@@ -5,6 +5,25 @@ import { body, validationResult } from 'express-validator';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+// 💰 Fonction pour calculer le prix total selon la quantité et les prix variantes
+function calculatePriceByQuantity(product, quantity) {
+  const qty = parseInt(quantity) || 1;
+  
+  // Si le produit a des prix variantes définis
+  if (product.prix1 || product.prix2 || product.prix3) {
+    if (qty === 1 && product.prix1) {
+      return product.prix1; // Prix pour 1 unité
+    } else if (qty === 2 && product.prix2) {
+      return product.prix2; // Prix pour 2 unités
+    } else if (qty >= 3 && product.prix3) {
+      return product.prix3; // Prix pour 3+ unités
+    }
+  }
+  
+  // Sinon, utiliser le prix unitaire × quantité
+  return product.prixUnitaire * qty;
+}
+
 // Middleware pour vérifier l'API Key (sécurité webhook Make)
 const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
@@ -84,10 +103,18 @@ router.post('/make', verifyApiKey, [
       });
     }
 
-    // 2. Calculer les montants
+    // 2. Calculer les montants avec prix variantes
     const orderQuantity = parseInt(quantity) || 1;
-    const unitPrice = product.prixUnitaire;
-    const totalAmount = unitPrice * orderQuantity;
+    const totalAmount = calculatePriceByQuantity(product, orderQuantity);
+    
+    console.log('💰 Calcul prix:', {
+      quantité: orderQuantity,
+      prix1: product.prix1,
+      prix2: product.prix2,
+      prix3: product.prix3,
+      prixUnitaire: product.prixUnitaire,
+      montantTotal: totalAmount
+    });
 
     // 3. Créer la commande dans la base de données
     const order = await prisma.order.create({
@@ -284,7 +311,7 @@ router.post('/google-sheet', [
     const productData = product ? {
       produitNom: product.nom,
       productId: product.id,
-      montant: product.prixUnitaire * orderQuantity,
+      montant: calculatePriceByQuantity(product, orderQuantity),
       quantite: orderQuantity
     } : {
       produitNom: offre || tag || 'Produit non spécifié',
@@ -292,6 +319,17 @@ router.post('/google-sheet', [
       montant: 0,
       quantite: orderQuantity
     };
+    
+    if (product) {
+      console.log('💰 Calcul prix Google Sheet:', {
+        quantité: orderQuantity,
+        prix1: product.prix1,
+        prix2: product.prix2,
+        prix3: product.prix3,
+        prixUnitaire: product.prixUnitaire,
+        montantTotal: productData.montant
+      });
+    }
 
     // Créer la commande avec statut NOUVELLE (apparaîtra dans "À appeler")
     const order = await prisma.order.create({
