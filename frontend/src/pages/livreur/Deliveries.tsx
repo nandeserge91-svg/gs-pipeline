@@ -7,14 +7,14 @@ import { formatCurrency, getStatusLabel, getStatusColor } from '@/utils/statusHe
 import type { Order } from '@/types';
 
 export default function Deliveries() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(''); // ✅ Vide par défaut = toutes les livraisons
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [note, setNote] = useState('');
   const queryClient = useQueryClient();
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['livreur-deliveries', selectedDate],
-    queryFn: () => deliveryApi.getMyOrders({ date: selectedDate }),
+    queryFn: () => deliveryApi.getMyOrders({ date: selectedDate || undefined }), // ✅ Si vide, pas de filtre de date
   });
 
   const updateStatusMutation = useMutation({
@@ -85,12 +85,31 @@ export default function Deliveries() {
           <h1 className="text-3xl font-bold text-gray-900">Mes livraisons</h1>
           <p className="text-gray-600 mt-1">Gérez vos livraisons quotidiennes</p>
         </div>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className="input w-auto"
-        />
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedDate ? 'custom' : 'all'}
+            onChange={(e) => {
+              if (e.target.value === 'all') {
+                setSelectedDate('');
+              } else if (e.target.value === 'today') {
+                setSelectedDate(new Date().toISOString().split('T')[0]);
+              }
+            }}
+            className="input w-auto"
+          >
+            <option value="all">Toutes les livraisons</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="custom">Date personnalisée</option>
+          </select>
+          {selectedDate && selectedDate !== new Date().toISOString().split('T')[0] && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="input w-auto"
+            />
+          )}
+        </div>
       </div>
 
       {/* Résumé */}
