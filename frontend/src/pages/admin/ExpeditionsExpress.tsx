@@ -127,7 +127,7 @@ export default function ExpeditionsExpress() {
     },
   });
 
-  // Mutation pour assigner un livreur à une EXPÉDITION
+  // Mutation pour assigner un livreur à une EXPÉDITION ou EXPRESS
   const assignDelivererMutation = useMutation({
     mutationFn: ({ orderId, delivererId }: { orderId: number; delivererId: number }) => 
       ordersApi.assignExpeditionDeliverer(orderId, delivererId),
@@ -135,6 +135,7 @@ export default function ExpeditionsExpress() {
       toast.success('✅ Livreur assigné avec succès');
       queryClient.invalidateQueries({ queryKey: ['expeditions'] });
       queryClient.invalidateQueries({ queryKey: ['expeditions-assigned'] });
+      queryClient.invalidateQueries({ queryKey: ['express-pending'] }); // ✅ AJOUTÉ pour EXPRESS
       setShowAssignModal(false);
       setSelectedOrder(null);
       setSelectedDelivererId(null);
@@ -719,49 +720,80 @@ export default function ExpeditionsExpress() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Acompte (10%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Restant (90%)</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Agence</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Livreur</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredExpress.map((order: Order) => (
-                      <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
-                        <td className="py-3 px-4">
-                          <div className="text-sm font-medium">{order.clientNom}</div>
-                          <div className="text-xs text-gray-500">{order.clientTelephone}</div>
-                        </td>
-                        <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
-                        <td className="py-3 px-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Calendar size={14} className="text-gray-400" />
-                            <span>{formatDateTime(order.expedieAt || order.createdAt)}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-bold text-green-600">
-                          {formatCurrency(order.montantPaye || 0)}
-                        </td>
-                        <td className="py-3 px-4 text-sm font-bold text-amber-600">
-                          {formatCurrency(order.montantRestant || 0)}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin size={14} />
-                            {order.agenceRetrait}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowArriveModal(true);
-                            }}
-                            className="btn btn-primary btn-sm"
-                          >
-                            Marquer arrivé
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredExpress.map((order: Order) => {
+                      const deliverer = order.delivererId 
+                        ? deliverers.find((d: any) => d.id === order.delivererId)
+                        : null;
+                      
+                      return (
+                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
+                          <td className="py-3 px-4">
+                            <div className="text-sm font-medium">{order.clientNom}</div>
+                            <div className="text-xs text-gray-500">{order.clientTelephone}</div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
+                          <td className="py-3 px-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Calendar size={14} className="text-gray-400" />
+                              <span>{formatDateTime(order.expedieAt || order.createdAt)}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm font-bold text-green-600">
+                            {formatCurrency(order.montantPaye || 0)}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-bold text-amber-600">
+                            {formatCurrency(order.montantRestant || 0)}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={14} />
+                              {order.agenceRetrait}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {deliverer ? (
+                              <div className="text-sm">
+                                <div className="font-medium">{deliverer.prenom} {deliverer.nom}</div>
+                                <div className="text-xs text-gray-500">{deliverer.telephone}</div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">Non assigné</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2">
+                              {!order.delivererId && canAssignDeliverer && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setShowAssignModal(true);
+                                  }}
+                                  className="btn btn-sm btn-secondary flex items-center gap-1"
+                                >
+                                  <Users size={16} />
+                                  Assigner livreur
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowArriveModal(true);
+                                }}
+                                className="btn btn-primary btn-sm"
+                              >
+                                Marquer arrivé
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -1277,7 +1277,7 @@ router.post('/:id/express/finaliser', authorize('ADMIN', 'GESTIONNAIRE', 'APPELA
   }
 });
 
-// POST /api/orders/:id/expedition/assign - Assigner un livreur à une EXPÉDITION
+// POST /api/orders/:id/expedition/assign - Assigner un livreur à une EXPÉDITION ou EXPRESS
 router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
   body('delivererId').isInt().withMessage('Livreur invalide'),
 ], async (req, res) => {
@@ -1298,8 +1298,10 @@ router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
     if (!order) {
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
-    if (order.status !== 'EXPEDITION') {
-      return res.status(400).json({ error: 'Seules les commandes EXPÉDITION peuvent être assignées.' });
+    
+    // ✅ Accepter EXPEDITION et EXPRESS
+    if (order.status !== 'EXPEDITION' && order.status !== 'EXPRESS') {
+      return res.status(400).json({ error: 'Seules les commandes EXPÉDITION et EXPRESS peuvent être assignées à un livreur.' });
     }
 
     // Vérifier que le livreur existe
@@ -1311,24 +1313,29 @@ router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
       return res.status(400).json({ error: 'Livreur invalide.' });
     }
 
-    // Créer une DeliveryList pour l'EXPÉDITION (comme pour les livraisons locales)
+    // ✅ Adapter le nom selon le type
+    const typeName = order.status === 'EXPRESS' ? 'EXPRESS' : 'EXPÉDITION';
     const deliveryDate = new Date();
     const deliveryList = await prisma.deliveryList.create({
       data: {
-        nom: `EXPÉDITION ${order.orderReference} - ${order.clientVille}`,
+        nom: `${typeName} ${order.orderReference} - ${order.agenceRetrait || order.clientVille}`,
         date: deliveryDate,
         delivererId: parseInt(delivererId),
-        zone: order.clientVille
+        zone: order.agenceRetrait || order.clientVille
       }
     });
 
+    // ✅ Assigner le livreur sans changer le statut pour EXPRESS (reste EXPRESS)
+    // Pour EXPEDITION, passe en ASSIGNEE
+    const newStatus = order.status === 'EXPRESS' ? 'EXPRESS' : 'ASSIGNEE';
+    
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
         delivererId: parseInt(delivererId),
         deliveryListId: deliveryList.id,
         deliveryDate: deliveryDate,
-        status: 'ASSIGNEE', // Passe en ASSIGNEE une fois assignée
+        ...(order.status === 'EXPEDITION' && { status: 'ASSIGNEE' })
       },
     });
 
@@ -1336,16 +1343,16 @@ router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
       data: {
         orderId: order.id,
         oldStatus: order.status,
-        newStatus: 'ASSIGNEE',
+        newStatus: newStatus,
         changedBy: req.user.id,
-        comment: `EXPÉDITION assignée au livreur ${deliverer.prenom} ${deliverer.nom}.`
+        comment: `${typeName} assignée au livreur ${deliverer.prenom} ${deliverer.nom} pour livraison vers ${order.agenceRetrait || order.clientVille}.`
       }
     });
 
     res.json({ 
       order: updatedOrder,
       deliveryList,
-      message: 'EXPÉDITION assignée au livreur avec succès. Le gestionnaire de stock doit confirmer la remise du colis.' 
+      message: `${typeName} assignée au livreur avec succès.${order.status === 'EXPEDITION' ? ' Le gestionnaire de stock doit confirmer la remise du colis.' : ''}` 
     });
   } catch (error) {
     console.error('Erreur lors de l\'assignation du livreur:', error);
