@@ -22,6 +22,9 @@ export default function Products() {
     nom: '',
     description: '',
     prix: '',
+    prix1: '',
+    prix2: '',
+    prix3: '',
     stockActuel: '',
     stockAlerte: '10'
   });
@@ -30,6 +33,9 @@ export default function Products() {
     nom: '',
     description: '',
     prix: '',
+    prix1: '',
+    prix2: '',
+    prix3: '',
     stockAlerte: ''
   });
   const queryClient = useQueryClient();
@@ -55,6 +61,9 @@ export default function Products() {
         nom: productData.nom,
         description: productData.description || '',
         prixUnitaire: parseFloat(productData.prix),
+        prix1: productData.prix1 ? parseFloat(productData.prix1) : null,
+        prix2: productData.prix2 ? parseFloat(productData.prix2) : null,
+        prix3: productData.prix3 ? parseFloat(productData.prix3) : null,
         stockActuel: parseInt(productData.stockActuel),
         stockAlerte: parseInt(productData.stockAlerte)
       });
@@ -68,6 +77,9 @@ export default function Products() {
         nom: '',
         description: '',
         prix: '',
+        prix1: '',
+        prix2: '',
+        prix3: '',
         stockActuel: '',
         stockAlerte: '10'
       });
@@ -108,6 +120,9 @@ export default function Products() {
         nom: productData.nom,
         description: productData.description || '',
         prixUnitaire: parseFloat(productData.prix),
+        prix1: productData.prix1 ? parseFloat(productData.prix1) : null,
+        prix2: productData.prix2 ? parseFloat(productData.prix2) : null,
+        prix3: productData.prix3 ? parseFloat(productData.prix3) : null,
         stockAlerte: parseInt(productData.stockAlerte)
       });
       return data;
@@ -174,6 +189,9 @@ export default function Products() {
       nom: product.nom,
       description: product.description || '',
       prix: product.prixUnitaire.toString(),
+      prix1: product.prix1 ? product.prix1.toString() : '',
+      prix2: product.prix2 ? product.prix2.toString() : '',
+      prix3: product.prix3 ? product.prix3.toString() : '',
       stockAlerte: product.stockAlerte.toString()
     });
     setShowEditProductModal(true);
@@ -559,6 +577,67 @@ export default function Products() {
                   min="0"
                   step="100"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Prix par défaut (utilisé si pas de prix par quantité défini)
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">💰 Prix par quantité (optionnel)</h3>
+                <p className="text-xs text-blue-700 mb-3">
+                  Définissez des prix spécifiques selon la quantité commandée. Laissez vide pour utiliser le prix unitaire.
+                </p>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 1
+                    </label>
+                    <input
+                      type="number"
+                      value={editProduct.prix1}
+                      onChange={(e) => setEditProduct({ ...editProduct, prix1: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 10000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 2
+                    </label>
+                    <input
+                      type="number"
+                      value={editProduct.prix2}
+                      onChange={(e) => setEditProduct({ ...editProduct, prix2: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 18000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 3+
+                    </label>
+                    <input
+                      type="number"
+                      value={editProduct.prix3}
+                      onChange={(e) => setEditProduct({ ...editProduct, prix3: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 25000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                </div>
+                
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 Exemple : 1 produit = 10 000 F, 2 produits = 18 000 F, 3+ produits = 25 000 F
+                </p>
               </div>
 
               <div>
@@ -724,6 +803,67 @@ export default function Products() {
                   min="0"
                   step="100"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Prix par défaut (utilisé si pas de prix par quantité défini)
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">💰 Prix par quantité (optionnel)</h3>
+                <p className="text-xs text-blue-700 mb-3">
+                  Définissez des prix spécifiques selon la quantité commandée. Laissez vide pour utiliser le prix unitaire.
+                </p>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 1
+                    </label>
+                    <input
+                      type="number"
+                      value={newProduct.prix1}
+                      onChange={(e) => setNewProduct({ ...newProduct, prix1: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 10000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 2
+                    </label>
+                    <input
+                      type="number"
+                      value={newProduct.prix2}
+                      onChange={(e) => setNewProduct({ ...newProduct, prix2: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 18000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Prix pour 3+
+                    </label>
+                    <input
+                      type="number"
+                      value={newProduct.prix3}
+                      onChange={(e) => setNewProduct({ ...newProduct, prix3: e.target.value })}
+                      className="input text-sm"
+                      placeholder="Ex: 25000"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+                </div>
+                
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 Exemple : 1 produit = 10 000 F, 2 produits = 18 000 F, 3+ produits = 25 000 F
+                </p>
               </div>
 
               <div>
@@ -776,6 +916,9 @@ export default function Products() {
                     nom: '',
                     description: '',
                     prix: '',
+                    prix1: '',
+                    prix2: '',
+                    prix3: '',
                     stockActuel: '',
                     stockAlerte: '10'
                   });
