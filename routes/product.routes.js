@@ -90,9 +90,10 @@ router.post('/', authorize('ADMIN'), [
         nom,
         description,
         prixUnitaire: parseFloat(prixUnitaire),
-        prix1: prix1 ? parseFloat(prix1) : null,
-        prix2: prix2 ? parseFloat(prix2) : null,
-        prix3: prix3 ? parseFloat(prix3) : null,
+        // Gérer les strings vides comme null
+        prix1: (prix1 && prix1 !== '') ? parseFloat(prix1) : null,
+        prix2: (prix2 && prix2 !== '') ? parseFloat(prix2) : null,
+        prix3: (prix3 && prix3 !== '') ? parseFloat(prix3) : null,
         stockActuel: parseInt(stockActuel) || 0,
         stockAlerte: parseInt(stockAlerte) || 10
       }
@@ -150,9 +151,10 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     if (nom) updateData.nom = nom;
     if (description !== undefined) updateData.description = description;
     if (prixUnitaire) updateData.prixUnitaire = parseFloat(prixUnitaire);
-    if (prix1 !== undefined) updateData.prix1 = prix1 ? parseFloat(prix1) : null;
-    if (prix2 !== undefined) updateData.prix2 = prix2 ? parseFloat(prix2) : null;
-    if (prix3 !== undefined) updateData.prix3 = prix3 ? parseFloat(prix3) : null;
+    // Gérer les strings vides comme null
+    if (prix1 !== undefined) updateData.prix1 = (prix1 && prix1 !== '') ? parseFloat(prix1) : null;
+    if (prix2 !== undefined) updateData.prix2 = (prix2 && prix2 !== '') ? parseFloat(prix2) : null;
+    if (prix3 !== undefined) updateData.prix3 = (prix3 && prix3 !== '') ? parseFloat(prix3) : null;
     if (stockAlerte !== undefined) updateData.stockAlerte = parseInt(stockAlerte);
     if (actif !== undefined) updateData.actif = actif;
 
