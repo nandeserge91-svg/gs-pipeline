@@ -108,6 +108,12 @@ export default function Expeditions() {
               <strong>Code:</strong> {order.codeExpedition}
             </div>
           )}
+          {order.noteAppelant && (
+            <div className="text-xs bg-blue-50 border border-blue-200 rounded p-2">
+              <strong className="text-blue-800">📝 Note appelant:</strong>
+              <p className="text-blue-700 mt-1">{order.noteAppelant}</p>
+            </div>
+          )}
           <div className="text-lg font-bold text-gray-900">
             {formatCurrency(order.montant)}
           </div>
@@ -299,6 +305,12 @@ export default function Expeditions() {
                 <p className="text-sm font-mono bg-white p-2 rounded mt-2">
                   <strong>Code:</strong> {selectedOrder.codeExpedition}
                 </p>
+              )}
+              {selectedOrder.noteAppelant && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
+                  <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">{selectedOrder.noteAppelant}</p>
+                </div>
               )}
               <p className="text-xl font-bold text-gray-900 mt-2">
                 {formatCurrency(selectedOrder.montant)}

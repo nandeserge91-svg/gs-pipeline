@@ -170,6 +170,12 @@ export default function Deliveries() {
                       <div className="text-sm text-gray-600 pt-2 border-t">
                         <strong>Produit:</strong> {order.produitNom} (x{order.quantite})
                       </div>
+                      {order.noteAppelant && (
+                        <div className="text-xs bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                          <strong className="text-blue-800">📝 Note appelant:</strong>
+                          <p className="text-blue-700 mt-1">{order.noteAppelant}</p>
+                        </div>
+                      )}
                       <div className="text-lg font-bold text-gray-900">
                         {formatCurrency(order.montant)}
                       </div>
@@ -323,6 +329,12 @@ export default function Deliveries() {
                   {formatCurrency(selectedOrder.montant)}
                 </p>
               </div>
+              {selectedOrder.noteAppelant && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
+                  <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">{selectedOrder.noteAppelant}</p>
+                </div>
+              )}
               {selectedOrder.status !== 'ASSIGNEE' && selectedOrder.noteLivreur && (
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs text-gray-600 mb-1">Note actuelle :</p>
