@@ -469,6 +469,14 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
       });
     }
 
+    // Construire la note en préservant l'existante
+    let noteComplete = order.noteAppelant || '';
+    if (motif && !noteComplete.includes('[RENVOYÉE]')) {
+      noteComplete = noteComplete 
+        ? `${noteComplete}\n\n--- [RENVOYÉE] ${motif}` 
+        : `[RENVOYÉE] ${motif}`;
+    }
+
     // Réinitialiser la commande au statut A_APPELER
     const updatedOrder = await prisma.order.update({
       where: { id: parseInt(id) },
@@ -477,7 +485,7 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
         callerId: null, // Retirer l'appelant assigné
         calledAt: null,
         validatedAt: null,
-        noteAppelant: motif ? `[RENVOYÉE] ${motif}` : order.noteAppelant,
+        noteAppelant: noteComplete,
       },
       include: {
         caller: { select: { id: true, nom: true, prenom: true } },
@@ -528,6 +536,24 @@ router.post('/:id/attente-paiement', authorize('APPELANT', 'ADMIN', 'GESTIONNAIR
       });
     }
 
+    // Construire la note en préservant l'existante
+    let noteComplete = '';
+    if (order.noteAppelant) {
+      // Préserver la note existante
+      noteComplete = order.noteAppelant;
+    }
+    
+    // Ajouter le message d'attente de paiement (seulement si pas déjà présent)
+    const messageAttente = note 
+      ? `[EN ATTENTE PAIEMENT] ${note}` 
+      : '[EN ATTENTE PAIEMENT] Client prêt à payer';
+    
+    if (!noteComplete.includes('[EN ATTENTE PAIEMENT]')) {
+      noteComplete = noteComplete 
+        ? `${noteComplete}\n\n--- ${messageAttente}` 
+        : messageAttente;
+    }
+
     // Marquer en attente de paiement
     const updatedOrder = await prisma.order.update({
       where: { id: parseInt(id) },
@@ -536,7 +562,7 @@ router.post('/:id/attente-paiement', authorize('APPELANT', 'ADMIN', 'GESTIONNAIR
         attentePaiementAt: new Date(),
         callerId: req.user.id, // Assigner l'appelant
         calledAt: new Date(),
-        noteAppelant: note ? `[EN ATTENTE PAIEMENT] ${note}` : '[EN ATTENTE PAIEMENT] Client prêt à payer',
+        noteAppelant: noteComplete,
       },
       include: {
         caller: { select: { id: true, nom: true, prenom: true } }
