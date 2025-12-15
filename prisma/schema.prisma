@@ -261,7 +261,10 @@ model Product {
   code         String   @unique  // Code/référence produit
   nom          String
   description  String?
-  prixUnitaire Float
+  prixUnitaire Float    // Prix par défaut (si pas de prix par quantité)
+  prix1        Float?   // Prix pour 1 unité
+  prix2        Float?   // Prix pour 2 unités
+  prix3        Float?   // Prix pour 3 unités ou plus
   stockActuel  Int      @default(0)  // Stock disponible normal
   stockExpress Int      @default(0)  // Stock réservé EXPRESS (payé 10%, en attente retrait)
   stockAlerte  Int      @default(10) // Seuil d'alerte
