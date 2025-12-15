@@ -127,6 +127,17 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     const { id } = req.params;
     const { nom, description, prixUnitaire, prix1, prix2, prix3, stockAlerte, actif, code } = req.body;
 
+    console.log('🔍 Modification produit - Données reçues:', {
+      id,
+      nom,
+      code,
+      prixUnitaire,
+      prix1: `"${prix1}" (type: ${typeof prix1})`,
+      prix2: `"${prix2}" (type: ${typeof prix2})`,
+      prix3: `"${prix3}" (type: ${typeof prix3})`,
+      stockAlerte
+    });
+
     // Vérifier que le produit existe
     const existingProduct = await prisma.product.findUnique({
       where: { id: parseInt(id) }
@@ -152,11 +163,13 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (prixUnitaire) updateData.prixUnitaire = parseFloat(prixUnitaire);
     // Gérer les strings vides comme null
-    if (prix1 !== undefined) updateData.prix1 = (prix1 && prix1 !== '') ? parseFloat(prix1) : null;
-    if (prix2 !== undefined) updateData.prix2 = (prix2 && prix2 !== '') ? parseFloat(prix2) : null;
-    if (prix3 !== undefined) updateData.prix3 = (prix3 && prix3 !== '') ? parseFloat(prix3) : null;
+    if (prix1 !== undefined) updateData.prix1 = (prix1 && prix1 !== '' && prix1 !== null) ? parseFloat(prix1) : null;
+    if (prix2 !== undefined) updateData.prix2 = (prix2 && prix2 !== '' && prix2 !== null) ? parseFloat(prix2) : null;
+    if (prix3 !== undefined) updateData.prix3 = (prix3 && prix3 !== '' && prix3 !== null) ? parseFloat(prix3) : null;
     if (stockAlerte !== undefined) updateData.stockAlerte = parseInt(stockAlerte);
     if (actif !== undefined) updateData.actif = actif;
+
+    console.log('✅ updateData construit:', updateData);
 
     const product = await prisma.product.update({
       where: { id: parseInt(id) },
