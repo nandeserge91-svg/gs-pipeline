@@ -61,9 +61,9 @@ export default function Products() {
         nom: productData.nom,
         description: productData.description || '',
         prixUnitaire: parseFloat(productData.prix),
-        prix1: productData.prix1 ? parseFloat(productData.prix1) : null,
-        prix2: productData.prix2 ? parseFloat(productData.prix2) : null,
-        prix3: productData.prix3 ? parseFloat(productData.prix3) : null,
+        prix1: (productData.prix1 && productData.prix1 !== '') ? parseFloat(productData.prix1) : null,
+        prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
+        prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
         stockActuel: parseInt(productData.stockActuel),
         stockAlerte: parseInt(productData.stockAlerte)
       });
@@ -120,9 +120,9 @@ export default function Products() {
         nom: productData.nom,
         description: productData.description || '',
         prixUnitaire: parseFloat(productData.prix),
-        prix1: productData.prix1 ? parseFloat(productData.prix1) : null,
-        prix2: productData.prix2 ? parseFloat(productData.prix2) : null,
-        prix3: productData.prix3 ? parseFloat(productData.prix3) : null,
+        prix1: (productData.prix1 && productData.prix1 !== '') ? parseFloat(productData.prix1) : null,
+        prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
+        prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
         stockAlerte: parseInt(productData.stockAlerte)
       });
       return data;
