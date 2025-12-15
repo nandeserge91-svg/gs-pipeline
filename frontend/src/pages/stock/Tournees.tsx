@@ -16,7 +16,8 @@ const RAISONS_RETOUR = {
 
 export default function Tournees() {
   const today = new Date().toISOString().split('T')[0];
-  const [dateDebut, setDateDebut] = useState(today);
+  const defaultStartDate = '2025-12-01'; // 1er décembre 2025
+  const [dateDebut, setDateDebut] = useState(defaultStartDate);
   const [dateFin, setDateFin] = useState(today);
   const [selectedTournee, setSelectedTournee] = useState<any>(null);
   const [colisRemis, setColisRemis] = useState('');
