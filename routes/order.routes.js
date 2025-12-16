@@ -99,12 +99,8 @@ router.get('/', async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // ✅ Tri intelligent : 
-    // - Pour les appelants (A_APPELER/NOUVELLE) : tri par updatedAt DESC (commandes renvoyées en premier)
-    // - Pour les autres : tri par createdAt DESC (ordre normal)
-    const orderBy = (user.role === 'APPELANT' && !status) || (status && ['NOUVELLE', 'A_APPELER'].includes(status))
-      ? { updatedAt: 'desc' }
-      : { createdAt: 'desc' };
+    // ✅ Tri par date de création : commandes les plus récentes en premier
+    const orderBy = { createdAt: 'desc' };
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
