@@ -295,7 +295,15 @@ export default function RDV() {
                     {getUrgenceBadge(order.rdvDate, order.rdvRappele)}
                   </div>
                   <h3 className="font-bold text-lg text-gray-900">{order.clientNom}</h3>
-                  <p className="text-sm text-gray-600">📞 {order.clientTelephone}</p>
+                  <div className="flex items-center gap-2">
+                    <Phone size={16} className="text-primary-400" />
+                    <a 
+                      href={`tel:${order.clientTelephone}`}
+                      className="text-sm text-primary-600 hover:text-primary-800 hover:underline font-medium"
+                    >
+                      {order.clientTelephone}
+                    </a>
+                  </div>
                   <p className="text-sm text-gray-600">📍 {order.clientVille}</p>
                 </div>
                 <div className="text-right">
