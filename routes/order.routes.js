@@ -281,7 +281,10 @@ router.put('/:id/status', async (req, res) => {
           validatedAt: status === 'VALIDEE' ? new Date() : order.validatedAt,
           deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
           raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
-          retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt
+          retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
+          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
         },
         include: {
           caller: {
@@ -613,6 +616,9 @@ router.post('/:id/attente-paiement', authorize('APPELANT', 'ADMIN', 'GESTIONNAIR
         callerId: req.user.id, // Assigner l'appelant
         calledAt: new Date(),
         noteAppelant: noteComplete,
+        // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+        rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+        rdvRappele: order.rdvProgramme ? true : order.rdvRappele
       },
       include: {
         caller: { select: { id: true, nom: true, prenom: true } }
@@ -970,6 +976,9 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
           expedieAt: new Date(), // ✅ Date de paiement EXPEDITION pour comptabilité
           callerId: req.user.id,
           calledAt: new Date(),
+          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
         },
       });
 
@@ -1051,6 +1060,9 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
           expedieAt: new Date(), // ✅ Date de paiement avance EXPRESS (10%) pour comptabilité
           callerId: req.user.id,
           calledAt: new Date(),
+          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
         },
       });
 
