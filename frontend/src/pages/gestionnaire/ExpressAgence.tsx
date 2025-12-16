@@ -91,7 +91,17 @@ export default function ExpressAgence() {
   const stats = data?.stats || {};
 
   // Trier les commandes selon le critère sélectionné
+  // ✅ PRIORITÉ: Non retirés (EXPRESS_ARRIVE) en premier, puis Retirés (EXPRESS_LIVRE) en bas
   const sortedOrders = [...orders].sort((a, b) => {
+    // 1️⃣ Séparer les non retirés et retirés (priorité absolue)
+    const aIsRetire = a.status === 'EXPRESS_LIVRE';
+    const bIsRetire = b.status === 'EXPRESS_LIVRE';
+    
+    if (aIsRetire !== bIsRetire) {
+      return aIsRetire ? 1 : -1; // Non retirés en premier
+    }
+    
+    // 2️⃣ À l'intérieur de chaque groupe, trier selon le critère sélectionné
     switch (triPar) {
       case 'date':
         return new Date(b.arriveAt || b.expedieAt).getTime() - new Date(a.arriveAt || a.expedieAt).getTime();
