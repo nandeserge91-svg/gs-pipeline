@@ -176,13 +176,6 @@ export default function Deliveries() {
                           <p className="text-blue-700 mt-1">{order.noteAppelant}</p>
                         </div>
                       )}
-                      {/* ✅ NOUVEAU : Afficher noteGestionnaire pour les livreurs (taille, code, etc.) */}
-                      {(order as any).noteGestionnaire && (
-                        <div className="text-xs bg-purple-50 border border-purple-200 rounded p-2 mt-2">
-                          <strong className="text-purple-800">👕 Info produit:</strong>
-                          <p className="text-purple-700 mt-1">{(order as any).noteGestionnaire}</p>
-                        </div>
-                      )}
                       <div className="text-lg font-bold text-gray-900">
                         {formatCurrency(order.montant)}
                       </div>
@@ -340,13 +333,6 @@ export default function Deliveries() {
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
                   <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">{selectedOrder.noteAppelant}</p>
-                </div>
-              )}
-              {/* ✅ NOUVEAU : Afficher noteGestionnaire pour les livreurs */}
-              {(selectedOrder as any).noteGestionnaire && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-purple-800 mb-1 font-semibold">👕 Info produit (taille, code) :</p>
-                  <p className="text-sm bg-purple-50 border border-purple-200 rounded p-2 text-purple-700">{(selectedOrder as any).noteGestionnaire}</p>
                 </div>
               )}
               {selectedOrder.status !== 'ASSIGNEE' && selectedOrder.noteLivreur && (
