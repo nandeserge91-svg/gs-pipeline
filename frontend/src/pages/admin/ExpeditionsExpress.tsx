@@ -591,6 +591,7 @@ export default function ExpeditionsExpress() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Référence</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Client</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Appelant</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ville</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date & Heure</th>
@@ -612,6 +613,16 @@ export default function ExpeditionsExpress() {
                           <td className="py-3 px-4">
                             <div className="text-sm font-medium">{order.clientNom}</div>
                             <div className="text-xs text-gray-500">{order.clientTelephone}</div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {order.caller ? (
+                              <div className="text-sm">
+                                <div className="font-medium text-blue-600">{order.caller.prenom} {order.caller.nom}</div>
+                                <div className="text-xs text-gray-500">📞 Appelant</div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">Non assigné</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-sm">{order.clientVille}</td>
                           <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
@@ -715,6 +726,7 @@ export default function ExpeditionsExpress() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Référence</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Client</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Appelant</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Date & Heure</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Acompte (10%)</th>
@@ -731,31 +743,41 @@ export default function ExpeditionsExpress() {
                         : null;
                       
                       return (
-                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
-                          <td className="py-3 px-4">
-                            <div className="text-sm font-medium">{order.clientNom}</div>
-                            <div className="text-xs text-gray-500">{order.clientTelephone}</div>
-                          </td>
-                          <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
-                          <td className="py-3 px-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar size={14} className="text-gray-400" />
-                              <span>{formatDateTime(order.expedieAt || order.createdAt)}</span>
+                      <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
+                        <td className="py-3 px-4">
+                          <div className="text-sm font-medium">{order.clientNom}</div>
+                          <div className="text-xs text-gray-500">{order.clientTelephone}</div>
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {order.caller ? (
+                            <div className="text-sm">
+                              <div className="font-medium text-blue-600">{order.caller.prenom} {order.caller.nom}</div>
+                              <div className="text-xs text-gray-500">📞 Appelant</div>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-sm font-bold text-green-600">
-                            {formatCurrency(order.montantPaye || 0)}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-bold text-amber-600">
-                            {formatCurrency(order.montantRestant || 0)}
-                          </td>
-                          <td className="py-3 px-4 text-sm">
-                            <span className="inline-flex items-center gap-1">
-                              <MapPin size={14} />
-                              {order.agenceRetrait}
-                            </span>
-                          </td>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Non assigné</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{order.produitNom} (x{order.quantite})</td>
+                        <td className="py-3 px-4 text-sm">
+                          <div className="flex items-center gap-1">
+                            <Calendar size={14} className="text-gray-400" />
+                            <span>{formatDateTime(order.expedieAt || order.createdAt)}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-bold text-green-600">
+                          {formatCurrency(order.montantPaye || 0)}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-bold text-amber-600">
+                          {formatCurrency(order.montantRestant || 0)}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={14} />
+                            {order.agenceRetrait}
+                          </span>
+                        </td>
                           <td className="py-3 px-4 text-sm">
                             {deliverer ? (
                               <div className="text-sm">
@@ -766,7 +788,7 @@ export default function ExpeditionsExpress() {
                               <span className="text-xs text-gray-400 italic">Non assigné</span>
                             )}
                           </td>
-                          <td className="py-3 px-4">
+                        <td className="py-3 px-4">
                             <div className="flex gap-2">
                               {!order.delivererId && canAssignDeliverer && (
                                 <button
@@ -780,18 +802,18 @@ export default function ExpeditionsExpress() {
                                   Assigner livreur
                                 </button>
                               )}
-                              <button
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setShowArriveModal(true);
-                                }}
-                                className="btn btn-primary btn-sm"
-                              >
-                                Marquer arrivé
-                              </button>
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowArriveModal(true);
+                            }}
+                            className="btn btn-primary btn-sm"
+                          >
+                            Marquer arrivé
+                          </button>
                             </div>
-                          </td>
-                        </tr>
+                        </td>
+                      </tr>
                       );
                     })}
                   </tbody>
