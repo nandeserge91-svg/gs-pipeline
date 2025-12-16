@@ -249,8 +249,9 @@ export default function Orders() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      // Trier par date de création : Les plus RÉCENTES en PREMIER
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      // ✅ Trier par date de modification (updatedAt) : Les commandes RENVOYÉES remontent en PREMIER
+      // Cela permet aux commandes "renvoyées vers À appeler" d'apparaître en haut
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
   // Détecter les nouvelles commandes
