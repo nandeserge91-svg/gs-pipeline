@@ -10,6 +10,7 @@ export default function Deliveries() {
   const [villeFilter, setVilleFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [livreurFilter, setLivreurFilter] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   // Vérifier si la photo est expirée (plus de 7 jours)
@@ -63,8 +64,10 @@ Merci de votre confiance ! 🙏`;
   };
 
   const { data: listsData, isLoading } = useQuery({
-    queryKey: ['delivery-lists'],
-    queryFn: () => deliveryApi.getLists(),
+    queryKey: ['delivery-lists', livreurFilter],
+    queryFn: () => deliveryApi.getLists({ 
+      delivererId: livreurFilter || undefined 
+    }),
   });
 
   // Extraire les villes uniques pour le filtre
@@ -77,6 +80,21 @@ Merci de votre confiance ! 🙏`;
       });
     });
     return Array.from(villesSet).sort();
+  }, [listsData]);
+
+  // Extraire les livreurs uniques pour le filtre
+  const livreurs = useMemo(() => {
+    if (!listsData?.lists) return [];
+    const livreursMap = new Map();
+    listsData.lists.forEach((list: any) => {
+      if (list.deliverer) {
+        livreursMap.set(list.deliverer.id, {
+          id: list.deliverer.id,
+          nom: `${list.deliverer.prenom} ${list.deliverer.nom}`,
+        });
+      }
+    });
+    return Array.from(livreursMap.values()).sort((a, b) => a.nom.localeCompare(b.nom));
   }, [listsData]);
 
   // Filtrer les listes de livraison
@@ -141,7 +159,7 @@ Merci de votre confiance ! 🙏`;
           <h3 className="text-lg font-semibold text-gray-900">Filtres</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Search className="inline w-4 h-4 mr-1" />
@@ -167,6 +185,25 @@ Merci de votre confiance ! 🙏`;
               onChange={(e) => setDateFilter(e.target.value)}
               className="input w-full"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Truck className="inline w-4 h-4 mr-1" />
+              Livreur
+            </label>
+            <select
+              value={livreurFilter}
+              onChange={(e) => setLivreurFilter(e.target.value)}
+              className="input w-full"
+            >
+              <option value="">Tous les livreurs</option>
+              {livreurs.map((livreur) => (
+                <option key={livreur.id} value={livreur.id}>
+                  {livreur.nom}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -220,7 +257,7 @@ Merci de votre confiance ! 🙏`;
         </div>
 
         {/* Bouton reset filtres */}
-        {(searchTerm || typeFilter || villeFilter || statutFilter || dateFilter) && (
+        {(searchTerm || typeFilter || villeFilter || statutFilter || dateFilter || livreurFilter) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
@@ -229,6 +266,7 @@ Merci de votre confiance ! 🙏`;
                 setVilleFilter('');
                 setStatutFilter('');
                 setDateFilter('');
+                setLivreurFilter('');
               }}
               className="text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
@@ -247,7 +285,7 @@ Merci de votre confiance ! 🙏`;
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune liste de livraison</h3>
           <p className="text-gray-500">
-            {searchTerm || typeFilter || villeFilter || statutFilter
+            {searchTerm || typeFilter || villeFilter || statutFilter || dateFilter || livreurFilter
               ? 'Aucune liste ne correspond à vos critères de recherche'
               : 'Aucune liste de livraison disponible'}
           </p>
