@@ -9,20 +9,26 @@ import {
   Edit2,
   X,
   Search,
-  Filter
+  Filter,
+  Truck,
+  Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { rdvApi } from '@/lib/api';
+import { rdvApi, ordersApi } from '@/lib/api';
 import { formatCurrency } from '@/utils/statusHelpers';
+import ExpeditionModal from '@/components/modals/ExpeditionModal';
+import ExpressModal from '@/components/modals/ExpressModal';
 
 export default function RDV() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRappele, setFilterRappele] = useState<string>('non'); // 'tous', 'non', 'oui'
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [showRappelerModal, setShowRappelerModal] = useState(false);
+  const [showTraiterModal, setShowTraiterModal] = useState(false);
   const [showModifierModal, setShowModifierModal] = useState(false);
-  const [noteRappel, setNoteRappel] = useState('');
+  const [showExpeditionModal, setShowExpeditionModal] = useState(false);
+  const [showExpressModal, setShowExpressModal] = useState(false);
+  const [note, setNote] = useState('');
   const [modifRdvDate, setModifRdvDate] = useState('');
   const [modifRdvNote, setModifRdvNote] = useState('');
 
@@ -35,19 +41,41 @@ export default function RDV() {
     refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
   });
 
-  const rappelerMutation = useMutation({
-    mutationFn: ({ orderId, note }: { orderId: number; note?: string }) => 
-      rdvApi.rappeler(orderId, note),
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status, note }: { id: number; status: string; note?: string }) =>
+      ordersApi.updateStatus(id, status, note),
     onSuccess: () => {
-      toast.success('✅ RDV marqué comme traité');
       queryClient.invalidateQueries({ queryKey: ['rdv'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      setShowRappelerModal(false);
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-my-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caller-stats'] });
       setSelectedOrder(null);
-      setNoteRappel('');
+      setNote('');
+      setShowTraiterModal(false);
+      toast.success('✅ Commande traitée avec succès');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Erreur lors du traitement');
+      toast.error(error.response?.data?.error || 'Erreur lors de la mise à jour');
+    },
+  });
+
+  const attentePaiementMutation = useMutation({
+    mutationFn: ({ id, note }: { id: number; note?: string }) =>
+      ordersApi.marquerAttentePaiement(id, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rdv'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-my-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caller-stats'] });
+      setSelectedOrder(null);
+      setNote('');
+      setShowTraiterModal(false);
+      toast.success('✅ Commande marquée en attente de paiement');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la mise en attente');
     },
   });
 
@@ -79,19 +107,27 @@ export default function RDV() {
     },
   });
 
-  const handleRappeler = (order: any) => {
+  const handleTraiter = (order: any) => {
     setSelectedOrder(order);
-    setNoteRappel('');
-    setShowRappelerModal(true);
+    setNote('');
+    setShowTraiterModal(true);
   };
 
-  const confirmRappeler = () => {
-    if (selectedOrder) {
-      rappelerMutation.mutate({
-        orderId: selectedOrder.id,
-        note: noteRappel.trim() || undefined
-      });
-    }
+  const handleUpdateStatus = (status: string) => {
+    if (!selectedOrder) return;
+    updateStatusMutation.mutate({
+      id: selectedOrder.id,
+      status,
+      note: note.trim() || undefined
+    });
+  };
+
+  const handleAttentePaiement = () => {
+    if (!selectedOrder) return;
+    attentePaiementMutation.mutate({
+      id: selectedOrder.id,
+      note: note.trim() || undefined
+    });
   };
 
   const handleModifier = (order: any) => {
@@ -308,12 +344,11 @@ export default function RDV() {
               {!order.rdvRappele && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleRappeler(order)}
+                    onClick={() => handleTraiter(order)}
                     className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-                    disabled={rappelerMutation.isPending}
                   >
                     <Phone size={18} />
-                    Rappeler
+                    Traiter
                   </button>
                   <button
                     onClick={() => handleModifier(order)}
@@ -344,53 +379,144 @@ export default function RDV() {
         </div>
       )}
 
-      {/* Modal Rappeler */}
-      {showRappelerModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold mb-4">📞 Marquer comme rappelé</h3>
-            <p className="text-gray-700 mb-4">
-              Client: <span className="font-medium">{selectedOrder.clientNom}</span>
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              La commande sera retournée dans "À appeler" pour traitement normal.
-            </p>
+      {/* Modal Traiter */}
+      {showTraiterModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Traiter l'appel</h2>
+            
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-lg">{selectedOrder.clientNom}</h3>
+              <p className="text-gray-600">{selectedOrder.clientVille}</p>
+              <a href={`tel:${selectedOrder.clientTelephone}`} className="text-primary-600 text-lg font-medium">
+                {selectedOrder.clientTelephone}
+              </a>
+              <p className="mt-2 text-sm">
+                <strong>Produit:</strong> {selectedOrder.product?.nom || selectedOrder.produitNom} (x{selectedOrder.quantite})
+              </p>
+              <p className="text-sm">
+                <strong>Montant:</strong> {formatCurrency(selectedOrder.montant)}
+              </p>
+              {selectedOrder.rdvNote && (
+                <div className="mt-3 p-2 bg-yellow-50 rounded border border-yellow-200">
+                  <p className="text-xs text-yellow-800 font-medium mb-1">📝 Note RDV:</p>
+                  <p className="text-sm text-gray-700">{selectedOrder.rdvNote}</p>
+                </div>
+              )}
+            </div>
 
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Note de rappel (optionnel)
+                Note (optionnel)
               </label>
               <textarea
-                value={noteRappel}
-                onChange={(e) => setNoteRappel(e.target.value)}
-                placeholder="Ex: Client disponible maintenant, souhaite commander..."
-                className="input w-full"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="input"
                 rows={3}
+                placeholder="Ajouter une note..."
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="space-y-2">
               <button
-                onClick={confirmRappeler}
-                disabled={rappelerMutation.isPending}
-                className="btn btn-primary flex-1"
+                onClick={() => handleUpdateStatus('VALIDEE')}
+                className="btn btn-success w-full"
+                disabled={updateStatusMutation.isPending}
               >
-                {rappelerMutation.isPending ? 'Traitement...' : 'Confirmer'}
+                ✓ Commande validée (Livraison locale)
               </button>
+              
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <p className="text-xs text-gray-600 mb-2 font-medium">Pour les villes éloignées :</p>
+                
               <button
                 onClick={() => {
-                  setShowRappelerModal(false);
-                  setSelectedOrder(null);
-                  setNoteRappel('');
+                  setShowExpeditionModal(true);
                 }}
-                className="btn btn-secondary flex-1"
-                disabled={rappelerMutation.isPending}
+                className="btn bg-blue-600 text-white hover:bg-blue-700 w-full flex items-center justify-center gap-2"
+                disabled={updateStatusMutation.isPending}
               >
-                Annuler
+                <Truck size={18} />
+                📦 EXPÉDITION (Paiement 100%)
               </button>
+              
+              <button
+                onClick={handleAttentePaiement}
+                className="btn bg-purple-100 text-purple-700 hover:bg-purple-200 w-full flex items-center justify-center gap-2 mt-2 border border-purple-300"
+                disabled={attentePaiementMutation.isPending}
+              >
+                <Clock size={18} />
+                ⏳ En attente de paiement (EXPÉDITION)
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowExpressModal(true);
+                }}
+                className="btn bg-amber-600 text-white hover:bg-amber-700 w-full flex items-center justify-center gap-2 mt-2"
+                disabled={updateStatusMutation.isPending}
+              >
+                <Zap size={18} />
+                ⚡ EXPRESS (Paiement 10%)
+              </button>
+              </div>
+              
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <button
+                  onClick={() => handleUpdateStatus('INJOIGNABLE')}
+                  className="btn btn-secondary w-full"
+                  disabled={updateStatusMutation.isPending}
+                >
+                  📵 Client injoignable
+                </button>
+                <button
+                  onClick={() => handleUpdateStatus('ANNULEE')}
+                  className="btn btn-danger w-full mt-2"
+                  disabled={updateStatusMutation.isPending}
+                >
+                  ✕ Commande annulée
+                </button>
+              </div>
             </div>
+
+            <button
+              onClick={() => {
+                setShowTraiterModal(false);
+                setSelectedOrder(null);
+                setNote('');
+              }}
+              className="btn btn-secondary w-full mt-4"
+            >
+              Fermer
+            </button>
           </div>
         </div>
+      )}
+
+      {/* Modals EXPÉDITION & EXPRESS */}
+      {showExpeditionModal && selectedOrder && (
+        <ExpeditionModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowExpeditionModal(false);
+            setShowTraiterModal(false);
+            setSelectedOrder(null);
+            setNote('');
+          }}
+        />
+      )}
+
+      {showExpressModal && selectedOrder && (
+        <ExpressModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowExpressModal(false);
+            setShowTraiterModal(false);
+            setSelectedOrder(null);
+            setNote('');
+          }}
+        />
       )}
 
       {/* Modal Modifier */}
