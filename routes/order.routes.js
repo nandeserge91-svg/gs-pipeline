@@ -1109,7 +1109,7 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
 });
 
 // PUT /api/orders/:id/express/arrive - Marquer un EXPRESS comme arrivé en agence
-router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
+router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT', 'LIVREUR'), async (req, res) => {
   try {
     const { id } = req.params;
 
