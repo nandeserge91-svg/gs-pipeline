@@ -1,9 +1,8 @@
 import express from 'express';
-
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import prisma from '../config/prisma.js';
 
 const router = express.Router();
-import prisma from '../config/prisma.js';
 
 router.use(authenticate);
 
@@ -15,18 +14,8 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
-      if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
-      }
-      if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
-      }
+      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.lte = new Date(endDate);
     }
 
     // Statistiques globales
@@ -96,10 +85,9 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
   }
 });
 
-// GET /api/stats/callers - Statistiques des appelants (Admin/Gestionnaire/Appelant)
+// GET /api/stats/callers - Statistiques des appelants (Admin/Gestionnaire)
 // ✅ CORRIGÉ : Calcul depuis les commandes, pas depuis CallStatistic
-// ✅ APPELANT ajouté pour voir les performances de l'équipe
-router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
+router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
     const { startDate, endDate, callerId } = req.query;
 
@@ -110,18 +98,8 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
     
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.createdAt.gte = start;
-      }
-      if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt.lte = end;
-      }
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
     // Récupérer toutes les commandes avec appelant
@@ -164,24 +142,12 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
       
       const stats = callerStats[callerId];
       
-      // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
-      stats.totalAppels++;
-      
       // Compter selon le statut
-      // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
-      if (
-        order.status === 'VALIDEE' || 
-        order.status === 'ASSIGNEE' || 
-        order.status === 'EN_LIVRAISON' || 
-        order.status === 'LIVREE' || 
-        order.status === 'EXPEDITION' || 
-        order.status === 'EXPRESS' || 
-        order.status === 'EXPRESS_ARRIVE' || 
-        order.status === 'EXPRESS_LIVRE' ||
-        order.status === 'RETOURNE'
-      ) {
+      if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+        stats.totalAppels++;
+      } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
         stats.totalValides++;
-      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
+      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
         stats.totalAnnules++;
       } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
         stats.totalInjoignables++;
@@ -225,16 +191,16 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
 
     // Formater le résultat
     const result = Object.values(callerStats).map(caller => {
-      // ✅ CORRECTION : Taux basé sur le total d'appels
+      const totalTraite = caller.totalValides + caller.totalAnnules + caller.totalInjoignables;
       return {
         ...caller,
-        tauxValidation: caller.totalAppels > 0 
-          ? ((caller.totalValides / caller.totalAppels) * 100).toFixed(2)
+        tauxValidation: totalTraite > 0 
+          ? ((caller.totalValides / totalTraite) * 100).toFixed(2)
           : 0
       };
     });
 
-    res.json({ callers: result });
+    res.json({ stats: result });
   } catch (error) {
     console.error('Erreur récupération statistiques appelants:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des appelants.' });
@@ -254,18 +220,8 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
     
     if (startDate || endDate) {
       where.deliveredAt = {}; // Date de livraison
-      if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.deliveredAt.gte = start;
-      }
-      if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.deliveredAt.lte = end;
-      }
+      if (startDate) where.deliveredAt.gte = new Date(startDate);
+      if (endDate) where.deliveredAt.lte = new Date(endDate);
     }
 
     // Récupérer toutes les commandes avec livreur
@@ -327,7 +283,7 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
       };
     });
 
-    res.json({ deliverers: result });
+    res.json({ stats: result });
   } catch (error) {
     console.error('Erreur récupération statistiques livreurs:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des livreurs.' });
@@ -379,23 +335,11 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
       };
 
       orders.forEach(order => {
-        // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
+        if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
           totals.totalAppels++;
-        
-        // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
-        if (
-          order.status === 'VALIDEE' || 
-          order.status === 'ASSIGNEE' || 
-          order.status === 'EN_LIVRAISON' || 
-          order.status === 'LIVREE' || 
-          order.status === 'EXPEDITION' || 
-          order.status === 'EXPRESS' || 
-          order.status === 'EXPRESS_ARRIVE' || 
-          order.status === 'EXPRESS_LIVRE' ||
-          order.status === 'RETOURNE'
-        ) {
+        } else if (order.status === 'VALIDEE' || order.status === 'LIVREE' || order.status === 'EN_LIVRAISON') {
           totals.totalValides++;
-        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
+        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE') {
           totals.totalAnnules++;
         } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
           totals.totalInjoignables++;
@@ -408,9 +352,9 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
         }
       });
 
-      // ✅ CORRECTION : Taux basé sur le total d'appels
-      totals.tauxValidation = totals.totalAppels > 0 
-        ? ((totals.totalValides / totals.totalAppels) * 100).toFixed(2)
+      const totalTraite = totals.totalValides + totals.totalAnnules + totals.totalInjoignables;
+      totals.tauxValidation = totalTraite > 0 
+        ? ((totals.totalValides / totalTraite) * 100).toFixed(2)
         : 0;
 
       res.json({ stats: totals, details: [] }); // details vide car pas besoin
@@ -469,18 +413,8 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
-      if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
-      }
-      if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
-      }
+      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.lte = new Date(endDate);
     }
 
     let data;
@@ -493,18 +427,51 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
         }
       });
     } else if (type === 'callers') {
-      data = await prisma.callStatistic.findMany({
-        where: dateFilter.createdAt ? { date: dateFilter.createdAt } : {},
-        include: {
-          user: { select: { nom: true, prenom: true, email: true } }
-        }
+      // Export des statistiques appelants depuis les commandes
+      const orders = await prisma.order.groupBy({
+        by: ['callerId'],
+        where: dateFilter,
+        _count: { id: true }
+      });
+      
+      const callerIds = orders.map(o => o.callerId).filter(Boolean);
+      const callers = await prisma.user.findMany({
+        where: { id: { in: callerIds } },
+        select: { id: true, nom: true, prenom: true, email: true }
+      });
+      
+      data = orders.map(o => {
+        const caller = callers.find(c => c.id === o.callerId);
+        return {
+          ...caller,
+          totalCommandes: o._count.id
+        };
       });
     } else if (type === 'deliverers') {
-      data = await prisma.deliveryStatistic.findMany({
-        where: dateFilter.createdAt ? { date: dateFilter.createdAt } : {},
-        include: {
-          user: { select: { nom: true, prenom: true, email: true } }
-        }
+      // Export des statistiques livreurs depuis les commandes
+      const orders = await prisma.order.groupBy({
+        by: ['delivererId'],
+        where: {
+          ...dateFilter,
+          delivererId: { not: null }
+        },
+        _count: { id: true },
+        _sum: { montant: true }
+      });
+      
+      const delivererIds = orders.map(o => o.delivererId).filter(Boolean);
+      const deliverers = await prisma.user.findMany({
+        where: { id: { in: delivererIds } },
+        select: { id: true, nom: true, prenom: true, email: true }
+      });
+      
+      data = orders.map(o => {
+        const deliverer = deliverers.find(d => d.id === o.delivererId);
+        return {
+          ...deliverer,
+          totalLivraisons: o._count.id,
+          montantTotal: o._sum.montant || 0
+        };
       });
     }
 
@@ -516,10 +483,6 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
 });
 
 export default router;
-
-
-
-
 
 
 

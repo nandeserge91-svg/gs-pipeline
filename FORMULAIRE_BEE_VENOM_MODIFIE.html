@@ -1,0 +1,419 @@
+<!-- ===== POPUP BEE VENOM ===== -->
+<div id="popup-bv" class="bv-popup">
+  <div class="bv-popup-overlay" onclick="bvClosePopup()"></div>
+
+  <div class="bv-popup-content">
+    <div class="bv-ribbon">🔥 Offre spéciale Bee Venom</div>
+    <button type="button" class="bv-close" aria-label="Fermer" onclick="bvClosePopup()">×</button>
+
+    <div class="bv-header">
+      <div class="bv-icon">🐝</div>
+      <div>
+        <h3 class="bv-title">Confirme ta commande</h3>
+        <p class="bv-subtitle">Encore quelques infos et ton soulagement commence 🕒</p>
+      </div>
+    </div>
+
+    <div class="bv-progress">
+      <div class="bv-progress-fill"></div>
+    </div>
+
+    <form class="bv-form" id="bv-send" onsubmit="return bvSubmit(event);">
+
+      <div class="bv-field">
+        <label for="bv-nom">Nom complet *</label>
+        <input id="bv-nom" type="text" required placeholder="Ex : Awa Kouadio">
+      </div>
+
+      <div class="bv-field">
+        <label for="bv-tel">Contact *</label>
+        <div class="phone-wrapper">
+          <span class="flag">🇨🇮 +225</span>
+          <input id="bv-tel" type="tel" required placeholder="07 00 00 00 00" maxlength="14">
+        </div>
+      </div>
+
+      <div class="bv-field">
+        <label for="bv-ville">Ville *</label>
+        <input id="bv-ville" type="text" required placeholder="Ex : Commune">
+      </div>
+
+      <div class="bv-field">
+        <label for="bv-offre">Offre choisie</label>
+        <select id="bv-offre">
+          <option value="1_boite">1 boîte – 9 900 CFA</option>
+          <option value="2_boites">2 boîtes – 16 900 CFA (Recommandée)</option>
+          <option value="3_boites">3 boîtes – 23 900 CFA (Cure complète)</option>
+        </select>
+      </div>
+
+      <button type="submit" class="bv-submit">
+        ✅ Valider ma demande
+        <span class="bv-submit-sub">Un conseiller te contacte sous peu</span>
+      </button>
+
+      <p class="bv-note">Informations strictement confidentielles.</p>
+    </form>
+  </div>
+</div>
+
+<style>
+  :root{
+    --bv-green:#0c8a2a;
+    --bv-green-light:#16a34a;
+    --bv-gold:#eab308;
+  }
+
+  .bv-popup{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:999999;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .bv-popup.is-visible{display:flex;}
+
+  .bv-popup-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+  }
+
+  .bv-popup-content{
+    position:relative;
+    z-index:1;
+    max-width:430px;
+    width:92%;
+    background:white;
+    border-radius:18px;
+    padding:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+  }
+
+  .bv-ribbon{
+    background:linear-gradient(90deg,#0c8a2a,#16a34a,#eab308);
+    color:#fff;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    display:inline-block;
+    margin-bottom:10px;
+  }
+
+  .bv-close{
+    position:absolute;
+    top:6px;
+    right:8px;
+    background:none;
+    border:none;
+    font-size:22px;
+    cursor:pointer;
+  }
+
+  .bv-header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .bv-icon{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#facc15;
+    font-size:22px;
+  }
+
+  .bv-title{
+    margin:0;
+    font-size:19px;
+    font-weight:800;
+    color:#111827;
+  }
+
+  .bv-subtitle{
+    margin:3px 0 0;
+    font-size:13px;
+    color:#4b5563;
+  }
+
+  .bv-progress{
+    width:100%;
+    height:6px;
+    border-radius:999px;
+    background:#e5e7eb;
+    overflow:hidden;
+    margin-bottom:12px;
+  }
+
+  .bv-progress-fill{
+    width:65%;
+    height:100%;
+    background:linear-gradient(90deg,#0c8a2a,#16a34a,#eab308);
+    background-size:200% 100%;
+    animation:bvBarAnim 1.6s linear infinite;
+  }
+
+  @keyframes bvBarAnim{
+    0%{transform:translateX(-20%);}
+    100%{transform:translateX(20%);}
+  }
+
+  .bv-form{
+    font-size:13px;
+  }
+
+  .bv-field{
+    margin-bottom:10px;
+  }
+
+  .bv-field label{
+    display:block;
+    margin-bottom:3px;
+    font-size:11px;
+    font-weight:600;
+    color:#111827;
+  }
+
+  .bv-field input,
+  .bv-field select{
+    width:100%;
+    padding:9px 9px;
+    border-radius:9px;
+    border:1px solid #d4d4d4;
+    font-size:13px;
+    box-sizing:border-box;
+    outline:none;
+  }
+
+  .bv-field input:focus,
+  .bv-field select:focus{
+    border-color:#16a34a;
+    box-shadow:0 0 0 1px rgba(22,163,74,0.5);
+  }
+
+  .phone-wrapper{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border:1px solid #d4d4d4;
+    border-radius:9px;
+    padding:6px 10px;
+  }
+
+  .flag{
+    font-size:11px;
+    padding:3px 6px;
+    border-radius:999px;
+    background:#ecfccb;
+    white-space:nowrap;
+  }
+
+  .phone-wrapper input{
+    border:none!important;
+    outline:none!important;
+    flex:1;
+    background:transparent;
+  }
+
+  .bv-submit{
+    width:100%;
+    background:linear-gradient(90deg,#0c8a2a,#16a34a,#eab308);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:12px;
+    font-size:15px;
+    font-weight:800;
+    cursor:pointer;
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    box-shadow:0 14px 40px rgba(22,163,74,0.55);
+    animation:bvCtaPulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes bvCtaPulse{
+    0%,100%{transform:translateY(0) scale(1);}
+    50%{transform:translateY(-1px) scale(1.02);}
+  }
+
+  .bv-submit-sub{
+    font-size:11px;
+    opacity:0.9;
+  }
+
+  .bv-note{
+    margin-top:6px;
+    font-size:11px;
+    text-align:center;
+    color:#6b7280;
+  }
+
+  /* Flèche visible du select */
+  #bv-offre {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+
+    background: #ffffff 
+      url('data:image/svg+xml;utf8,<svg fill="%230f172a" height="20" width="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5"/></svg>')
+      no-repeat right 12px center !important;
+
+    background-size: 16px !important;
+    padding-right: 38px !important;
+    cursor: pointer !important;
+    border: 1px solid #d4d4d4 !important;
+    border-radius: 9px !important;
+  }
+
+  @media(max-width:640px){
+    .bv-popup-content{
+      padding:18px 14px;
+      border-radius:16px;
+    }
+  }
+</style>
+
+<script>
+// ===== OUVERTURE / FERMETURE =====
+function bvOpenPopup(){ 
+  document.getElementById('popup-bv').classList.add('is-visible'); 
+}
+function bvClosePopup(){ 
+  document.getElementById('popup-bv').classList.remove('is-visible'); 
+}
+
+// Ouvre avec <a href="#formancrecrem">
+document.addEventListener('click', function(e){
+  if(e.target.closest('a[href="#formancrecrem"]')){
+    e.preventDefault();
+    bvOpenPopup();
+  }
+});
+
+// ===== SAISIE TÉLÉPHONE : chiffres + espaces, effaçable =====
+document.addEventListener('input', function(e){
+  if(e.target.id === 'bv-tel'){
+    let v = e.target.value;
+    // On enlève tout sauf chiffres et espaces
+    v = v.replace(/[^\d\s]/g, '');
+    e.target.value = v;
+  }
+});
+
+// ===== ENVOI + VALIDATION + FORMATAGE =====
+function bvSubmit(e){
+  e.preventDefault();
+
+  let nom    = document.getElementById('bv-nom').value.trim();
+  let ville  = document.getElementById('bv-ville').value.trim();
+  let offre  = document.getElementById('bv-offre').value.trim();
+  let telRaw = document.getElementById('bv-tel').value.trim();
+
+  // On garde uniquement les chiffres
+  let digits = telRaw.replace(/\D/g,'');
+
+  // 🔴 OBLIGATOIRE : EXACTEMENT 10 CHIFFRES
+  if(digits.length !== 10){
+    alert("Veuillez entrer un numéro de 10 chiffres : ex. 07 00 00 00 00");
+    document.getElementById('bv-tel').focus();
+    return false;
+  }
+
+  // 👉 Format final pour Google Sheet : 22507 00 00 00 00
+  let first2 = digits.slice(0,2);  // 07
+  let rest   = digits.slice(2);    // 00000000
+
+  let groups = [];
+  while(rest.length > 0){
+    groups.push(rest.slice(0,2));
+    rest = rest.slice(2);
+  }
+
+  let finalTel = "225" + first2 + " " + groups.join(" ");
+
+  // TAG en fonction de l'offre
+  let tag =
+    (offre === "1_boite")  ? "1_Bee" :
+    (offre === "2_boites") ? "2_Bee" :
+    (offre === "3_boites") ? "3_Bee" :
+    offre;
+
+  // Nom de l'offre pour l'affichage
+  let offreNom =
+    (offre === "1_boite")  ? "Bee Venom 1 boîte" :
+    (offre === "2_boites") ? "Bee Venom 2 boîtes" :
+    (offre === "3_boites") ? "Bee Venom 3 boîtes" :
+    "Bee Venom";
+
+  // ====================================================
+  // 🚀 NOUVEAU : ENVOI VERS GS PIPELINE (DIRECT)
+  // ====================================================
+  fetch("https://gs-pipeline-production.up.railway.app/api/webhook/google-sheet", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      nom: nom,
+      telephone: finalTel,
+      ville: ville,
+      offre: offreNom,
+      tag: tag
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("✅ Commande envoyée vers GS Pipeline:", data);
+  })
+  .catch(error => {
+    console.error("⚠️ Erreur envoi GS Pipeline (mais continue):", error);
+  });
+
+  // ====================================================
+  // 📊 ANCIEN : ENVOI VERS GOOGLE APPS SCRIPT (CONSERVÉ)
+  // ====================================================
+  let url = "https://script.google.com/macros/s/AKfycbyd-LxquNAH3S7GjWr9TY8aulpSJSWP_tUCquh2eOwLCiVyDtffxkosIFQgNjPi65bu/exec";
+
+  let body = new URLSearchParams();
+  body.append("nom",       nom);
+  body.append("ville",     ville);
+  body.append("offre",     offreNom);
+  body.append("telephone", finalTel); // ex: 22507 00 00 00 00
+  body.append("tag",       tag);
+
+  fetch(url,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:body.toString()
+  });
+
+  // Reset et redirection
+  document.getElementById('bv-send').reset();
+  bvClosePopup();
+
+  window.location.href = "https://africastoresh.site/merci-bee/";
+  return false;
+}
+</script>
+
+
+
+
+
+
+
+
+

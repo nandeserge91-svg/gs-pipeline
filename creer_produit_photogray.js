@@ -1,0 +1,125 @@
+/**
+ * SCRIPT - CRÉER LE PRODUIT PHOTOGRAY
+ * 
+ * Ce script crée le produit PHOTOGRAY dans la base de données
+ */
+
+const API_URL = 'https://gs-pipeline-production.up.railway.app';
+const ADMIN_EMAIL = 'admin@gs-pipeline.com';
+const ADMIN_PASSWORD = 'admin123';
+
+async function creerProduitPhotoGray() {
+  console.log('\n╔══════════════════════════════════════════════════════════════╗');
+  console.log('║   📦 CRÉATION DU PRODUIT PHOTOGRAY                           ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝\n');
+
+  try {
+    // 1. Connexion admin
+    console.log('🔐 Connexion en tant qu\'admin...\n');
+    
+    const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD
+      })
+    });
+
+    if (!loginResponse.ok) {
+      throw new Error('Échec de connexion admin');
+    }
+
+    const { token } = await loginResponse.json();
+    console.log('✅ Connexion réussie !\n');
+
+    // 2. Vérifier si le produit existe déjà
+    console.log('🔍 Vérification si PHOTOGRAY existe...\n');
+    
+    const checkResponse = await fetch(`${API_URL}/api/products`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const { products } = await checkResponse.json();
+    const photograyExiste = products.find(p => p.code === 'PHOTOGRAY');
+
+    if (photograyExiste) {
+      console.log('⚠️  Le produit PHOTOGRAY existe déjà !\n');
+      console.log('   ID:', photograyExiste.id);
+      console.log('   Nom:', photograyExiste.nom);
+      console.log('   Prix:', photograyExiste.prixUnitaire, 'FCFA');
+      console.log('   Stock:', photograyExiste.stockActuel);
+      console.log('\n   Utilisez la modification de produit si besoin.\n');
+      return;
+    }
+
+    // 3. Créer le produit
+    console.log('📦 Création du produit PHOTOGRAY...\n');
+    
+    const createResponse = await fetch(`${API_URL}/api/products`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        code: 'PHOTOGRAY',
+        nom: 'LUNETTES PHOTOGRAY',
+        description: 'Verres PhotoGray - Variantes: Z, Y, X, M1, M2, M3',
+        prixUnitaire: 9900,     // Prix : 9900 FCFA
+        stockActuel: 100,       // Stock initial : 100 unités
+        stockMinimum: 10,
+        actif: true
+      })
+    });
+
+    if (!createResponse.ok) {
+      const error = await createResponse.json();
+      throw new Error(`Échec de création : ${error.error || 'Erreur inconnue'}`);
+    }
+
+    const newProduct = await createResponse.json();
+    
+    console.log('═══════════════════════════════════════════════════════════════\n');
+    console.log('✅ PRODUIT CRÉÉ AVEC SUCCÈS !\n');
+    console.log('   📋 Détails du produit :\n');
+    console.log(`      ID: ${newProduct.id}`);
+    console.log(`      Code: ${newProduct.code}`);
+    console.log(`      Nom: ${newProduct.nom}`);
+    console.log(`      Description: ${newProduct.description}`);
+    console.log(`      Prix: ${newProduct.prixUnitaire} FCFA`);
+    console.log(`      Stock: ${newProduct.stockActuel}`);
+    console.log(`      Actif: ${newProduct.actif ? 'Oui' : 'Non'}`);
+    console.log('\n═══════════════════════════════════════════════════════════════\n');
+    console.log('🎉 Maintenant, testez avec Google Apps Script :\n');
+    console.log('   1. Exécutez testPhotoGray() dans Apps Script');
+    console.log('   2. Le montant sera calculé automatiquement : 9900 FCFA');
+    console.log('   3. Les variantes (Z, Y, X) seront affichées dans les notes !');
+    console.log('\n═══════════════════════════════════════════════════════════════\n');
+
+  } catch (error) {
+    console.error('\n❌ ERREUR :', error.message, '\n');
+    throw error;
+  }
+}
+
+// Exécuter
+creerProduitPhotoGray()
+  .then(() => {
+    console.log('✅ Script terminé avec succès.\n');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('❌ Erreur fatale :', error.message);
+    process.exit(1);
+  });
+
+
+
+
