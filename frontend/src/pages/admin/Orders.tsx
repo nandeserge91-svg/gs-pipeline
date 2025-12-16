@@ -349,10 +349,16 @@ export default function Orders() {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             {/* Bouton Renvoyer à appeler - Visible pour Admin et Gestionnaire */}
-                            {canRenvoyerAppel && !['LIVREE', 'ASSIGNEE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status) && (
+                            {/* ✅ Maintenant disponible aussi pour les commandes ASSIGNEE */}
+                            {canRenvoyerAppel && !['LIVREE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status) && (
                               <button
                                 onClick={() => {
-                                  if (confirm(`Renvoyer cette commande vers "À appeler" ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\n\nCette action réinitialisera le traitement de la commande.`)) {
+                                  const isAssigned = order.status === 'ASSIGNEE';
+                                  const message = isAssigned
+                                    ? `⚠️ Renvoyer cette commande vers "À appeler" ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\nLivreur actuel: ${order.deliverer?.prenom} ${order.deliverer?.nom}\n\n⚠️ ATTENTION: Cette action va RETIRER la commande du livreur et la RÉINITIALISER complètement.\nVous pourrez ensuite la réassigner à un autre livreur.`
+                                    : `Renvoyer cette commande vers "À appeler" ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\n\nCette action réinitialisera le traitement de la commande.`;
+                                  
+                                  if (confirm(message)) {
                                     const motif = prompt('Motif du renvoi (optionnel):');
                                     renvoyerAppelMutation.mutate({ 
                                       orderId: order.id, 
@@ -361,7 +367,7 @@ export default function Orders() {
                                   }
                                 }}
                                 className="text-orange-600 hover:text-orange-800 transition-colors"
-                                title="Renvoyer vers À appeler"
+                                title={order.status === 'ASSIGNEE' ? 'Réinitialiser et renvoyer vers À appeler' : 'Renvoyer vers À appeler'}
                               >
                                 <RotateCcw size={18} />
                               </button>

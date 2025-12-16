@@ -488,29 +488,49 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
 
-    // Empêcher de renvoyer des commandes déjà livrées ou en cours de livraison
-    if (['LIVREE', 'ASSIGNEE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status)) {
+    // ✅ Empêcher UNIQUEMENT de renvoyer des commandes EXPEDITION/EXPRESS en cours ou livrées
+    // Les commandes ASSIGNEE peuvent maintenant être renvoyées pour réassignation
+    if (['LIVREE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status)) {
       return res.status(400).json({ 
-        error: 'Impossible de renvoyer une commande en cours de livraison ou déjà livrée.' 
+        error: 'Impossible de renvoyer une commande EXPEDITION/EXPRESS en cours ou déjà livrée.' 
       });
     }
 
     // Construire la note en préservant l'existante
     let noteComplete = order.noteAppelant || '';
+    const wasAssigned = order.status === 'ASSIGNEE' && order.delivererId;
+    
     if (motif && !noteComplete.includes('[RENVOYÉE]')) {
       noteComplete = noteComplete 
         ? `${noteComplete}\n\n--- [RENVOYÉE] ${motif}` 
         : `[RENVOYÉE] ${motif}`;
     }
+    
+    // Ajouter info sur l'ancien livreur si la commande était assignée
+    if (wasAssigned) {
+      const oldDeliverer = await prisma.user.findUnique({
+        where: { id: order.delivererId },
+        select: { prenom: true, nom: true }
+      });
+      if (oldDeliverer) {
+        noteComplete += `\n[Anciennement assignée à: ${oldDeliverer.prenom} ${oldDeliverer.nom}]`;
+      }
+    }
 
-    // Réinitialiser la commande au statut A_APPELER
+    // ✅ RÉINITIALISATION COMPLÈTE de la commande comme si elle était nouvelle
     const updatedOrder = await prisma.order.update({
       where: { id: parseInt(id) },
       data: {
         status: 'A_APPELER',
-        callerId: null, // Retirer l'appelant assigné
+        // Réinitialiser l'appelant
+        callerId: null,
         calledAt: null,
         validatedAt: null,
+        // ✅ NOUVEAU : Réinitialiser le livreur et la livraison
+        delivererId: null,
+        deliveryDate: null,
+        deliveryListId: null,
+        // Conserver la note avec l'historique
         noteAppelant: noteComplete,
       },
       include: {
@@ -520,13 +540,17 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
     });
 
     // Enregistrer l'historique
+    const historyComment = wasAssigned 
+      ? `Commande RÉINITIALISÉE et renvoyée vers "À appeler" par ${req.user.prenom} ${req.user.nom}${motif ? ' - Motif: ' + motif : ''} (Livreur précédent retiré)`
+      : `Commande renvoyée vers "À appeler" par ${req.user.prenom} ${req.user.nom}${motif ? ' - Motif: ' + motif : ''}`;
+    
     await prisma.statusHistory.create({
       data: {
         orderId: parseInt(id),
         oldStatus: order.status,
         newStatus: 'A_APPELER',
         changedBy: req.user.id,
-        comment: `Commande renvoyée vers "À appeler" par ${req.user.prenom} ${req.user.nom}${motif ? ' - Motif: ' + motif : ''}`
+        comment: historyComment
       }
     });
 
