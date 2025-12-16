@@ -99,6 +99,13 @@ router.get('/', async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // ✅ Tri intelligent : 
+    // - Pour les appelants (A_APPELER/NOUVELLE) : tri par updatedAt DESC (commandes renvoyées en premier)
+    // - Pour les autres : tri par createdAt DESC (ordre normal)
+    const orderBy = (user.role === 'APPELANT' && !status) || (status && ['NOUVELLE', 'A_APPELER'].includes(status))
+      ? { updatedAt: 'desc' }
+      : { createdAt: 'desc' };
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -110,7 +117,7 @@ router.get('/', async (req, res) => {
             select: { id: true, nom: true, prenom: true }
           }
         },
-        orderBy: { createdAt: 'desc' }, // Les plus récentes en premier par défaut
+        orderBy,
         skip,
         take: parseInt(limit)
       }),
