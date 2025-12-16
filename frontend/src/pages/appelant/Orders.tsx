@@ -236,8 +236,15 @@ export default function Orders() {
       
       if (!isToCall || hasRdv) return false; // Masquer toutes les autres commandes et les RDV
       
-      const matchesSearch = order.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.clientTelephone.includes(searchTerm);
+      // ✅ Recherche insensible à la casse sur tous les champs
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || 
+        order.clientNom.toLowerCase().includes(searchLower) ||
+        order.clientTelephone.toLowerCase().includes(searchLower) ||
+        order.orderReference.toLowerCase().includes(searchLower) ||
+        order.clientVille?.toLowerCase().includes(searchLower) ||
+        order.produitNom?.toLowerCase().includes(searchLower);
+      
       const matchesStatus = !statusFilter || order.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
