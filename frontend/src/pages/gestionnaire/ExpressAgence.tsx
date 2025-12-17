@@ -108,7 +108,7 @@ export default function ExpressAgence() {
       case 'notifications':
         return b.nombreNotifications - a.nombreNotifications;
       case 'jours':
-        return b.joursEnAgence - a.joursEnAgence;
+        return a.joursEnAgence - b.joursEnAgence; // ✅ Récents en premier (moins de jours)
       default:
         return 0;
     }
@@ -297,9 +297,9 @@ export default function ExpressAgence() {
               onChange={(e) => setTriPar(e.target.value as any)}
               className="input w-full"
             >
-              <option value="jours">Jours en agence (urgent)</option>
+              <option value="jours">Date d'arrivée (récent en premier)</option>
               <option value="notifications">Notifications (à relancer)</option>
-              <option value="date">Date d'arrivée (récent)</option>
+              <option value="date">Date d'arrivée exacte (récent)</option>
             </select>
           </div>
 
@@ -413,9 +413,9 @@ export default function ExpressAgence() {
               </p>
               <p className="text-xs text-gray-600">
                 Trié par: <strong>
-                  {triPar === 'jours' ? 'Jours en agence (urgent)' : 
+                  {triPar === 'jours' ? 'Date d\'arrivée (récent en premier)' : 
                    triPar === 'notifications' ? 'Notifications (à relancer)' : 
-                   'Date d\'arrivée (récent)'}
+                   'Date d\'arrivée exacte (récent)'}
                 </strong>
               </p>
             </div>
