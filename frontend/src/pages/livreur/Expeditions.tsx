@@ -47,12 +47,26 @@ export default function Expeditions() {
     },
   });
 
-  // Mutation pour confirmer une EXPÉDITION avec code + photo
+  // Mutation pour confirmer une EXPÉDITION ou EXPRESS avec code + photo
   const deliverExpeditionMutation = useMutation({
-    mutationFn: ({ orderId, codeExpedition, photoRecuExpedition }: { orderId: number; codeExpedition: string; photoRecuExpedition: string }) => 
-      ordersApi.deliverExpedition(orderId, codeExpedition, undefined, photoRecuExpedition),
-    onSuccess: () => {
-      toast.success('✅ Expédition confirmée comme expédiée');
+    mutationFn: ({ orderId, codeExpedition, photoRecuExpedition, orderType }: { 
+      orderId: number; 
+      codeExpedition: string; 
+      photoRecuExpedition: string;
+      orderType: 'EXPEDITION' | 'EXPRESS';
+    }) => {
+      // Si c'est EXPRESS, utiliser la route markExpressArrived avec code + photo
+      if (orderType === 'EXPRESS') {
+        return ordersApi.markExpressArrivedWithCode(orderId, codeExpedition, photoRecuExpedition);
+      }
+      // Si c'est EXPEDITION, utiliser la route deliverExpedition
+      return ordersApi.deliverExpedition(orderId, codeExpedition, undefined, photoRecuExpedition);
+    },
+    onSuccess: (data, variables) => {
+      const message = variables.orderType === 'EXPRESS' 
+        ? '✅ EXPRESS confirmé comme arrivé en agence'
+        : '✅ Expédition confirmée comme expédiée';
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey: ['livreur-expeditions'] });
       setSelectedExpedition(null);
       setCodeExpedition('');
@@ -92,11 +106,17 @@ export default function Expeditions() {
       toast.error('Veuillez saisir le code d\'expédition');
       return;
     }
+    
+    // Déterminer le type de commande
+    const isExpressOrder = selectedExpedition!.deliveryType === 'EXPRESS' || 
+                           selectedExpedition!.status.includes('EXPRESS');
+    
     // Photo facultative
     deliverExpeditionMutation.mutate({
       orderId: selectedExpedition!.id,
       codeExpedition: codeExpedition.trim(),
-      photoRecuExpedition: photoRecuExpedition.trim()
+      photoRecuExpedition: photoRecuExpedition.trim(),
+      orderType: isExpressOrder ? 'EXPRESS' : 'EXPEDITION'
     });
   };
 
@@ -178,27 +198,23 @@ export default function Expeditions() {
 
         {showActions && !isDelivered && (
           <div className="space-y-2">
-            {/* Bouton pour EXPÉDITION */}
-            {isExpedition && !isExpress && (order.status === 'EXPEDITION' || order.status === 'ASSIGNEE') && (
+            {/* Bouton "Confirmer l'expédition" pour EXPÉDITION (100%) et EXPRESS (10%) */}
+            {!isArrived && (
+              (isExpedition && !isExpress && (order.status === 'EXPEDITION' || order.status === 'ASSIGNEE')) ||
+              (isExpress && (order.status === 'EXPRESS' || order.status === 'ASSIGNEE'))
+            ) && (
               <button
                 onClick={() => setSelectedExpedition(order)}
-                className="btn btn-success w-full flex items-center justify-center gap-2"
+                className={`btn w-full flex items-center justify-center gap-2 ${
+                  isExpress ? 'btn-primary' : 'btn-success'
+                }`}
               >
                 <CheckCircle size={16} />
                 Confirmer l'expédition
               </button>
             )}
             
-            {/* Boutons pour EXPRESS */}
-            {!isArrived && isExpress && (
-              <button
-                onClick={() => setSelectedOrder(order)}
-                className="btn btn-primary w-full flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={16} />
-                Marquer arrivé à l'agence
-              </button>
-            )}
+            {/* Bouton "Marquer livrée" pour EXPRESS déjà arrivé */}
             {isArrived && (
               <button
                 onClick={() => {
@@ -405,119 +421,146 @@ export default function Expeditions() {
         </div>
       )}
 
-      {/* Modal de confirmation EXPÉDITION avec code + photo */}
-      {selectedExpedition && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">📦 Confirmer l'expédition</h2>
-            
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold text-lg">{selectedExpedition.clientNom}</h3>
-              <p className="text-gray-600">{selectedExpedition.clientVille}</p>
-              {selectedExpedition.clientAdresse && (
-                <p className="text-sm text-gray-600 mt-1">{selectedExpedition.clientAdresse}</p>
-              )}
-              <a href={`tel:${selectedExpedition.clientTelephone}`} className="text-primary-600 text-sm block mt-2">
-                📞 {selectedExpedition.clientTelephone}
-              </a>
-              <div className="mt-3 pt-3 border-t">
-                <p className="text-sm">
-                  <strong>Produit:</strong> {selectedExpedition.produitNom} (x{selectedExpedition.quantite})
-                </p>
-                <p className="text-xl font-bold text-gray-900 mt-2">
-                  {formatCurrency(selectedExpedition.montant)}
-                  <span className="text-sm font-normal text-green-600 ml-2">✅ Déjà payé</span>
-                </p>
-              </div>
-              {selectedExpedition.noteAppelant && (
+      {/* Modal de confirmation EXPÉDITION/EXPRESS avec code + photo */}
+      {selectedExpedition && (() => {
+        const isExpressModal = selectedExpedition.deliveryType === 'EXPRESS' || selectedExpedition.status.includes('EXPRESS');
+        const montantPaye = selectedExpedition.montantPaye || 0;
+        const isPaiement100 = montantPaye >= selectedExpedition.montant * 0.95;
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">
+                {isExpressModal ? '🚀 Confirmer l\'arrivée EXPRESS en agence' : '📦 Confirmer l\'expédition'}
+              </h2>
+              
+              <div className={`mb-6 p-4 rounded-lg ${isExpressModal ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'}`}>
+                <h3 className="font-semibold text-lg">{selectedExpedition.clientNom}</h3>
+                <p className="text-gray-600">{selectedExpedition.clientVille}</p>
+                {selectedExpedition.agenceRetrait && isExpressModal && (
+                  <p className="text-sm font-semibold text-purple-700 mt-1">
+                    🏢 Agence: {selectedExpedition.agenceRetrait}
+                  </p>
+                )}
+                {selectedExpedition.clientAdresse && !isExpressModal && (
+                  <p className="text-sm text-gray-600 mt-1">{selectedExpedition.clientAdresse}</p>
+                )}
+                <a href={`tel:${selectedExpedition.clientTelephone}`} className="text-primary-600 text-sm block mt-2">
+                  📞 {selectedExpedition.clientTelephone}
+                </a>
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
-                  <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">
-                    {selectedExpedition.noteAppelant}
+                  <p className="text-sm">
+                    <strong>Produit:</strong> {selectedExpedition.produitNom} (x{selectedExpedition.quantite})
+                  </p>
+                  <p className="text-xl font-bold text-gray-900 mt-2">
+                    {formatCurrency(selectedExpedition.montant)}
+                    {isPaiement100 ? (
+                      <span className="text-sm font-normal text-green-600 ml-2">✅ Payé 100%</span>
+                    ) : (
+                      <span className="text-sm font-normal text-orange-600 ml-2">
+                        💰 Payé {montantPaye} FCFA (10%) - Reste {selectedExpedition.montant - montantPaye} FCFA
+                      </span>
+                    )}
                   </p>
                 </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code d'expédition * <span className="text-red-500">(Obligatoire)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: EXP-2024-12345"
-                  value={codeExpedition}
-                  onChange={(e) => setCodeExpedition(e.target.value)}
-                  className="input w-full"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Code de tracking fourni par l'agence de transport
-                </p>
+                {selectedExpedition.noteAppelant && (
+                  <div className="mt-3 pt-3 border-t">
+                    <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
+                    <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">
+                      {selectedExpedition.noteAppelant}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photo du reçu (optionnel)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-primary-50 file:text-primary-700
-                    hover:file:bg-primary-100
-                    cursor-pointer"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Maximum 5 MB - Formats : JPG, PNG, GIF
-                </p>
-              </div>
-
-              {photoRecuExpedition && (
-                <div className="border-2 border-gray-200 rounded-lg p-2">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Aperçu :</p>
-                  <img 
-                    src={photoRecuExpedition} 
-                    alt="Aperçu du reçu" 
-                    className="max-w-full h-auto rounded"
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Code d'expédition * <span className="text-red-500">(Obligatoire)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={isExpressModal ? "Ex: EXP-EXPRESS-2024-12345" : "Ex: EXP-2024-12345"}
+                    value={codeExpedition}
+                    onChange={(e) => setCodeExpedition(e.target.value)}
+                    className="input w-full"
+                    required
                   />
-                  <button
-                    onClick={() => setPhotoRecuExpedition('')}
-                    className="text-xs text-red-600 hover:text-red-700 mt-2"
-                  >
-                    ✕ Supprimer la photo
-                  </button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isExpressModal 
+                      ? "Code de tracking fourni lors du dépôt à l'agence"
+                      : "Code de tracking fourni par l'agence de transport"
+                    }
+                  </p>
                 </div>
-              )}
-            </div>
 
-            <div className="space-y-2 mt-6">
-              <button
-                onClick={confirmDeliverExpedition}
-                className="btn btn-success w-full"
-                disabled={!codeExpedition.trim() || deliverExpeditionMutation.isPending}
-              >
-                {deliverExpeditionMutation.isPending ? 'Confirmation...' : '✅ Confirmer l\'expédition'}
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedExpedition(null);
-                  setCodeExpedition('');
-                  setPhotoRecuExpedition('');
-                }}
-                className="btn btn-secondary w-full"
-              >
-                Annuler
-              </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Photo du reçu (optionnel)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-primary-50 file:text-primary-700
+                      hover:file:bg-primary-100
+                      cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum 5 MB - Formats : JPG, PNG, GIF
+                  </p>
+                </div>
+
+                {photoRecuExpedition && (
+                  <div className="border-2 border-gray-200 rounded-lg p-2">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Aperçu :</p>
+                    <img 
+                      src={photoRecuExpedition} 
+                      alt="Aperçu du reçu" 
+                      className="max-w-full h-auto rounded"
+                    />
+                    <button
+                      onClick={() => setPhotoRecuExpedition('')}
+                      className="text-xs text-red-600 hover:text-red-700 mt-2"
+                    >
+                      ✕ Supprimer la photo
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 mt-6">
+                <button
+                  onClick={confirmDeliverExpedition}
+                  className={`btn w-full ${isExpressModal ? 'btn-primary' : 'btn-success'}`}
+                  disabled={!codeExpedition.trim() || deliverExpeditionMutation.isPending}
+                >
+                  {deliverExpeditionMutation.isPending 
+                    ? 'Confirmation...' 
+                    : isExpressModal 
+                      ? '✅ Confirmer l\'arrivée en agence'
+                      : '✅ Confirmer l\'expédition'
+                  }
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedExpedition(null);
+                    setCodeExpedition('');
+                    setPhotoRecuExpedition('');
+                  }}
+                  className="btn btn-secondary w-full"
+                >
+                  Annuler
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

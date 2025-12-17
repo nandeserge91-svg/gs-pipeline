@@ -1116,10 +1116,11 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
   }
 });
 
-// PUT /api/orders/:id/express/arrive - Marquer un EXPRESS comme arrivé en agence
+// PUT /api/orders/:id/express/arrive - Marquer un EXPRESS comme arrivé en agence (avec code + photo optionnels)
 router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT', 'LIVREUR'), async (req, res) => {
   try {
     const { id } = req.params;
+    const { codeExpedition, photoRecuExpedition, note } = req.body;
 
     const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
     
@@ -1127,8 +1128,13 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
 
-    if (order.status !== 'EXPRESS') {
+    if (order.status !== 'EXPRESS' && order.status !== 'ASSIGNEE') {
       return res.status(400).json({ error: 'Cette commande n\'est pas un EXPRESS en attente.' });
+    }
+
+    // Vérifier que le livreur est bien assigné (si c'est un livreur qui fait la requête)
+    if (req.user.role === 'LIVREUR' && order.delivererId !== req.user.id) {
+      return res.status(403).json({ error: 'Cet EXPRESS ne vous est pas assigné.' });
     }
 
     const updatedOrder = await prisma.order.update({
@@ -1136,16 +1142,20 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
       data: {
         status: 'EXPRESS_ARRIVE',
         arriveAt: new Date(),
+        codeExpedition: codeExpedition ? codeExpedition.trim() : order.codeExpedition,
+        photoRecuExpedition: photoRecuExpedition ? photoRecuExpedition.trim() : order.photoRecuExpedition,
+        photoRecuExpeditionUploadedAt: photoRecuExpedition ? new Date() : order.photoRecuExpeditionUploadedAt,
+        noteLivreur: note || order.noteLivreur,
       },
     });
 
     await prisma.statusHistory.create({
       data: {
         orderId: parseInt(id),
-        oldStatus: 'EXPRESS',
+        oldStatus: order.status,
         newStatus: 'EXPRESS_ARRIVE',
         changedBy: req.user.id,
-        comment: `Colis arrivé en agence: ${order.agenceRetrait}`,
+        comment: `Colis arrivé en agence: ${order.agenceRetrait}${codeExpedition ? ' - Code: ' + codeExpedition : ''}${note ? ' - ' + note : ''}`,
       },
     });
 
