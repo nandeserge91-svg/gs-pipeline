@@ -10,6 +10,9 @@ export default function Expeditions() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedExpedition, setSelectedExpedition] = useState<Order | null>(null);
+  const [codeExpedition, setCodeExpedition] = useState('');
+  const [photoRecuExpedition, setPhotoRecuExpedition] = useState('');
   const queryClient = useQueryClient();
 
   const { data: ordersData, isLoading } = useQuery({
@@ -44,6 +47,59 @@ export default function Expeditions() {
     },
   });
 
+  // Mutation pour confirmer une EXPÉDITION avec code + photo
+  const deliverExpeditionMutation = useMutation({
+    mutationFn: ({ orderId, codeExpedition, photoRecuExpedition }: { orderId: number; codeExpedition: string; photoRecuExpedition: string }) => 
+      ordersApi.deliverExpedition(orderId, codeExpedition, undefined, photoRecuExpedition),
+    onSuccess: () => {
+      toast.success('✅ Expédition confirmée comme expédiée');
+      queryClient.invalidateQueries({ queryKey: ['livreur-expeditions'] });
+      setSelectedExpedition(null);
+      setCodeExpedition('');
+      setPhotoRecuExpedition('');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la confirmation');
+    },
+  });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Vérifier la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 5 MB');
+      return;
+    }
+
+    // Convertir en base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoRecuExpedition(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const confirmDeliverExpedition = () => {
+    if (!codeExpedition.trim()) {
+      toast.error('Veuillez saisir le code d\'expédition');
+      return;
+    }
+    // Photo facultative
+    deliverExpeditionMutation.mutate({
+      orderId: selectedExpedition!.id,
+      codeExpedition: codeExpedition.trim(),
+      photoRecuExpedition: photoRecuExpedition.trim()
+    });
+  };
+
   const orders = ordersData?.orders || [];
 
   // Grouper les commandes par statut
@@ -59,6 +115,7 @@ export default function Expeditions() {
 
   const renderOrderCard = (order: Order, showActions: boolean = true) => {
     const isExpress = order.deliveryType === 'EXPRESS' || order.status.includes('EXPRESS');
+    const isExpedition = order.deliveryType === 'EXPEDITION' || (order.status === 'EXPEDITION' || order.status === 'ASSIGNEE');
     const isArrived = order.status === 'EXPRESS_ARRIVE';
     const isDelivered = ['EXPRESS_LIVRE', 'LIVREE'].includes(order.status);
 
@@ -121,6 +178,18 @@ export default function Expeditions() {
 
         {showActions && !isDelivered && (
           <div className="space-y-2">
+            {/* Bouton pour EXPÉDITION */}
+            {isExpedition && !isExpress && (order.status === 'EXPEDITION' || order.status === 'ASSIGNEE') && (
+              <button
+                onClick={() => setSelectedExpedition(order)}
+                className="btn btn-success w-full flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} />
+                Confirmer l'expédition
+              </button>
+            )}
+            
+            {/* Boutons pour EXPRESS */}
             {!isArrived && isExpress && (
               <button
                 onClick={() => setSelectedOrder(order)}
@@ -284,7 +353,7 @@ export default function Expeditions() {
         </>
       )}
 
-      {/* Modal de confirmation arrivée */}
+      {/* Modal de confirmation arrivée EXPRESS */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full">
@@ -327,6 +396,120 @@ export default function Expeditions() {
               </button>
               <button
                 onClick={() => setSelectedOrder(null)}
+                className="btn btn-secondary w-full"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation EXPÉDITION avec code + photo */}
+      {selectedExpedition && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">📦 Confirmer l'expédition</h2>
+            
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-lg">{selectedExpedition.clientNom}</h3>
+              <p className="text-gray-600">{selectedExpedition.clientVille}</p>
+              {selectedExpedition.clientAdresse && (
+                <p className="text-sm text-gray-600 mt-1">{selectedExpedition.clientAdresse}</p>
+              )}
+              <a href={`tel:${selectedExpedition.clientTelephone}`} className="text-primary-600 text-sm block mt-2">
+                📞 {selectedExpedition.clientTelephone}
+              </a>
+              <div className="mt-3 pt-3 border-t">
+                <p className="text-sm">
+                  <strong>Produit:</strong> {selectedExpedition.produitNom} (x{selectedExpedition.quantite})
+                </p>
+                <p className="text-xl font-bold text-gray-900 mt-2">
+                  {formatCurrency(selectedExpedition.montant)}
+                  <span className="text-sm font-normal text-green-600 ml-2">✅ Déjà payé</span>
+                </p>
+              </div>
+              {selectedExpedition.noteAppelant && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-xs text-blue-800 mb-1 font-semibold">📝 Note de l'appelant :</p>
+                  <p className="text-sm bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">
+                    {selectedExpedition.noteAppelant}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Code d'expédition * <span className="text-red-500">(Obligatoire)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: EXP-2024-12345"
+                  value={codeExpedition}
+                  onChange={(e) => setCodeExpedition(e.target.value)}
+                  className="input w-full"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Code de tracking fourni par l'agence de transport
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Photo du reçu (optionnel)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary-50 file:text-primary-700
+                    hover:file:bg-primary-100
+                    cursor-pointer"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum 5 MB - Formats : JPG, PNG, GIF
+                </p>
+              </div>
+
+              {photoRecuExpedition && (
+                <div className="border-2 border-gray-200 rounded-lg p-2">
+                  <p className="text-xs font-medium text-gray-700 mb-2">Aperçu :</p>
+                  <img 
+                    src={photoRecuExpedition} 
+                    alt="Aperçu du reçu" 
+                    className="max-w-full h-auto rounded"
+                  />
+                  <button
+                    onClick={() => setPhotoRecuExpedition('')}
+                    className="text-xs text-red-600 hover:text-red-700 mt-2"
+                  >
+                    ✕ Supprimer la photo
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 mt-6">
+              <button
+                onClick={confirmDeliverExpedition}
+                className="btn btn-success w-full"
+                disabled={!codeExpedition.trim() || deliverExpeditionMutation.isPending}
+              >
+                {deliverExpeditionMutation.isPending ? 'Confirmation...' : '✅ Confirmer l\'expédition'}
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedExpedition(null);
+                  setCodeExpedition('');
+                  setPhotoRecuExpedition('');
+                }}
                 className="btn btn-secondary w-full"
               >
                 Annuler
