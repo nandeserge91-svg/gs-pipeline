@@ -488,6 +488,14 @@ export default function ExpressAgence() {
                         Arrivé le {formatDateTime(order.arriveAt || order.expedieAt)}
                       </span>
                     </div>
+                    {order.codeExpedition && (
+                      <div className="flex items-center gap-2 text-sm mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <Package size={14} className="text-blue-600" />
+                        <span className="text-blue-800 font-mono font-semibold">
+                          Code: {order.codeExpedition}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -636,7 +644,12 @@ export default function ExpressAgence() {
               <p className="text-sm text-gray-600 mt-2">
                 Agence: <strong>{selectedOrder.agenceRetrait}</strong>
               </p>
-              <p className="text-sm text-gray-600">
+              {selectedOrder.codeExpedition && (
+                <p className="text-sm text-blue-700 font-mono mt-1">
+                  Code: <strong>{selectedOrder.codeExpedition}</strong>
+                </p>
+              )}
+              <p className="text-sm text-gray-600 mt-1">
                 À payer: <strong className="text-green-600">{formatCurrency(selectedOrder.montant * 0.90)}</strong>
               </p>
             </div>
