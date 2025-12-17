@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { expressApi } from '@/lib/api';
@@ -461,9 +462,15 @@ export default function ExpressAgence() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900">{order.clientNom}</h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        📞 {order.clientTelephone}
-                      </p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone size={16} className="text-gray-400" />
+                        <a 
+                          href={`tel:${order.clientTelephone}`}
+                          className="text-primary-600 hover:underline"
+                        >
+                          {order.clientTelephone}
+                        </a>
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">Réf: {order.orderReference}</p>
                     </div>
                     {order.status === 'EXPRESS_ARRIVE' ? (
@@ -640,7 +647,15 @@ export default function ExpressAgence() {
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <p className="font-semibold">{selectedOrder.clientNom}</p>
-              <p className="text-sm text-gray-600">{selectedOrder.clientTelephone}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Phone size={16} className="text-primary-400" />
+                <a 
+                  href={`tel:${selectedOrder.clientTelephone}`}
+                  className="text-primary-600 hover:underline font-medium"
+                >
+                  {selectedOrder.clientTelephone}
+                </a>
+              </div>
               <p className="text-sm text-gray-600 mt-2">
                 Agence: <strong>{selectedOrder.agenceRetrait}</strong>
               </p>
