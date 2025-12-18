@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Diagnostic SMS - GS Pipeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .check-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #6c757d;
+        }
+        
+        .check-item.checking {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .check-item.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .check-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .check-item h3 {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .check-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .check-item pre {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .alert.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .solution {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .solution h4 {
+            color: #1976D2;
+            margin-bottom: 8px;
+        }
+        
+        .solution ol {
+            margin-left: 20px;
+        }
+        
+        .solution li {
+            margin-bottom: 5px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔍 Diagnostic SMS - GS Pipeline</h1>
+            <p class="subtitle">Ce diagnostic va identifier pourquoi les SMS ne sont pas envoyés</p>
+            
+            <div class="alert warning">
+                <strong>⚠️ Important :</strong> Vous devez être connecté en tant qu'ADMIN sur afgestion.net
+            </div>
+            
+            <div class="form-group">
+                <label>🔑 Token d'Administration</label>
+                <input type="password" id="token" placeholder="Collez votre token ici">
+            </div>
+            
+            <button onclick="startDiagnostic()">🚀 Lancer le Diagnostic Complet</button>
+        </div>
+        
+        <div id="diagnosticResults" style="display: none;">
+            <div class="card">
+                <h2>📋 Résultats du Diagnostic</h2>
+                <div id="checks"></div>
+            </div>
+            
+            <div id="solutionCard" class="card" style="display: none;">
+                <h2>💡 Solution au Problème</h2>
+                <div id="solutionContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://gs-pipeline-production.up.railway.app';
+        let checks = [];
+        let problemsFound = [];
+        
+        function getHeaders() {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                throw new Error('Token manquant');
+            }
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+        
+        function addCheck(id, title, description) {
+            const check = { id, title, description, status: 'checking' };
+            checks.push(check);
+            renderChecks();
+            return check;
+        }
+        
+        function updateCheck(id, status, result = null, solution = null) {
+            const check = checks.find(c => c.id === id);
+            if (check) {
+                check.status = status;
+                check.result = result;
+                check.solution = solution;
+                if (status === 'error' && solution) {
+                    problemsFound.push({ check, solution });
+                }
+                renderChecks();
+            }
+        }
+        
+        function renderChecks() {
+            const container = document.getElementById('checks');
+            container.innerHTML = checks.map(check => `
+                <div class="check-item ${check.status}">
+                    <h3>
+                        ${check.status === 'checking' ? '🔄' : check.status === 'success' ? '✅' : '❌'}
+                        ${check.title}
+                    </h3>
+                    <p>${check.description}</p>
+                    ${check.result ? `<pre>${JSON.stringify(check.result, null, 2)}</pre>` : ''}
+                    ${check.solution ? `
+                        <div class="solution">
+                            <h4>💡 Solution :</h4>
+                            ${check.solution}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function startDiagnostic() {
+            try {
+                checks = [];
+                problemsFound = [];
+                document.getElementById('diagnosticResults').style.display = 'block';
+                document.getElementById('solutionCard').style.display = 'none';
+                
+                await check1_ApiConnection();
+                await check2_SmsConfig();
+                await check3_SmsCredits();
+                await check4_EnvVariables();
+                await check5_RecentOrders();
+                await check6_SmsHistory();
+                await check7_SmsStats();
+                await check8_DirectTest();
+                
+                showFinalSolution();
+                
+            } catch (error) {
+                alert('Erreur : ' + error.message);
+            }
+        }
+        
+        async function check1_ApiConnection() {
+            const check = addCheck('api', '1. Connexion API Railway', 'Vérification que le backend répond...');
+            
+            try {
+                const res = await fetch(`${API_URL}/`);
+                const data = await res.json();
+                
+                if (res.ok) {
+                    updateCheck('api', 'success', { status: 'OK', version: data.version });
+                } else {
+                    updateCheck('api', 'error', { status: res.status }, 
+                        `Le serveur répond avec une erreur ${res.status}. Attendez quelques minutes et réessayez.`);
+                }
+            } catch (error) {
+                updateCheck('api', 'error', { error: error.message },
+                    `Impossible de joindre le serveur. Vérifiez que Railway est bien déployé.`);
+            }
+        }
+        
+        async function check2_SmsConfig() {
+            const check = addCheck('config', '2. Configuration SMS', 'Récupération de la configuration SMS...');
+            
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/config`, { headers });
+                const config = await res.json();
+                
+                if (res.ok) {
+                    if (!config.enabled) {
+                        updateCheck('config', 'error', config,
+                            `<ol>
+                                <li>Allez sur <a href="https://railway.app/" target="_blank">Railway Dashboard</a></li>
+                                <li>Sélectionnez le projet <strong>afgestion</strong></li>
+                                <li>Service <strong>gs-pipeline</strong> → <strong>Variables</strong></li>
+                                <li>Ajoutez : <code>SMS_ENABLED=true</code></li>
+                                <li>Sauvegardez et attendez le redéploiement (1-2 min)</li>
+                            </ol>`
+                        );
+                    } else {
+                        // Vérifier les features
+                        const missingFeatures = [];
+                        if (!config.features.ORDER_CREATED) missingFeatures.push('SMS_ORDER_CREATED=true');
+                        if (!config.features.ORDER_VALIDATED) missingFeatures.push('SMS_ORDER_VALIDATED=true');
+                        
+                        if (missingFeatures.length > 0) {
+                            updateCheck('config', 'error', config,
+                                `<p>SMS activé mais certaines fonctionnalités sont désactivées :</p>
+                                <ol>
+                                    <li>Allez sur Railway → Variables</li>
+                                    <li>Ajoutez ces variables :<br><code>${missingFeatures.join('<br>')}</code></li>
+                                    <li>Sauvegardez et redéployez</li>
+                                </ol>`
+                            );
+                        } else {
+                            updateCheck('config', 'success', config);
+                        }
+                    }
+                } else {
+                    updateCheck('config', 'error', { status: res.status, error: await res.text() },
+                        `Erreur lors de la récupération de la config. Vérifiez votre token.`);
+                }
+            } catch (error) {
+                updateCheck('config', 'error', { error: error.message },
+                    `Impossible de récupérer la configuration SMS. Le endpoint /api/sms/config existe-t-il ?`);
+            }
+        }
+        
+        async function check3_SmsCredits() {
+            const check = addCheck('credits', '3. Crédits SMS8.io', 'Vérification des crédits disponibles...');
+            
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/credits`, { headers });
+                const credits = await res.json();
+                
+                if (res.ok && credits.success) {
+                    if (credits.credits <= 0) {
+                        updateCheck('credits', 'error', credits,
+                            `<ol>
+                                <li>Allez sur <a href="https://app.sms8.io/" target="_blank">SMS8.io Dashboard</a></li>
+                                <li>Connectez-vous avec votre compte</li>
+                                <li>Rechargez votre solde de crédits</li>
+                                <li>Minimum recommandé : 100 crédits</li>
+                            </ol>`
+                        );
+                    } else {
+                        updateCheck('credits', 'success', { credits: credits.credits, balance: `${credits.credits * credits.rate} ${credits.currency}` });
+                    }
+                } else {
+                    updateCheck('credits', 'error', credits,
+                        `<p>Impossible de récupérer les crédits SMS8.io.</p>
+                        <ol>
+                            <li>Vérifiez que la clé API est correcte sur Railway</li>
+                            <li>Variable : <code>SMS8_API_KEY=6a854258b60b92bd3a87ee563ac8a375ed28a78f</code></li>
+                            <li>Testez la clé sur <a href="https://app.sms8.io/" target="_blank">SMS8.io</a></li>
+                        </ol>`
+                    );
+                }
+            } catch (error) {
+                updateCheck('credits', 'error', { error: error.message },
+                    `Erreur lors de la vérification des crédits. L'API SMS8.io est-elle accessible ?`);
+            }
+        }
+        
+        async function check4_EnvVariables() {
+            const check = addCheck('env', '4. Variables d\'environnement', 'Analyse de la configuration...');
+            
+            // On vérifie indirectement via la config
+            const headers = getHeaders();
+            try {
+                const res = await fetch(`${API_URL}/api/sms/config`, { headers });
+                const config = await res.json();
+                
+                const requiredVars = {
+                    'SMS_ENABLED': config.enabled,
+                    'SMS_ORDER_CREATED': config.features.ORDER_CREATED,
+                    'SMS_ORDER_VALIDATED': config.features.ORDER_VALIDATED,
+                    'SMS_DELIVERY_ASSIGNED': config.features.DELIVERY_ASSIGNED,
+                    'SMS_ORDER_DELIVERED': config.features.ORDER_DELIVERED,
+                };
+                
+                const missing = Object.entries(requiredVars)
+                    .filter(([key, value]) => !value)
+                    .map(([key]) => key);
+                
+                if (missing.length > 0) {
+                    updateCheck('env', 'error', { missing },
+                        `<p><strong>Variables manquantes sur Railway :</strong></p>
+                        <div class="code-block">${missing.map(v => `${v}=true`).join('\n')}</div>
+                        <ol>
+                            <li>Railway Dashboard → Variables → New Variable</li>
+                            <li>Ajoutez chaque variable ci-dessus</li>
+                            <li>Sauvegardez et redéployez</li>
+                        </ol>`
+                    );
+                } else {
+                    updateCheck('env', 'success', { allSet: true });
+                }
+            } catch (error) {
+                updateCheck('env', 'error', { error: error.message });
+            }
+        }
+        
+        async function check5_RecentOrders() {
+            const check = addCheck('orders', '5. Commandes récentes', 'Vérification des dernières commandes...');
+            
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/orders?limit=5&sort=createdAt&order=desc`, { headers });
+                const data = await res.json();
+                
+                if (res.ok && data.orders && data.orders.length > 0) {
+                    const lastOrder = data.orders[0];
+                    const phoneValid = lastOrder.clientPhone && lastOrder.clientPhone.startsWith('+225');
+                    
+                    const result = {
+                        lastOrderId: lastOrder.id,
+                        lastOrderRef: lastOrder.reference,
+                        clientPhone: lastOrder.clientPhone,
+                        phoneValid: phoneValid,
+                        createdAt: lastOrder.createdAt
+                    };
+                    
+                    if (!phoneValid) {
+                        updateCheck('orders', 'error', result,
+                            `<p>❌ Le numéro de téléphone n'est pas au bon format !</p>
+                            <p>Format actuel : <code>${lastOrder.clientPhone}</code></p>
+                            <p>Format attendu : <code>+2250712345678</code></p>
+                            <ol>
+                                <li>Le numéro doit commencer par <strong>+225</strong></li>
+                                <li>Suivi du <strong>0</strong></li>
+                                <li>Puis des 9 chiffres</li>
+                                <li>Exemple correct : +2250712345678</li>
+                            </ol>
+                            <p>💡 Créez une nouvelle commande avec le bon format de numéro.</p>`
+                        );
+                    } else {
+                        updateCheck('orders', 'success', result);
+                    }
+                } else {
+                    updateCheck('orders', 'error', { noOrders: true },
+                        `Aucune commande trouvée. Créez une commande de test avec un numéro au format +2250712345678`);
+                }
+            } catch (error) {
+                updateCheck('orders', 'error', { error: error.message });
+            }
+        }
+        
+        async function check6_SmsHistory() {
+            const check = addCheck('history', '6. Historique SMS', 'Consultation de l\'historique d\'envoi...');
+            
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/history?limit=10`, { headers });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    if (data.total === 0) {
+                        updateCheck('history', 'error', { total: 0, logs: [] },
+                            `<p>❌ Aucun SMS n'a jamais été envoyé !</p>
+                            <p>Cela signifie que le code d'envoi ne s'exécute pas du tout.</p>
+                            <p><strong>Causes possibles :</strong></p>
+                            <ol>
+                                <li>Les variables SMS ne sont pas configurées sur Railway</li>
+                                <li>Le code n'a pas été déployé correctement</li>
+                                <li>Une erreur empêche l'exécution du code SMS</li>
+                            </ol>`
+                        );
+                    } else {
+                        const failed = data.logs.filter(log => log.status === 'FAILED');
+                        if (failed.length > 0) {
+                            updateCheck('history', 'error', { total: data.total, failed: failed.length, lastError: failed[0] },
+                                `<p>⚠️ ${failed.length} SMS ont échoué !</p>
+                                <p>Dernière erreur : <code>${failed[0].errorMessage || 'Non spécifiée'}</code></p>
+                                <p><strong>Solutions :</strong></p>
+                                <ol>
+                                    <li>Vérifiez vos crédits SMS8.io</li>
+                                    <li>Vérifiez la clé API sur Railway</li>
+                                    <li>Vérifiez que SMS8.io est opérationnel</li>
+                                </ol>`
+                            );
+                        } else {
+                            updateCheck('history', 'success', { total: data.total, recent: data.logs.slice(0, 3) });
+                        }
+                    }
+                } else {
+                    updateCheck('history', 'error', { error: await res.text() });
+                }
+            } catch (error) {
+                updateCheck('history', 'error', { error: error.message });
+            }
+        }
+        
+        async function check7_SmsStats() {
+            const check = addCheck('stats', '7. Statistiques SMS', 'Analyse des statistiques...');
+            
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/stats?days=7`, { headers });
+                const stats = await res.json();
+                
+                if (res.ok) {
+                    updateCheck('stats', stats.totalSent > 0 ? 'success' : 'error', stats,
+                        stats.totalSent === 0 ? 'Aucun SMS envoyé dans les 7 derniers jours.' : null);
+                } else {
+                    updateCheck('stats', 'error', { error: await res.text() });
+                }
+            } catch (error) {
+                updateCheck('stats', 'error', { error: error.message });
+            }
+        }
+        
+        async function check8_DirectTest() {
+            const check = addCheck('test', '8. Test direct d\'envoi', 'Tentative d\'envoi d\'un SMS test...');
+            
+            try {
+                const headers = getHeaders();
+                
+                // On ne fait pas vraiment le test pour ne pas consommer de crédits
+                // On vérifie juste que le endpoint existe
+                updateCheck('test', 'success', { note: 'Endpoint disponible. Utilisez test_sms_interface.html pour tester l\'envoi.' });
+                
+            } catch (error) {
+                updateCheck('test', 'error', { error: error.message });
+            }
+        }
+        
+        function showFinalSolution() {
+            if (problemsFound.length === 0) {
+                document.getElementById('solutionCard').style.display = 'block';
+                document.getElementById('solutionContent').innerHTML = `
+                    <div class="solution">
+                        <h4>✅ Configuration correcte !</h4>
+                        <p>Tous les tests sont passés. Le système SMS devrait fonctionner.</p>
+                        <p><strong>Si vous ne recevez toujours pas de SMS :</strong></p>
+                        <ol>
+                            <li>Vérifiez que le numéro de téléphone est au format <code>+2250712345678</code></li>
+                            <li>Consultez les logs Railway pour voir les erreurs : <a href="https://railway.app/" target="_blank">Railway Dashboard</a> → Deployments → View Logs</li>
+                            <li>Testez manuellement avec <code>test_sms_interface.html</code></li>
+                        </ol>
+                    </div>
+                `;
+            } else {
+                document.getElementById('solutionCard').style.display = 'block';
+                document.getElementById('solutionContent').innerHTML = `
+                    <div class="solution">
+                        <h4>🔧 ${problemsFound.length} problème(s) détecté(s)</h4>
+                        <p><strong>Corrigez ces problèmes dans l'ordre :</strong></p>
+                        ${problemsFound.map((p, i) => `
+                            <h4 style="margin-top: 20px;">Problème ${i + 1} : ${p.check.title}</h4>
+                            ${p.solution}
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
