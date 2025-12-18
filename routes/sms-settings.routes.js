@@ -3,7 +3,7 @@
  */
 
 import express from 'express';
-import { authorize } from '../middlewares/auth.middleware.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -92,7 +92,7 @@ const SMS_TYPES = [
  * GET /api/sms-settings
  * Récupérer tous les paramètres SMS
  */
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const settings = SMS_TYPES.map(type => ({
       ...type,
@@ -122,7 +122,7 @@ router.get('/', authorize('ADMIN'), async (req, res) => {
  * GET /api/sms-settings/categories
  * Récupérer les paramètres groupés par catégorie
  */
-router.get('/categories', authorize('ADMIN'), async (req, res) => {
+router.get('/categories', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const categories = {};
     
@@ -154,7 +154,7 @@ router.get('/categories', authorize('ADMIN'), async (req, res) => {
  * GET /api/sms-settings/stats
  * Statistiques d'utilisation par type de SMS
  */
-router.get('/stats', authorize('ADMIN'), async (req, res) => {
+router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient();
@@ -214,7 +214,7 @@ router.get('/stats', authorize('ADMIN'), async (req, res) => {
  * Les changements sont temporaires et seront perdus au redémarrage
  * Pour des changements permanents, il faut modifier les variables sur Railway
  */
-router.put('/toggle', authorize('ADMIN'), async (req, res) => {
+router.put('/toggle', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { key, enabled } = req.body;
 
@@ -262,7 +262,7 @@ router.put('/toggle', authorize('ADMIN'), async (req, res) => {
  * PUT /api/sms-settings/global
  * Activer/Désactiver tous les SMS
  */
-router.put('/global', authorize('ADMIN'), async (req, res) => {
+router.put('/global', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { enabled } = req.body;
 
@@ -290,7 +290,7 @@ router.put('/global', authorize('ADMIN'), async (req, res) => {
  * POST /api/sms-settings/test/:type
  * Tester l'envoi d'un type de SMS spécifique
  */
-router.post('/test/:type', authorize('ADMIN'), async (req, res) => {
+router.post('/test/:type', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { type } = req.params;
     const { phoneNumber } = req.body;
