@@ -82,3 +82,5 @@ console.log('   • Si "N/A" apparaît : ⚠️  Le regex ne fonctionne pas\n');
 
 
 
+
+

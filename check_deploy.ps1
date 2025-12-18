@@ -48,3 +48,5 @@ Write-Host "   4. Vérifiez que le prix est correct selon la quantité`n"
 Write-Host "✅ DÉPLOIEMENT TERMINÉ - Vous pouvez tester !" -ForegroundColor Green -BackgroundColor DarkGreen
 Write-Host ""
 
+
+

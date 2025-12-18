@@ -276,3 +276,5 @@ railway logs --service backend | grep "💰 Calcul prix"
 **Statut global** : ✅ Backend prêt, ⏳ Frontend en cours (2min)  
 **Prochaine action** : Attendre 2 minutes puis tester
 
+
+
