@@ -150,3 +150,4 @@ async function testAndroid() {
 testAndroid().catch(err => {
   console.error('❌ Erreur fatale:', err);
 });
+

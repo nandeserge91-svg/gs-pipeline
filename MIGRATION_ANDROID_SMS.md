@@ -257,3 +257,4 @@ Après la migration complète :
 ---
 
 **Le système est maintenant prêt à envoyer des SMS via votre Android dédié ! 🚀📱**
+

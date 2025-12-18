@@ -242,3 +242,4 @@ Si après configuration, les SMS ne partent toujours pas :
 4. **Testez** manuellement sur SMS8.io Dashboard
 
 **Le système devrait être opérationnel dans 5 minutes après configuration ! ⏰**
+
