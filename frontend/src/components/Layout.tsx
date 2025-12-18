@@ -20,7 +20,8 @@ import {
   X,
   DollarSign,
   Bell,
-  Calendar
+  Calendar,
+  Settings
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -55,6 +56,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Eye, label: 'Supervision Appelants', path: '/admin/supervision' },
           { icon: BarChart3, label: 'Statistiques', path: '/admin/stats' },
           { icon: DollarSign, label: 'Comptabilité', path: '/admin/accounting' },
+          { icon: Settings, label: 'Paramètres SMS', path: '/admin/sms-settings' },
         ];
       case 'GESTIONNAIRE':
         return [
