@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test SMS8.io - GS Pipeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .result pre {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .history-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .history-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🧪 Test SMS8.io - GS Pipeline</h1>
+            <p class="subtitle">Interface de test pour le système de notification SMS</p>
+            
+            <div class="alert warning">
+                <strong>⚠️ Configuration requise :</strong> Vous devez être connecté en tant qu'ADMIN sur afgestion.net pour utiliser cette interface.
+            </div>
+            
+            <div class="form-group">
+                <label>🔑 Token d'Administration</label>
+                <input type="password" id="token" placeholder="Collez votre token ici">
+                <div class="help-text">
+                    Pour obtenir votre token : Ouvrez afgestion.net → F12 → Console → <code>localStorage.getItem('token')</code>
+                </div>
+            </div>
+            
+            <button onclick="loadConfig()">📋 Charger la Configuration</button>
+        </div>
+        
+        <div id="configCard" class="card" style="display: none;">
+            <h2>⚙️ Configuration SMS</h2>
+            <div id="configResult" class="result"></div>
+        </div>
+        
+        <div id="creditsCard" class="card" style="display: none;">
+            <h2>💰 Crédits SMS</h2>
+            <div id="creditsResult" class="result"></div>
+        </div>
+        
+        <div id="testCard" class="card" style="display: none;">
+            <h2>📱 Envoyer un SMS de Test</h2>
+            
+            <div class="form-group">
+                <label>Numéro de téléphone</label>
+                <input type="tel" id="phone" placeholder="+2250712345678">
+                <div class="help-text">Format : +2250712345678 (avec indicatif pays et 0)</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="message" placeholder="Entrez votre message...">Test SMS GS-Pipeline - Système opérationnel ! 🎉</textarea>
+            </div>
+            
+            <button onclick="sendTestSMS()">📤 Envoyer le SMS</button>
+            <div id="testResult" class="result"></div>
+        </div>
+        
+        <div id="statsCard" class="card" style="display: none;">
+            <h2>📊 Statistiques SMS</h2>
+            <button onclick="loadStats()" class="btn-secondary" style="margin-bottom: 15px;">🔄 Actualiser</button>
+            <div id="statsResult" class="result"></div>
+            <div id="statsGrid" class="stats-grid"></div>
+        </div>
+        
+        <div id="historyCard" class="card" style="display: none;">
+            <h2>📜 Historique des SMS</h2>
+            <button onclick="loadHistory()" class="btn-secondary" style="margin-bottom: 15px;">🔄 Actualiser</button>
+            <div id="historyResult" class="result"></div>
+            <div id="historyTable"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://gs-pipeline-production.up.railway.app';
+        
+        function getHeaders() {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                throw new Error('Token manquant');
+            }
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+        
+        function showResult(elementId, type, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+            element.innerHTML = message;
+            
+            if (data) {
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data, null, 2);
+                element.appendChild(pre);
+            }
+        }
+        
+        async function loadConfig() {
+            try {
+                const headers = getHeaders();
+                
+                // Charger la config
+                const configRes = await fetch(`${API_URL}/api/sms/config`, { headers });
+                const config = await configRes.json();
+                
+                document.getElementById('configCard').style.display = 'block';
+                showResult('configResult', 'success', '✅ Configuration chargée avec succès', config);
+                
+                // Charger les crédits
+                const creditsRes = await fetch(`${API_URL}/api/sms/credits`, { headers });
+                const credits = await creditsRes.json();
+                
+                document.getElementById('creditsCard').style.display = 'block';
+                showResult('creditsResult', 'info', 
+                    `💰 Crédits disponibles : <strong>${credits.credits}</strong><br>` +
+                    `Taux : ${credits.rate} ${credits.currency}/SMS<br>` +
+                    `Solde total : ${credits.credits * credits.rate} ${credits.currency}`
+                );
+                
+                // Afficher les sections de test
+                document.getElementById('testCard').style.display = 'block';
+                document.getElementById('statsCard').style.display = 'block';
+                document.getElementById('historyCard').style.display = 'block';
+                
+                // Charger stats et historique
+                loadStats();
+                loadHistory();
+                
+            } catch (error) {
+                showResult('configResult', 'error', `❌ Erreur : ${error.message}`);
+            }
+        }
+        
+        async function sendTestSMS() {
+            try {
+                const headers = getHeaders();
+                const phone = document.getElementById('phone').value;
+                const message = document.getElementById('message').value;
+                
+                if (!phone) {
+                    throw new Error('Numéro de téléphone requis');
+                }
+                
+                if (!message) {
+                    throw new Error('Message requis');
+                }
+                
+                showResult('testResult', 'info', '📤 Envoi en cours...');
+                
+                const res = await fetch(`${API_URL}/api/sms/test`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ phoneNumber: phone, message })
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    showResult('testResult', 'success', 
+                        `✅ SMS envoyé avec succès !<br>` +
+                        `ID : ${result.smsId}<br>` +
+                        `Téléphone : ${result.phoneNumber}<br>` +
+                        `Crédits utilisés : ${result.creditsUsed}<br><br>` +
+                        `📱 Vérifiez votre téléphone !`
+                    );
+                    
+                    // Recharger l'historique
+                    setTimeout(loadHistory, 1000);
+                } else {
+                    showResult('testResult', 'error', `❌ Erreur : ${result.error}`);
+                }
+                
+            } catch (error) {
+                showResult('testResult', 'error', `❌ Erreur : ${error.message}`);
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/stats?days=7`, { headers });
+                const stats = await res.json();
+                
+                showResult('statsResult', 'success', '✅ Statistiques (7 derniers jours)');
+                
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalSent}</div>
+                        <div class="stat-label">Total envoyés</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.successful}</div>
+                        <div class="stat-label">Réussis</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.failed}</div>
+                        <div class="stat-label">Échoués</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.creditsUsed}</div>
+                        <div class="stat-label">Crédits utilisés</div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                showResult('statsResult', 'error', `❌ Erreur : ${error.message}`);
+            }
+        }
+        
+        async function loadHistory() {
+            try {
+                const headers = getHeaders();
+                const res = await fetch(`${API_URL}/api/sms/history?limit=10`, { headers });
+                const data = await res.json();
+                
+                showResult('historyResult', 'success', `✅ ${data.total} SMS total`);
+                
+                if (data.logs.length === 0) {
+                    document.getElementById('historyTable').innerHTML = '<p style="text-align: center; color: #666;">Aucun SMS envoyé pour le moment</p>';
+                    return;
+                }
+                
+                let html = '<table class="history-table"><thead><tr>';
+                html += '<th>Date</th><th>Type</th><th>Téléphone</th><th>Status</th><th>Crédits</th>';
+                html += '</tr></thead><tbody>';
+                
+                data.logs.forEach(log => {
+                    const date = new Date(log.sentAt).toLocaleString('fr-FR');
+                    const statusClass = log.status === 'SENT' ? 'success' : log.status === 'FAILED' ? 'error' : 'pending';
+                    
+                    html += '<tr>';
+                    html += `<td>${date}</td>`;
+                    html += `<td>${log.type}</td>`;
+                    html += `<td>${log.phoneNumber}</td>`;
+                    html += `<td><span class="badge ${statusClass}">${log.status}</span></td>`;
+                    html += `<td>${log.credits || 0}</td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('historyTable').innerHTML = html;
+                
+            } catch (error) {
+                showResult('historyResult', 'error', `❌ Erreur : ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
