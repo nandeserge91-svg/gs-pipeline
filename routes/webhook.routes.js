@@ -2,6 +2,7 @@ import express from 'express';
 
 import { body, validationResult } from 'express-validator';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
+import { sendSMS, smsTemplates } from '../services/sms.service.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -150,7 +151,24 @@ router.post('/make', verifyApiKey, [
       }
     });
 
-    // 4. Log pour traçabilité
+    // 4. Envoi SMS de confirmation (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    const smsOrderCreatedEnabled = process.env.SMS_ORDER_CREATED !== 'false';
+    
+    if (smsEnabled && smsOrderCreatedEnabled) {
+      try {
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        await sendSMS(order.clientTelephone, message, {
+          orderId: order.id,
+          type: 'ORDER_CREATED'
+        });
+        console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Make webhook)`);
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS Make webhook (non bloquante):', smsError.message);
+      }
+    }
+
+    // 5. Log pour traçabilité
     console.log('✅ Commande créée depuis Make:', {
       orderId: order.id,
       orderReference: order.orderReference,
@@ -367,6 +385,23 @@ router.post('/google-sheet', [
         product: true
       }
     });
+
+    // Envoi SMS de confirmation (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    const smsOrderCreatedEnabled = process.env.SMS_ORDER_CREATED !== 'false';
+    
+    if (smsEnabled && smsOrderCreatedEnabled) {
+      try {
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        await sendSMS(order.clientTelephone, message, {
+          orderId: order.id,
+          type: 'ORDER_CREATED'
+        });
+        console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Google Sheet webhook)`);
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS Google Sheet webhook (non bloquante):', smsError.message);
+      }
+    }
 
     console.log('✅ Commande créée depuis Google Sheet:', {
       orderId: order.id,
