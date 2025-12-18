@@ -231,7 +231,7 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
     
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
-        const message = smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
         await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED',
@@ -428,9 +428,9 @@ router.put('/:id/status', async (req, res) => {
           case 'VALIDEE':
             smsTypeEnabled = process.env.SMS_ORDER_VALIDATED !== 'false';
             if (smsTypeEnabled) {
-              smsMessage = smsTemplates.orderValidated(
-                updatedOrder.clientNom, 
-                updatedOrder.produitNom, 
+              smsMessage = await smsTemplates.orderValidated(
+                updatedOrder.clientNom,
+                updatedOrder.produitNom,
                 updatedOrder.montant
               );
               smsType = 'ORDER_VALIDATED';
@@ -440,8 +440,8 @@ router.put('/:id/status', async (req, res) => {
           case 'LIVREE':
             smsTypeEnabled = process.env.SMS_ORDER_DELIVERED !== 'false';
             if (smsTypeEnabled) {
-              smsMessage = smsTemplates.orderDelivered(
-                updatedOrder.clientNom, 
+              smsMessage = await smsTemplates.orderDelivered(
+                updatedOrder.clientNom,
                 updatedOrder.orderReference
               );
               smsType = 'ORDER_DELIVERED';
@@ -449,8 +449,8 @@ router.put('/:id/status', async (req, res) => {
             break;
 
           case 'ANNULEE':
-            smsMessage = smsTemplates.orderCancelled(
-              updatedOrder.clientNom, 
+            smsMessage = await smsTemplates.orderCancelled(
+              updatedOrder.clientNom,
               updatedOrder.orderReference
             );
             smsType = 'NOTIFICATION';
@@ -1252,7 +1252,7 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
     
     if (smsEnabled && smsExpressArrivedEnabled && updatedOrder.codeExpedition) {
       try {
-        const message = smsTemplates.expressArrived(
+        const message = await smsTemplates.expressArrived(
           updatedOrder.clientNom,
           updatedOrder.agenceRetrait || 'notre agence',
           updatedOrder.codeExpedition,

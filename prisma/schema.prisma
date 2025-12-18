@@ -418,3 +418,30 @@ model SmsLog {
   @@index([phoneNumber])
 }
 
+// Templates SMS personnalisables
+model SmsTemplate {
+  id                Int       @id @default(autoincrement())
+  key               String    @unique  // Clé unique (ORDER_CREATED, ORDER_VALIDATED, etc.)
+  label             String    // Nom affiché
+  description       String    // Description du template
+  category          String    // Catégorie (Commandes, Livraison, Expédition, etc.)
+  icon              String    // Icône emoji
+  
+  template          String    // Template personnalisé (avec variables)
+  defaultTemplate   String    // Template par défaut (pour reset)
+  variables         String    // Variables disponibles au format JSON (ex: ["prenom", "ref", "montant"])
+  
+  characterCount    Int       @default(0)  // Nombre de caractères du template
+  isActive          Boolean   @default(true)
+  
+  lastModifiedAt    DateTime  @updatedAt
+  lastModifiedBy    Int?      // User qui a modifié en dernier
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("sms_templates")
+  @@index([key])
+  @@index([category])
+}
+

@@ -182,72 +182,72 @@ router.post('/test', authorize('ADMIN'), async (req, res) => {
  */
 router.get('/templates', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
   try {
-    // Liste des templates avec exemples
-    const templates = [
+    // Liste des templates avec exemples (génération asynchrone)
+    const templates = await Promise.all([
       {
         id: 'orderCreated',
         name: 'Commande créée',
         description: 'Notification lors de la création d\'une commande',
-        example: smsTemplates.orderCreated('John Doe', 'ORD-12345'),
+        example: await smsTemplates.orderCreated('John Doe', 'ORD-12345'),
         parameters: ['clientNom', 'orderReference']
       },
       {
         id: 'orderValidated',
         name: 'Commande validée',
         description: 'Notification lors de la validation d\'une commande',
-        example: smsTemplates.orderValidated('John Doe', 'BEE VENOM', 10000),
+        example: await smsTemplates.orderValidated('John Doe', 'BEE VENOM', 10000),
         parameters: ['clientNom', 'produitNom', 'montant']
       },
       {
         id: 'deliveryAssigned',
         name: 'Livreur assigné',
         description: 'Notification quand un livreur est assigné',
-        example: smsTemplates.deliveryAssigned('John Doe', 'Mohamed', '+2250712345678'),
+        example: await smsTemplates.deliveryAssigned('John Doe', 'Mohamed', '+2250712345678'),
         parameters: ['clientNom', 'livreurNom', 'telephone']
       },
       {
         id: 'orderDelivered',
         name: 'Commande livrée',
         description: 'Notification après livraison réussie',
-        example: smsTemplates.orderDelivered('John Doe', 'ORD-12345'),
+        example: await smsTemplates.orderDelivered('John Doe', 'ORD-12345'),
         parameters: ['clientNom', 'orderReference']
       },
       {
         id: 'expeditionConfirmed',
         name: 'Expédition confirmée',
         description: 'Notification EXPEDITION avec code de suivi',
-        example: smsTemplates.expeditionConfirmed('John Doe', 'EXP-2024-12345', 'Yamoussoukro'),
+        example: await smsTemplates.expeditionConfirmed('John Doe', 'EXP-2024-12345', 'Yamoussoukro'),
         parameters: ['clientNom', 'codeExpedition', 'ville']
       },
       {
         id: 'expressArrived',
         name: 'EXPRESS arrivé en agence',
         description: 'Notification arrivée EXPRESS avec code retrait',
-        example: smsTemplates.expressArrived('John Doe', 'Agence Cocody', 'EXP-2024-789', 9000),
+        example: await smsTemplates.expressArrived('John Doe', 'Agence Cocody', 'EXP-2024-789', 9000),
         parameters: ['clientNom', 'agence', 'codeExpedition', 'montantRestant']
       },
       {
         id: 'expressReminder',
         name: 'Rappel retrait EXPRESS',
         description: 'Rappel si colis non retiré après plusieurs jours',
-        example: smsTemplates.expressReminder('John Doe', 'Agence Cocody', 'EXP-2024-789', 3),
+        example: await smsTemplates.expressReminder('John Doe', 'Agence Cocody', 'EXP-2024-789', 3),
         parameters: ['clientNom', 'agence', 'codeExpedition', 'joursAttente']
       },
       {
         id: 'rdvScheduled',
         name: 'RDV programmé',
         description: 'Confirmation de programmation de RDV',
-        example: smsTemplates.rdvScheduled('John Doe', '20/12/2024', '14:00'),
+        example: await smsTemplates.rdvScheduled('John Doe', '20/12/2024', '14:00'),
         parameters: ['clientNom', 'rdvDate', 'rdvHeure']
       },
       {
         id: 'rdvReminder',
         name: 'Rappel RDV',
         description: 'Rappel 1h avant le RDV',
-        example: smsTemplates.rdvReminder('John Doe', '14:00'),
+        example: await smsTemplates.rdvReminder('John Doe', '14:00'),
         parameters: ['clientNom', 'rdvHeure']
       }
-    ];
+    ]);
 
     res.json({
       success: true,

@@ -69,7 +69,7 @@ router.post('/:id/programmer', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 
           minute: '2-digit' 
         });
 
-        const message = smsTemplates.rdvScheduled(
+        const message = await smsTemplates.rdvScheduled(
           updatedOrder.clientNom,
           rdvDateFormatted,
           rdvHeureFormatted

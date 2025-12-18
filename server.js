@@ -18,6 +18,7 @@ import rdvRoutes from './routes/rdv.routes.js';
 import deleteOrdersRoutes from './routes/delete-orders.routes.js';
 import smsRoutes from './routes/sms.routes.js';
 import smsSettingsRoutes from './routes/sms-settings.routes.js';
+import smsTemplatesRoutes from './routes/sms-templates.routes.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/express', expressRoutes);
 app.use('/api/rdv', rdvRoutes);
 app.use('/api/sms', smsRoutes); // 📱 Routes SMS
 app.use('/api/sms-settings', smsSettingsRoutes); // ⚙️ Routes paramètres SMS
+app.use('/api/sms-templates', smsTemplatesRoutes); // 📝 Routes templates SMS
 
 // Route de test
 app.get('/', (req, res) => {

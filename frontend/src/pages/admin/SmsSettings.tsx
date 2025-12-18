@@ -13,10 +13,12 @@ import {
   XCircle,
   TrendingUp,
   Smartphone,
-  Loader
+  Loader,
+  Edit3
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import SmsTemplateEditor from './SmsTemplateEditor';
 
 interface SmsSetting {
   key: string;
@@ -42,6 +44,7 @@ interface AndroidConfig {
 }
 
 export default function SmsSettings() {
+  const [activeTab, setActiveTab] = useState<'settings' | 'templates'>('settings');
   const [loading, setLoading] = useState(true);
   const [globalEnabled, setGlobalEnabled] = useState(false);
   const [settings, setSettings] = useState<SmsSetting[]>([]);
@@ -179,10 +182,45 @@ export default function SmsSettings() {
             Paramètres SMS
           </h1>
           <p className="text-gray-600 mt-1">
-            Gérez l'activation des notifications SMS automatiques
+            Gérez l'activation des notifications SMS et personnalisez les messages
           </p>
         </div>
       </div>
+
+      {/* Onglets */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-6">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'settings'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Settings className="w-4 h-4 inline mr-2" />
+            Paramètres
+          </button>
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'templates'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Edit3 className="w-4 h-4 inline mr-2" />
+            Éditeur de Templates
+          </button>
+        </nav>
+      </div>
+
+      {/* Contenu selon l'onglet actif */}
+      {activeTab === 'templates' ? (
+        <SmsTemplateEditor />
+      ) : (
+        <>
+      {/* Configuration Android - visible seulement dans l'onglet paramètres */}
 
       {/* Configuration Android */}
       {androidConfig.deviceId && (
@@ -416,6 +454,8 @@ export default function SmsSettings() {
           Le SMS de test sera envoyé avec le premier type activé
         </p>
       </div>
+        </>
+      )}
     </div>
   );
 }

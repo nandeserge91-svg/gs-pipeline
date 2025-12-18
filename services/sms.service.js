@@ -22,6 +22,38 @@ const SMS_SENDER_NUMBER = process.env.SMS_SENDER_NUMBER || '+2250595871746'; // 
 const SMS_SENDER_NAME = process.env.SMS_SENDER_NAME || 'GS-Pipeline';
 
 /**
+ * 📋 Charger un template SMS depuis la base de données
+ * @param {string} templateKey - Clé du template (ORDER_CREATED, ORDER_VALIDATED, etc.)
+ * @returns {Promise<object|null>} - Template ou null si non trouvé
+ */
+export async function getTemplate(templateKey) {
+  try {
+    const template = await prisma.smsTemplate.findUnique({
+      where: { key: templateKey }
+    });
+    return template;
+  } catch (error) {
+    console.error(`❌ Erreur chargement template ${templateKey}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * 🔄 Remplacer les variables dans un template
+ * @param {string} template - Template avec variables {prenom}, {ref}, etc.
+ * @param {object} variables - Objet avec les valeurs {prenom: 'John', ref: '123'}
+ * @returns {string} - Template avec variables remplacées
+ */
+function replaceVariables(template, variables) {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{${key}\\}`, 'g');
+    result = result.replace(regex, value || '');
+  }
+  return result;
+}
+
+/**
  * 📤 Fonction principale d'envoi de SMS
  * @param {string} phone - Numéro de téléphone (format : +225XXXXXXXXXX ou 225XXXXXXXXXX)
  * @param {string} message - Message à envoyer (max 160 caractères standard)
@@ -120,130 +152,147 @@ export async function sendSMS(phone, message, metadata = {}) {
 }
 
 /**
+ * 📋 Générer un message SMS depuis un template de la DB
+ * @param {string} templateKey - Clé du template (ORDER_CREATED, etc.)
+ * @param {object} variables - Variables à remplacer {prenom: 'John', ref: '123', ...}
+ * @returns {Promise<string>} - Message généré
+ */
+export async function generateSmsFromTemplate(templateKey, variables) {
+  try {
+    // Charger le template depuis la DB
+    const template = await getTemplate(templateKey);
+    
+    if (!template || !template.isActive) {
+      console.warn(`⚠️ Template ${templateKey} non trouvé ou désactivé, utilisation du fallback`);
+      return generateFallbackMessage(templateKey, variables);
+    }
+    
+    // Remplacer les variables dans le template
+    const message = replaceVariables(template.template, variables);
+    
+    return message;
+    
+  } catch (error) {
+    console.error(`❌ Erreur génération SMS ${templateKey}:`, error.message);
+    return generateFallbackMessage(templateKey, variables);
+  }
+}
+
+/**
+ * 🆘 Messages de fallback en cas d'erreur de chargement
+ */
+function generateFallbackMessage(templateKey, variables) {
+  const fallbacks = {
+    ORDER_CREATED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} est enregistree. - AFGestion`,
+    ORDER_VALIDATED: `Bonjour ${variables.prenom}, votre commande ${variables.produit} (${variables.montant} F) est confirmee. - AFGestion`,
+    DELIVERY_ASSIGNED: `Bonjour ${variables.prenom}, votre livreur ${variables.livreur} (${variables.telephone}) est en route. - AFGestion`,
+    ORDER_DELIVERED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete livree avec succes. - AFGestion`,
+    EXPEDITION_CONFIRMED: `Bonjour ${variables.prenom}, votre colis a ete expedie vers ${variables.ville}. Code: ${variables.code}. - AFGestion`,
+    EXPRESS_ARRIVED: `Bonjour ${variables.prenom}, votre colis est arrive a ${variables.agence}. Code: ${variables.code}. A payer: ${variables.montant} F. - AFGestion`,
+    EXPRESS_REMINDER: `Bonjour ${variables.prenom}, votre colis vous attend a ${variables.agence} depuis ${variables.jours} jours. Code: ${variables.code}. - AFGestion`,
+    RDV_SCHEDULED: `Bonjour ${variables.prenom}, RDV programme le ${variables.date} a ${variables.heure}. - AFGestion`,
+    RDV_REMINDER: `Bonjour ${variables.prenom}, rappel de votre RDV a ${variables.heure}. - AFGestion`,
+    ORDER_CANCELLED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete annulee. - AFGestion`,
+    PAYMENT_CONFIRMED: `Bonjour ${variables.prenom}, paiement de ${variables.montant} F recu pour ${variables.ref}. - AFGestion`,
+  };
+  
+  return fallbacks[templateKey] || `Notification de AFGestion`;
+}
+
+/**
  * 📋 TEMPLATES DE MESSAGES SMS
  * 
- * Tous les messages sont limités à 160 caractères pour un SMS standard
- * Les accents sont conservés (supportés par SMS8.io)
+ * Ces fonctions chargent maintenant les templates depuis la base de données
+ * et permettent leur personnalisation via l'interface admin
  */
 export const smsTemplates = {
   
   /**
    * 🆕 Commande créée (NOUVELLE)
    */
-  orderCreated: (clientNom, orderReference) => {
-    const prenom = clientNom.split(' ')[0]; // Premier prénom seulement
-    return `Bonjour ${prenom}, votre commande ${orderReference} est enregistree. Nous vous appellerons bientot. - ${SMS_SENDER_NAME}`;
+  orderCreated: async (clientNom, orderReference) => {
+    const prenom = clientNom.split(' ')[0];
+    return await generateSmsFromTemplate('ORDER_CREATED', { prenom, ref: orderReference });
   },
 
   /**
    * ✅ Commande validée
    */
-  orderValidated: (clientNom, produitNom, montant) => {
+  orderValidated: async (clientNom, produitNom, montant) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre commande ${produitNom} (${montant} F) est confirmee. Livraison prochainement. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('ORDER_VALIDATED', { prenom, produit: produitNom, montant });
   },
 
   /**
    * 🚚 Livreur en route
    */
-  deliveryAssigned: (clientNom, livreurNom, telephone) => {
+  deliveryAssigned: async (clientNom, livreurNom, telephone) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre livreur ${livreurNom} (${telephone}) est en route. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('DELIVERY_ASSIGNED', { prenom, livreur: livreurNom, telephone });
   },
 
   /**
    * ✅ Commande livrée
    */
-  orderDelivered: (clientNom, orderReference) => {
+  orderDelivered: async (clientNom, orderReference) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre commande ${orderReference} a ete livree avec succes. Merci de votre confiance ! - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('ORDER_DELIVERED', { prenom, ref: orderReference });
   },
 
   /**
    * 📦 EXPEDITION - Confirmation expédition (100%)
    */
-  expeditionConfirmed: (clientNom, codeExpedition, ville) => {
+  expeditionConfirmed: async (clientNom, codeExpedition, ville) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre colis a ete expedie vers ${ville}. Code suivi: ${codeExpedition}. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('EXPEDITION_CONFIRMED', { prenom, code: codeExpedition, ville });
   },
 
   /**
    * 🏢 EXPRESS - Arrivé en agence (avec code)
    */
-  expressArrived: (clientNom, agence, codeExpedition, montantRestant) => {
+  expressArrived: async (clientNom, agence, codeExpedition, montantRestant) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre colis est arrive a ${agence}. Code retrait: ${codeExpedition}. A payer: ${montantRestant} F. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('EXPRESS_ARRIVED', { prenom, agence, code: codeExpedition, montant: montantRestant });
   },
 
   /**
    * 🏢 EXPRESS - Rappel retrait (si client tarde)
    */
-  expressReminder: (clientNom, agence, codeExpedition, joursAttente) => {
+  expressReminder: async (clientNom, agence, codeExpedition, joursAttente) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre colis vous attend a ${agence} depuis ${joursAttente} jours. Code: ${codeExpedition}. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('EXPRESS_REMINDER', { prenom, agence, code: codeExpedition, jours: joursAttente });
   },
 
   /**
    * 📅 RDV - Programmation
    */
-  rdvScheduled: (clientNom, rdvDate, rdvHeure) => {
+  rdvScheduled: async (clientNom, rdvDate, rdvHeure) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, RDV programme le ${rdvDate} a ${rdvHeure}. Merci de rester disponible. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('RDV_SCHEDULED', { prenom, date: rdvDate, heure: rdvHeure });
   },
 
   /**
    * 📅 RDV - Rappel (1h avant)
    */
-  rdvReminder: (clientNom, rdvHeure) => {
+  rdvReminder: async (clientNom, rdvHeure) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, rappel de votre RDV a ${rdvHeure}. Nous vous appellerons bientot. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('RDV_REMINDER', { prenom, heure: rdvHeure });
   },
 
   /**
    * ❌ Commande annulée
    */
-  orderCancelled: (clientNom, orderReference) => {
+  orderCancelled: async (clientNom, orderReference) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, votre commande ${orderReference} a ete annulee comme demande. - ${SMS_SENDER_NAME}`;
+    return await generateSmsFromTemplate('ORDER_CANCELLED', { prenom, ref: orderReference });
   },
 
   /**
    * 💰 Confirmation paiement EXPEDITION
    */
-  paymentConfirmed: (clientNom, montant, orderReference) => {
+  paymentConfirmed: async (clientNom, montant, orderReference) => {
     const prenom = clientNom.split(' ')[0];
-    return `Bonjour ${prenom}, paiement de ${montant} F recu pour la commande ${orderReference}. Merci ! - ${SMS_SENDER_NAME}`;
-  },
-
-  /**
-   * 🔔 Alerte livreur - Nouvelle livraison
-   */
-  delivererNewDelivery: (livreurNom, nombreCommandes, zone) => {
-    const prenom = livreurNom.split(' ')[0];
-    return `Bonjour ${prenom}, vous avez ${nombreCommandes} nouvelle(s) livraison(s) assignee(s) pour ${zone}. - ${SMS_SENDER_NAME}`;
-  },
-
-  /**
-   * 📊 Alerte appelant - Objectif atteint
-   */
-  callerGoalReached: (appelantNom, nombreValidees, objectif) => {
-    const prenom = appelantNom.split(' ')[0];
-    return `Bravo ${prenom} ! Vous avez valide ${nombreValidees}/${objectif} commandes aujourd'hui. Excellent travail ! - ${SMS_SENDER_NAME}`;
-  },
-
-  /**
-   * 🎉 Message de bienvenue nouvel utilisateur
-   */
-  welcomeUser: (userNom, userRole) => {
-    const prenom = userNom.split(' ')[0];
-    const roleLabel = {
-      ADMIN: 'Administrateur',
-      GESTIONNAIRE: 'Gestionnaire',
-      APPELANT: 'Appelant',
-      LIVREUR: 'Livreur',
-      GESTIONNAIRE_STOCK: 'Gestionnaire Stock'
-    }[userRole] || userRole;
-    return `Bienvenue ${prenom} ! Votre compte ${roleLabel} a ete cree sur ${SMS_SENDER_NAME}. Bon travail !`;
+    return await generateSmsFromTemplate('PAYMENT_CONFIRMED', { prenom, montant, ref: orderReference });
   }
 };
 
