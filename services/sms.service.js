@@ -68,7 +68,7 @@ export async function sendSMS(phone, message, metadata = {}) {
         message: message,
         status: isSuccess && messageData.status !== 'Failed' ? 'SENT' : 'FAILED',
         provider: `SMS8-Device-${SMS_DEVICE_ID}`,
-        providerId: messageData.ID || null,
+        providerId: messageData.ID ? String(messageData.ID) : null, // Convertir en String
         errorMessage: !isSuccess ? (apiResponse.error?.message || 'Erreur inconnue') : null,
         orderId: metadata.orderId || null,
         userId: metadata.userId || null,
