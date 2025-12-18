@@ -15,7 +15,10 @@ import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 // Configuration SMS8.io
 const SMS8_API_KEY = process.env.SMS8_API_KEY || '6a854258b60b92bd3a87ee563ac8a375ed28a78f';
-const SMS8_API_URL = process.env.SMS8_API_URL || 'https://app.sms8.io/services/sendFront.php';
+const SMS8_API_URL = process.env.SMS8_API_URL || 'https://app.sms8.io/services/send.php';
+const SMS_DEVICE_ID = process.env.SMS_DEVICE_ID || '5298'; // Device Android dédié KLE-A0
+const SMS_SIM_SLOT = process.env.SMS_SIM_SLOT || '0'; // SIM 1 (slot 0)
+const SMS_SENDER_NUMBER = process.env.SMS_SENDER_NUMBER || '+2250595871746'; // Numéro de la SIM
 const SMS_SENDER_NAME = process.env.SMS_SENDER_NAME || 'GS-Pipeline';
 
 /**
@@ -38,43 +41,53 @@ export async function sendSMS(phone, message, metadata = {}) {
       throw new Error('Message vide');
     }
 
-    // Envoi du SMS via SMS8.io (API simplifiée)
-    const response = await axios.get(SMS8_API_URL, {
+    // Envoi du SMS via SMS8.io avec Android dédié
+    // Format du device : "deviceID|simSlot" (ex: "5298|0")
+    const deviceParam = `${SMS_DEVICE_ID}|${SMS_SIM_SLOT}`;
+    
+    const response = await axios.post(SMS8_API_URL, null, {
       params: {
         key: SMS8_API_KEY,
         number: cleanPhone,
-        message: message
+        message: message,
+        devices: deviceParam,
+        prioritize: metadata.prioritize ? 1 : 0
       },
       timeout: 15000 // 15 secondes
     });
 
-    // Parser la réponse
+    // Parser la réponse de l'API send.php
     const apiResponse = response.data;
-    const isSuccess = apiResponse.success === true;
+    const isSuccess = apiResponse.success && apiResponse.data?.messages?.length > 0;
+    const messageData = apiResponse.data?.messages?.[0] || {};
     
     // Log du SMS en base de données
     const smsLog = await prisma.smsLog.create({
       data: {
         phoneNumber: cleanPhone,
         message: message,
-        status: isSuccess ? 'SENT' : 'FAILED',
-        provider: 'SMS8',
-        providerId: apiResponse.data?.id ? String(apiResponse.data.id) : null,
-        errorMessage: !isSuccess ? (apiResponse.error || 'Erreur inconnue') : null,
+        status: isSuccess && messageData.status !== 'Failed' ? 'SENT' : 'FAILED',
+        provider: `SMS8-Device-${SMS_DEVICE_ID}`,
+        providerId: messageData.ID ? String(messageData.ID) : null, // Convertir en String
+        errorMessage: !isSuccess ? (apiResponse.error?.message || 'Erreur inconnue') : null,
         orderId: metadata.orderId || null,
         userId: metadata.userId || null,
         type: metadata.type || 'NOTIFICATION',
-        credits: apiResponse.data?.credits || null,
+        credits: null, // L'API device ne retourne pas les crédits
         sentAt: new Date()
       }
     });
 
-    console.log(`📱 SMS envoyé avec succès : ${cleanPhone}`);
+    console.log(`📱 SMS envoyé via Android ${SMS_DEVICE_ID} (SIM ${parseInt(SMS_SIM_SLOT) + 1}) : ${cleanPhone}`);
 
     return {
       success: true,
       smsLogId: smsLog.id,
-      message: 'SMS envoyé avec succès'
+      messageId: messageData.ID,
+      deviceId: SMS_DEVICE_ID,
+      simSlot: SMS_SIM_SLOT,
+      senderNumber: SMS_SENDER_NUMBER,
+      message: 'SMS envoyé via Android dédié avec succès'
     };
 
   } catch (error) {

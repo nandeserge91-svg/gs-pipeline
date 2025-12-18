@@ -801,25 +801,39 @@ chore: Maintenance
 
 ---
 
-## 📱 INTÉGRATION SMS8.io (18 Décembre 2024)
+## 📱 INTÉGRATION SMS8.io - ANDROID DÉDIÉ (18 Décembre 2024)
 
 ### Vue d'Ensemble
 
-Intégration complète d'un système d'envoi de SMS automatiques via **SMS8.io** pour améliorer la communication avec les clients et l'efficacité opérationnelle.
+Intégration complète d'un système d'envoi de SMS automatiques via **SMS8.io** avec un **Android dédié** pour :
+- ✅ Permettre aux clients de **répondre** directement
+- ✅ **Réduire les coûts** (forfait SIM au lieu de crédits)
+- ✅ Améliorer la **délivrabilité**
+- ✅ Afficher votre **vrai numéro** : `+2250595871746`
 
-### Configuration
+### Configuration Android
 
+**Device Android** : KLE-A0  
+**Device ID** : `5298`  
+**SIM Slot** : `0` (SIM 1)  
+**Numéro expéditeur** : `+2250595871746`  
 **Clé API** : `6a854258b60b92bd3a87ee563ac8a375ed28a78f`  
-**URL API** : `https://app.sms8.io/services/sendFront.php`  
-**Nom expéditeur** : `GS-Pipeline`
+**URL API** : `https://app.sms8.io/services/send.php` (API complète, pas sendFront.php)
 
 ### Variables d'Environnement (.env)
 
 ```env
 # SMS Configuration
 SMS8_API_KEY=6a854258b60b92bd3a87ee563ac8a375ed28a78f
-SMS8_API_URL=https://app.sms8.io/services/sendFront.php
+SMS8_API_URL=https://app.sms8.io/services/send.php
 SMS_SENDER_NAME=GS-Pipeline
+
+# Android Dédié (IMPORTANT)
+SMS_DEVICE_ID=5298
+SMS_SIM_SLOT=0
+SMS_SENDER_NUMBER=+2250595871746
+
+# Activation globale
 SMS_ENABLED=true
 
 # Activation par type de SMS
@@ -834,6 +848,15 @@ SMS_RDV_SCHEDULED=true
 SMS_RDV_REMINDER=true
 SMS_DELIVERER_ALERT=true
 ```
+
+### Maintenance de l'Android
+
+**IMPORTANT** : Votre Android **KLE-A0** doit rester :
+- ✅ **Allumé** 24/7
+- ✅ **Connecté à Internet** (WiFi recommandé)
+- ✅ **App SMS8.io active** en arrière-plan
+- ✅ **Batterie chargée** (branché sur secteur)
+- ✅ **Online sur SMS8.io** : https://app.sms8.io/devices
 
 ### Architecture SMS
 
