@@ -1,17 +1,17 @@
-# Script PowerShell pour créer le package SMS complet
-# À exécuter depuis la racine du projet
+# Script PowerShell pour creer le package SMS complet
+# A executer depuis la racine du projet
 
-Write-Host "📦 Création du package SMS pour votre autre projet..." -ForegroundColor Cyan
+Write-Host "Creation du package SMS pour votre autre projet..." -ForegroundColor Cyan
 Write-Host ""
 
-# Créer le dossier principal
+# Creer le dossier principal
 $packageDir = "SMS_INTEGRATION_PACKAGE"
 if (Test-Path $packageDir) {
-    Write-Host "⚠️  Le dossier $packageDir existe déjà. Suppression..." -ForegroundColor Yellow
+    Write-Host "Le dossier $packageDir existe deja. Suppression..." -ForegroundColor Yellow
     Remove-Item -Recurse -Force $packageDir
 }
 
-Write-Host "📁 Création de la structure..." -ForegroundColor Green
+Write-Host "Creation de la structure..." -ForegroundColor Green
 New-Item -ItemType Directory -Path "$packageDir" | Out-Null
 New-Item -ItemType Directory -Path "$packageDir\backend\services" | Out-Null
 New-Item -ItemType Directory -Path "$packageDir\backend\routes" | Out-Null
@@ -20,11 +20,11 @@ New-Item -ItemType Directory -Path "$packageDir\frontend\src\pages\admin" | Out-
 New-Item -ItemType Directory -Path "$packageDir\database" | Out-Null
 New-Item -ItemType Directory -Path "$packageDir\documentation" | Out-Null
 
-Write-Host "✅ Structure créée" -ForegroundColor Green
+Write-Host "Structure creee" -ForegroundColor Green
 Write-Host ""
 
 # Copier les fichiers backend
-Write-Host "📄 Copie des fichiers backend..." -ForegroundColor Cyan
+Write-Host "Copie des fichiers backend..." -ForegroundColor Cyan
 
 Copy-Item "services\sms.service.js" "$packageDir\backend\services\" -ErrorAction SilentlyContinue
 Copy-Item "routes\sms.routes.js" "$packageDir\backend\routes\" -ErrorAction SilentlyContinue
@@ -32,28 +32,28 @@ Copy-Item "routes\sms-settings.routes.js" "$packageDir\backend\routes\" -ErrorAc
 Copy-Item "routes\sms-templates.routes.js" "$packageDir\backend\routes\" -ErrorAction SilentlyContinue
 Copy-Item "utils\phone.util.js" "$packageDir\backend\utils\" -ErrorAction SilentlyContinue
 
-Write-Host "✅ Backend : 5 fichiers copiés" -ForegroundColor Green
+Write-Host "Backend : 5 fichiers copies" -ForegroundColor Green
 
 # Copier les fichiers frontend
-Write-Host "📄 Copie des fichiers frontend..." -ForegroundColor Cyan
+Write-Host "Copie des fichiers frontend..." -ForegroundColor Cyan
 
 Copy-Item "frontend\src\pages\admin\SmsSettings.tsx" "$packageDir\frontend\src\pages\admin\" -ErrorAction SilentlyContinue
 Copy-Item "frontend\src\pages\admin\SmsTemplateEditor.tsx" "$packageDir\frontend\src\pages\admin\" -ErrorAction SilentlyContinue
 
-Write-Host "✅ Frontend : 2 fichiers copiés" -ForegroundColor Green
+Write-Host "Frontend : 2 fichiers copies" -ForegroundColor Green
 
 # Copier la documentation
-Write-Host "📄 Copie de la documentation..." -ForegroundColor Cyan
+Write-Host "Copie de la documentation..." -ForegroundColor Cyan
 
 Copy-Item "POUR_AUTRE_PROJET_CURSOR.md" "$packageDir\documentation\" -ErrorAction SilentlyContinue
 Copy-Item "INTEGRATION_SMS8_COMPLETE_GUIDE.md" "$packageDir\documentation\" -ErrorAction SilentlyContinue
 Copy-Item "CONFIG_RAILWAY_ANDROID.md" "$packageDir\documentation\" -ErrorAction SilentlyContinue
 Copy-Item "COMMENT_PARTAGER_FICHIERS.md" "$packageDir\documentation\" -ErrorAction SilentlyContinue
 
-Write-Host "✅ Documentation : 4 fichiers copiés" -ForegroundColor Green
+Write-Host "Documentation : 4 fichiers copies" -ForegroundColor Green
 
-# Créer un README pour le package
-Write-Host "📄 Création du README du package..." -ForegroundColor Cyan
+# Creer un README pour le package
+Write-Host "Creation du README du package..." -ForegroundColor Cyan
 
 $readmeContent = @"
 # 📦 PACKAGE INTÉGRATION SMS8.IO
@@ -108,7 +108,7 @@ Consultez les guides dans le dossier ``documentation/``
 
 Set-Content -Path "$packageDir\README.md" -Value $readmeContent -Encoding UTF8
 
-Write-Host "✅ README créé" -ForegroundColor Green
+Write-Host "README cree" -ForegroundColor Green
 Write-Host ""
 
 # Créer un fichier de structure
@@ -145,29 +145,29 @@ TOTAL : 11 fichiers + 4 guides
 
 Set-Content -Path "$packageDir\STRUCTURE.txt" -Value $structureContent -Encoding UTF8
 
-Write-Host "✅ Fichier de structure créé" -ForegroundColor Green
+Write-Host "Fichier de structure cree" -ForegroundColor Green
 Write-Host ""
 
-# Résumé
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Yellow
-Write-Host "🎉 PACKAGE CRÉÉ AVEC SUCCÈS !" -ForegroundColor Green
-Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Yellow
+# Resume
+Write-Host "=======================================================" -ForegroundColor Yellow
+Write-Host "PACKAGE CREE AVEC SUCCES !" -ForegroundColor Green
+Write-Host "=======================================================" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "📁 Emplacement : .\$packageDir\" -ForegroundColor Cyan
+Write-Host "Emplacement : .\$packageDir\" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📦 Contenu :" -ForegroundColor White
-Write-Host "   ✅ 5 fichiers backend" -ForegroundColor Green
-Write-Host "   ✅ 2 fichiers frontend" -ForegroundColor Green
-Write-Host "   ✅ 4 guides de documentation" -ForegroundColor Green
-Write-Host "   ✅ README.md" -ForegroundColor Green
-Write-Host "   ✅ STRUCTURE.txt" -ForegroundColor Green
+Write-Host "Contenu :" -ForegroundColor White
+Write-Host "   5 fichiers backend" -ForegroundColor Green
+Write-Host "   2 fichiers frontend" -ForegroundColor Green
+Write-Host "   4 guides de documentation" -ForegroundColor Green
+Write-Host "   README.md" -ForegroundColor Green
+Write-Host "   STRUCTURE.txt" -ForegroundColor Green
 Write-Host ""
-Write-Host "📤 Prochaines étapes :" -ForegroundColor Yellow
+Write-Host "Prochaines etapes :" -ForegroundColor Yellow
 Write-Host "   1. Compressez le dossier $packageDir en ZIP" -ForegroundColor White
-Write-Host "   2. Envoyez le ZIP à votre autre éditeur" -ForegroundColor White
+Write-Host "   2. Envoyez le ZIP a votre autre editeur" -ForegroundColor White
 Write-Host "   3. Demandez-lui de lire README.md en premier" -ForegroundColor White
 Write-Host ""
-Write-Host "💡 Ou envoyez directement le lien GitHub :" -ForegroundColor Cyan
+Write-Host "Ou envoyez directement le lien GitHub :" -ForegroundColor Cyan
 Write-Host "   https://github.com/nandeserge91-svg/gs-pipeline" -ForegroundColor Blue
 Write-Host ""
-Write-Host "🎊 C'est prêt ! Bonne intégration ! 🚀" -ForegroundColor Green
+Write-Host "C'est pret ! Bonne integration !" -ForegroundColor Green
