@@ -188,8 +188,8 @@ router.get('/templates', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (
         id: 'orderCreated',
         name: 'Commande créée',
         description: 'Notification lors de la création d\'une commande',
-        example: await smsTemplates.orderCreated('John Doe', 'ORD-12345'),
-        parameters: ['clientNom', 'orderReference']
+        example: await smsTemplates.orderCreated('John Doe', 'ORD-12345', 'BEE VENOM'),
+        parameters: ['clientNom', 'orderReference', 'produitNom']
       },
       {
         id: 'orderValidated',

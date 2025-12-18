@@ -231,7 +231,7 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
     
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
-        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
         await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED',

@@ -157,7 +157,7 @@ router.post('/make', verifyApiKey, [
     
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
-        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
         await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED'
@@ -392,7 +392,7 @@ router.post('/google-sheet', [
     
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
-        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
         await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED'

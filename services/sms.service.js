@@ -216,9 +216,13 @@ export const smsTemplates = {
   /**
    * 🆕 Commande créée (NOUVELLE)
    */
-  orderCreated: async (clientNom, orderReference) => {
+  orderCreated: async (clientNom, orderReference, produitNom) => {
     const prenom = clientNom.split(' ')[0];
-    return await generateSmsFromTemplate('ORDER_CREATED', { prenom, ref: orderReference });
+    return await generateSmsFromTemplate('ORDER_CREATED', { 
+      prenom, 
+      ref: orderReference,
+      produit: produitNom 
+    });
   },
 
   /**
