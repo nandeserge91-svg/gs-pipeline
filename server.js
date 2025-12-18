@@ -16,6 +16,7 @@ import expressRoutes from './routes/express.routes.js';
 import stockRoutes from './routes/stock.routes.js';
 import rdvRoutes from './routes/rdv.routes.js';
 import deleteOrdersRoutes from './routes/delete-orders.routes.js';
+import smsRoutes from './routes/sms.routes.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/express', expressRoutes);
 app.use('/api/rdv', rdvRoutes);
+app.use('/api/sms', smsRoutes); // 📱 Routes SMS
 
 // Route de test
 app.get('/', (req, res) => {

@@ -63,6 +63,7 @@ model User {
   callStats           CallStatistic[]
   deliveryStats       DeliveryStatistic[]
   expressNotifications ExpressNotification[]
+  smsLogs             SmsLog[]
 
   @@map("users")
 }
@@ -156,6 +157,9 @@ model Order {
   
   // Notifications EXPRESS
   expressNotifications ExpressNotification[]
+  
+  // SMS envoyés pour cette commande
+  smsLogs              SmsLog[]
 
   @@map("orders")
   @@index([status])
@@ -356,5 +360,61 @@ model TourneeStock {
   @@index([deliveryListId])
   @@index([colisRemisConfirme])
   @@index([colisRetourConfirme])
+}
+
+// ========================================
+// NOUVEAU : GESTION SMS
+// ========================================
+
+// Statut d'envoi SMS
+enum SmsStatus {
+  SENT    // Envoyé avec succès
+  FAILED  // Échec d'envoi
+  PENDING // En attente
+}
+
+// Type de SMS
+enum SmsType {
+  NOTIFICATION       // Notification générale
+  ORDER_CREATED      // Commande créée
+  ORDER_VALIDATED    // Commande validée
+  DELIVERY_ASSIGNED  // Livreur assigné
+  ORDER_DELIVERED    // Commande livrée
+  EXPEDITION         // Expédition confirmée
+  EXPRESS_ARRIVED    // EXPRESS arrivé en agence
+  EXPRESS_REMINDER   // Rappel retrait EXPRESS
+  RDV_SCHEDULED      // RDV programmé
+  RDV_REMINDER       // Rappel RDV
+  ALERT              // Alerte interne
+}
+
+// Table des logs SMS
+model SmsLog {
+  id            Int       @id @default(autoincrement())
+  phoneNumber   String    // Numéro destinataire
+  message       String    // Message envoyé
+  status        SmsStatus @default(PENDING)
+  provider      String    @default("SMS8") // Fournisseur (SMS8, Twilio, etc.)
+  providerId    String?   // ID du message chez le fournisseur
+  errorMessage  String?   // Message d'erreur si échec
+  
+  // Relations
+  orderId       Int?      // Commande liée (optionnel)
+  order         Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  userId        Int?      // Utilisateur lié (optionnel)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  type          SmsType   @default(NOTIFICATION)
+  credits       Int?      // Crédits restants après envoi
+  
+  sentAt        DateTime  @default(now())
+  
+  @@map("sms_logs")
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([sentAt])
+  @@index([phoneNumber])
 }
 

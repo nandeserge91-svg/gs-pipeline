@@ -801,6 +801,264 @@ chore: Maintenance
 
 ---
 
+## 📱 INTÉGRATION SMS8.io (18 Décembre 2024)
+
+### Vue d'Ensemble
+
+Intégration complète d'un système d'envoi de SMS automatiques via **SMS8.io** pour améliorer la communication avec les clients et l'efficacité opérationnelle.
+
+### Configuration
+
+**Clé API** : `6a854258b60b92bd3a87ee563ac8a375ed28a78f`  
+**URL API** : `https://app.sms8.io/services/sendFront.php`  
+**Nom expéditeur** : `GS-Pipeline`
+
+### Variables d'Environnement (.env)
+
+```env
+# SMS Configuration
+SMS8_API_KEY=6a854258b60b92bd3a87ee563ac8a375ed28a78f
+SMS8_API_URL=https://app.sms8.io/services/sendFront.php
+SMS_SENDER_NAME=GS-Pipeline
+SMS_ENABLED=true
+
+# Activation par type de SMS
+SMS_ORDER_CREATED=true
+SMS_ORDER_VALIDATED=true
+SMS_DELIVERY_ASSIGNED=true
+SMS_ORDER_DELIVERED=true
+SMS_EXPEDITION_CONFIRMED=true
+SMS_EXPRESS_ARRIVED=true
+SMS_EXPRESS_REMINDER=true
+SMS_RDV_SCHEDULED=true
+SMS_RDV_REMINDER=true
+SMS_DELIVERER_ALERT=true
+```
+
+### Architecture SMS
+
+#### Service SMS (`services/sms.service.js`)
+
+**Fonctions principales** :
+- `sendSMS(phone, message, metadata)` - Envoi de SMS
+- `getSMSCredits()` - Consultation du solde
+- `getSMSStats(days)` - Statistiques d'envoi
+- `getSMSHistory(filters)` - Historique des SMS
+- `sendScheduledSMS()` - Envoi SMS programmés (job cron)
+
+**Templates SMS disponibles** :
+```javascript
+smsTemplates.orderCreated(clientNom, orderReference)
+smsTemplates.orderValidated(clientNom, produitNom, montant)
+smsTemplates.deliveryAssigned(clientNom, livreurNom, telephone)
+smsTemplates.orderDelivered(clientNom, orderReference)
+smsTemplates.expeditionConfirmed(clientNom, codeExpedition, ville)
+smsTemplates.expressArrived(clientNom, agence, codeExpedition, montantRestant)
+smsTemplates.expressReminder(clientNom, agence, codeExpedition, joursAttente)
+smsTemplates.rdvScheduled(clientNom, rdvDate, rdvHeure)
+smsTemplates.rdvReminder(clientNom, rdvHeure)
+smsTemplates.orderCancelled(clientNom, orderReference)
+```
+
+### Table Base de Données - SmsLog
+
+```prisma
+model SmsLog {
+  id            Int       @id @default(autoincrement())
+  phoneNumber   String
+  message       String
+  status        SmsStatus // SENT, FAILED, PENDING
+  provider      String    @default("SMS8")
+  providerId    String?
+  errorMessage  String?
+  orderId       Int?
+  userId        Int?
+  type          SmsType   // ORDER_CREATED, EXPRESS_ARRIVED, etc.
+  credits       Int?
+  sentAt        DateTime  @default(now())
+}
+```
+
+**Enum SmsStatus** : `SENT`, `FAILED`, `PENDING`  
+**Enum SmsType** : `ORDER_CREATED`, `ORDER_VALIDATED`, `DELIVERY_ASSIGNED`, `ORDER_DELIVERED`, `EXPEDITION`, `EXPRESS_ARRIVED`, `EXPRESS_REMINDER`, `RDV_SCHEDULED`, `RDV_REMINDER`, `ALERT`
+
+### Points d'Intégration
+
+#### 1. Création de Commande
+**Route** : `POST /api/orders`  
+**SMS** : Confirmation de commande reçue  
+**Template** : `orderCreated`
+
+#### 2. Validation de Commande
+**Route** : `PUT /api/orders/:id/status` (→ VALIDEE)  
+**SMS** : Confirmation de validation  
+**Template** : `orderValidated`
+
+#### 3. Commande Livrée
+**Route** : `PUT /api/orders/:id/status` (→ LIVREE)  
+**SMS** : Confirmation de livraison  
+**Template** : `orderDelivered`
+
+#### 4. EXPRESS Arrivé en Agence
+**Route** : `PUT /api/orders/:id/express/arrive`  
+**SMS** : Notification d'arrivée avec code retrait  
+**Template** : `expressArrived`  
+**Données** : Nom agence, code expédition, montant à payer (90%)
+
+#### 5. RDV Programmé
+**Route** : `POST /api/rdv/:id/programmer`  
+**SMS** : Confirmation du RDV  
+**Template** : `rdvScheduled`
+
+#### 6. Rappels Automatiques (Job Cron)
+**Fonction** : `sendScheduledSMS()`  
+- Rappel RDV (1h avant)
+- Rappel EXPRESS non retiré (après 3 jours)
+
+### Routes API SMS
+
+**Base** : `/api/sms`
+
+| Route | Method | Permissions | Description |
+|-------|--------|-------------|-------------|
+| `/history` | GET | ADMIN, GESTIONNAIRE | Historique des SMS |
+| `/stats` | GET | ADMIN, GESTIONNAIRE | Statistiques d'envoi |
+| `/credits` | GET | ADMIN | Solde de crédits |
+| `/test` | POST | ADMIN | Test d'envoi SMS |
+| `/templates` | GET | ADMIN, GESTIONNAIRE, APPELANT | Liste des templates |
+| `/config` | GET | ADMIN | Configuration actuelle |
+| `/send-manual` | POST | ADMIN, GESTIONNAIRE, APPELANT | Envoi SMS manuel |
+
+### Gestion d'Erreurs
+
+**Envois non bloquants** : Si l'envoi de SMS échoue, l'opération principale (création commande, changement statut, etc.) continue normalement.
+
+**Logs détaillés** :
+```javascript
+✅ SMS envoyé pour commande ORD-12345
+⚠️ Erreur envoi SMS (non bloquante): Invalid phone number
+```
+
+**Statuts d'échec** : Enregistrés dans `SmsLog` avec `status: FAILED` et `errorMessage`
+
+### Coûts
+
+**Tarif indicatif** : ~10-20 FCFA/SMS en Côte d'Ivoire  
+**Monitoring** : Consultation du solde via `/api/sms/credits`  
+**Contrôle** : Activation/désactivation par type de SMS
+
+### Désactivation SMS
+
+**Mode test** (pas d'envoi réel) :
+```env
+SMS_ENABLED=false
+```
+
+**Désactiver un type spécifique** :
+```env
+SMS_EXPRESS_ARRIVED=false  # Pas de SMS pour EXPRESS
+```
+
+### Nettoyage des Numéros
+
+Fonction automatique : `cleanPhoneNumber(phone)`
+- Ajoute `+225` si manquant (Côte d'Ivoire)
+- Convertit `00225` en `+225`
+- Valide le format (minimum 10 chiffres)
+
+**Exemples** :
+```javascript
+"0712345678" → "+2250712345678"
+"00225712345678" → "+225712345678"
+"+225712345678" → "+225712345678" (déjà correct)
+```
+
+### Migration Base de Données
+
+**Fichier** : `prisma/migrations/20251218_add_sms_logs/migration.sql`
+
+**Commande pour appliquer** :
+```bash
+npx prisma migrate deploy
+```
+
+**Ou en développement** :
+```bash
+npx prisma migrate dev
+```
+
+### Tests Recommandés
+
+1. **Test basique** : `POST /api/sms/test` avec votre numéro
+2. **Créer commande** : Vérifier réception SMS
+3. **Valider commande** : Vérifier SMS de validation
+4. **EXPRESS arrive** : Vérifier SMS avec code
+5. **Programmer RDV** : Vérifier SMS de confirmation
+6. **Consulter logs** : `GET /api/sms/history`
+7. **Statistiques** : `GET /api/sms/stats`
+
+### Fichiers Créés/Modifiés
+
+**Nouveaux fichiers** :
+- `services/sms.service.js` (650+ lignes)
+- `routes/sms.routes.js` (400+ lignes)
+- `prisma/migrations/20251218_add_sms_logs/migration.sql`
+- `ENV_SMS_CONFIG.md`
+
+**Fichiers modifiés** :
+- `prisma/schema.prisma` (ajout table SmsLog + enums)
+- `routes/order.routes.js` (intégration SMS)
+- `routes/rdv.routes.js` (intégration SMS)
+- `server.js` (ajout route SMS)
+
+### Job Cron (Optionnel)
+
+Pour activer les rappels automatiques, ajouter dans `server.js` :
+
+```javascript
+import cron from 'node-cron';
+import { sendScheduledSMS } from './services/sms.service.js';
+
+// Toutes les heures
+cron.schedule('0 * * * *', async () => {
+  console.log('🕐 Exécution job SMS programmés...');
+  await sendScheduledSMS();
+});
+```
+
+### Monitoring Production
+
+**Dashboard SMS8.io** : https://app.sms8.io/  
+**Logs backend** : Rechercher `SMS` dans les logs Railway  
+**Base de données** : Table `sms_logs`  
+**API interne** : `/api/sms/stats` et `/api/sms/history`
+
+### Limitations
+
+- **SMS standard** : 160 caractères max
+- **Pas de caractères spéciaux** : Certains emojis peuvent ne pas passer
+- **Rate limiting** : Selon le plan SMS8.io
+- **Crédits** : Surveiller régulièrement le solde
+
+### Support et Dépannage
+
+**Erreur "Invalid phone number"** :
+- Vérifier le format du numéro
+- Tester avec `cleanPhoneNumber()` en console
+
+**SMS non reçus** :
+- Vérifier `SMS_ENABLED=true`
+- Consulter les logs SMS
+- Vérifier le solde de crédits
+- Tester avec `/api/sms/test`
+
+**Erreur API** :
+- Vérifier la clé API dans .env
+- Tester l'URL API directement
+- Consulter la documentation SMS8.io
+
+---
+
 ## 🎓 NOTES POUR L'IA
 
 ### Lorsque tu reprends le projet

@@ -2,6 +2,7 @@ import express from 'express';
 
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { sendSMS, smsTemplates } from '../services/sms.service.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -219,6 +220,25 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
       }
     });
 
+    // 📱 Envoi SMS de confirmation (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    const smsOrderCreatedEnabled = process.env.SMS_ORDER_CREATED !== 'false';
+    
+    if (smsEnabled && smsOrderCreatedEnabled) {
+      try {
+        const message = smsTemplates.orderCreated(order.clientNom, order.orderReference);
+        await sendSMS(order.clientTelephone, message, {
+          orderId: order.id,
+          type: 'ORDER_CREATED',
+          userId: req.user.id
+        });
+        console.log(`✅ SMS envoyé pour commande ${order.orderReference}`);
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS (non bloquante):', smsError.message);
+        // Ne pas bloquer la création de commande si l'envoi SMS échoue
+      }
+    }
+
     res.status(201).json({ order, message: 'Commande créée avec succès.' });
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -388,6 +408,68 @@ router.put('/:id/status', async (req, res) => {
 
     // Mettre à jour les statistiques
     await updateStatistics(user.id, user.role, order.status, status, order.montant);
+
+    // 📱 Envoi SMS selon le nouveau statut (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    
+    if (smsEnabled) {
+      try {
+        let smsMessage = null;
+        let smsType = null;
+        let smsTypeEnabled = true;
+
+        // Déterminer le message SMS selon le nouveau statut
+        switch (status) {
+          case 'VALIDEE':
+            smsTypeEnabled = process.env.SMS_ORDER_VALIDATED !== 'false';
+            if (smsTypeEnabled) {
+              smsMessage = smsTemplates.orderValidated(
+                updatedOrder.clientNom, 
+                updatedOrder.produitNom, 
+                updatedOrder.montant
+              );
+              smsType = 'ORDER_VALIDATED';
+            }
+            break;
+
+          case 'LIVREE':
+            smsTypeEnabled = process.env.SMS_ORDER_DELIVERED !== 'false';
+            if (smsTypeEnabled) {
+              smsMessage = smsTemplates.orderDelivered(
+                updatedOrder.clientNom, 
+                updatedOrder.orderReference
+              );
+              smsType = 'ORDER_DELIVERED';
+            }
+            break;
+
+          case 'ANNULEE':
+            smsMessage = smsTemplates.orderCancelled(
+              updatedOrder.clientNom, 
+              updatedOrder.orderReference
+            );
+            smsType = 'NOTIFICATION';
+            break;
+
+          // Pas de SMS automatique pour : ASSIGNEE, REFUSEE, RETOURNE, INJOIGNABLE
+          // (Géré manuellement ou dans d'autres routes)
+        }
+
+        // Envoyer le SMS si un message a été déterminé
+        if (smsMessage) {
+          await sendSMS(updatedOrder.clientTelephone, smsMessage, {
+            orderId: updatedOrder.id,
+            type: smsType,
+            userId: user.id
+          });
+          console.log(`✅ SMS ${smsType} envoyé pour commande ${updatedOrder.orderReference}`);
+        }
+
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS (non bloquante):', smsError.message);
+        // Ne pas bloquer la mise à jour du statut si l'envoi SMS échoue
+      }
+    }
 
     res.json({ order: updatedOrder, message: 'Statut mis à jour avec succès.' });
   } catch (error) {
@@ -1158,6 +1240,31 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
         comment: `Colis arrivé en agence: ${order.agenceRetrait}${codeExpedition ? ' - Code: ' + codeExpedition : ''}${note ? ' - ' + note : ''}`,
       },
     });
+
+    // 📱 Envoi SMS automatique pour notifier le client (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    const smsExpressArrivedEnabled = process.env.SMS_EXPRESS_ARRIVED !== 'false';
+    
+    if (smsEnabled && smsExpressArrivedEnabled && updatedOrder.codeExpedition) {
+      try {
+        const message = smsTemplates.expressArrived(
+          updatedOrder.clientNom,
+          updatedOrder.agenceRetrait || 'notre agence',
+          updatedOrder.codeExpedition,
+          Math.round(updatedOrder.montantRestant || (updatedOrder.montant * 0.90))
+        );
+        
+        await sendSMS(updatedOrder.clientTelephone, message, {
+          orderId: updatedOrder.id,
+          type: 'EXPRESS_ARRIVED',
+          userId: req.user.id
+        });
+        
+        console.log(`✅ SMS EXPRESS arrivé envoyé pour commande ${updatedOrder.orderReference}`);
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS EXPRESS (non bloquante):', smsError.message);
+      }
+    }
 
     res.json({ 
       order: updatedOrder, 

@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { sendSMS, smsTemplates } from '../services/sms.service.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -50,6 +51,41 @@ router.post('/:id/programmer', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 
         comment: `RDV programmé pour le ${new Date(rdvDate).toLocaleString('fr-FR')}${rdvNote ? ' - ' + rdvNote : ''}`
       }
     });
+
+    // 📱 Envoi SMS de confirmation RDV (non bloquant)
+    const smsEnabled = process.env.SMS_ENABLED === 'true';
+    const smsRdvScheduledEnabled = process.env.SMS_RDV_SCHEDULED !== 'false';
+    
+    if (smsEnabled && smsRdvScheduledEnabled) {
+      try {
+        const rdvDateObj = new Date(rdvDate);
+        const rdvDateFormatted = rdvDateObj.toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric' 
+        });
+        const rdvHeureFormatted = rdvDateObj.toLocaleTimeString('fr-FR', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+
+        const message = smsTemplates.rdvScheduled(
+          updatedOrder.clientNom,
+          rdvDateFormatted,
+          rdvHeureFormatted
+        );
+        
+        await sendSMS(updatedOrder.clientTelephone, message, {
+          orderId: updatedOrder.id,
+          type: 'RDV_SCHEDULED',
+          userId: req.user.id
+        });
+        
+        console.log(`✅ SMS RDV programmé envoyé pour commande ${updatedOrder.orderReference}`);
+      } catch (smsError) {
+        console.error('⚠️ Erreur envoi SMS RDV (non bloquante):', smsError.message);
+      }
+    }
 
     res.json({
       order: updatedOrder,
