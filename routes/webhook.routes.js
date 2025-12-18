@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { body, validationResult } from 'express-validator';
+import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -116,12 +117,16 @@ router.post('/make', verifyApiKey, [
       montantTotal: totalAmount
     });
 
-    // 3. Créer la commande dans la base de données
+    // 3. Nettoyer le numéro de téléphone (ajouter +, enlever espaces)
+    const cleanedPhone = cleanPhoneNumber(customer_phone);
+    console.log(`📞 Numéro nettoyé: ${customer_phone} → ${cleanedPhone}`);
+
+    // 4. Créer la commande dans la base de données
     const order = await prisma.order.create({
       data: {
         // Informations client
         clientNom: customer_name,
-        clientTelephone: customer_phone,
+        clientTelephone: cleanedPhone,
         clientVille: customer_city,
         clientCommune: customer_commune || null,
         clientAdresse: customer_address || null,
@@ -331,12 +336,16 @@ router.post('/google-sheet', [
       });
     }
 
+    // Nettoyer le numéro de téléphone (ajouter +, enlever espaces)
+    const cleanedPhone = cleanPhoneNumber(telephone);
+    console.log(`📞 Numéro nettoyé Google Sheet: ${telephone} → ${cleanedPhone}`);
+
     // Créer la commande avec statut NOUVELLE (apparaîtra dans "À appeler")
     const order = await prisma.order.create({
       data: {
         // Informations client
         clientNom: nom,
-        clientTelephone: telephone,
+        clientTelephone: cleanedPhone,
         clientVille: ville,
         clientCommune: null,
         clientAdresse: null,

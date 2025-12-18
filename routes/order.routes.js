@@ -3,6 +3,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
+import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -191,9 +192,13 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
+    // Nettoyer le numéro de téléphone (ajouter +, enlever espaces)
+    const cleanedPhone = cleanPhoneNumber(req.body.clientTelephone);
+    console.log(`📞 Numéro nettoyé: ${req.body.clientTelephone} → ${cleanedPhone}`);
+
     const orderData = {
       clientNom: req.body.clientNom,
-      clientTelephone: req.body.clientTelephone,
+      clientTelephone: cleanedPhone,
       clientVille: req.body.clientVille,
       clientCommune: req.body.clientCommune,
       clientAdresse: req.body.clientAdresse,

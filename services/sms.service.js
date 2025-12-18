@@ -11,6 +11,7 @@
 
 import axios from 'axios';
 import prisma from '../config/prisma.js';
+import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 // Configuration SMS8.io
 const SMS8_API_KEY = process.env.SMS8_API_KEY || '6a854258b60b92bd3a87ee563ac8a375ed28a78f';
@@ -100,42 +101,6 @@ export async function sendSMS(phone, message, metadata = {}) {
       error: error.message
     };
   }
-}
-
-/**
- * 🧹 Nettoyer et formater le numéro de téléphone
- * @param {string} phone - Numéro brut
- * @returns {string|null} - Numéro formaté ou null si invalide
- */
-function cleanPhoneNumber(phone) {
-  if (!phone) return null;
-
-  // Enlever tous les caractères non numériques sauf le +
-  let clean = phone.replace(/[^\d+]/g, '');
-
-  // Si commence par 00, remplacer par +
-  if (clean.startsWith('00')) {
-    clean = '+' + clean.substring(2);
-  }
-
-  // Si ne commence pas par +, ajouter +225 (Côte d'Ivoire par défaut)
-  if (!clean.startsWith('+')) {
-    // Si commence par 225, ajouter juste le +
-    if (clean.startsWith('225')) {
-      clean = '+' + clean;
-    } else {
-      // Sinon ajouter +225
-      clean = '+225' + clean;
-    }
-  }
-
-  // Validation : doit avoir au moins 10 chiffres après l'indicatif
-  const digitsOnly = clean.replace(/\D/g, '');
-  if (digitsOnly.length < 10) {
-    return null;
-  }
-
-  return clean;
 }
 
 /**
