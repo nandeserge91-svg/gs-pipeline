@@ -28,11 +28,17 @@ const SMS_SENDER_NAME = process.env.SMS_SENDER_NAME || 'GS-Pipeline';
  */
 export async function getTemplate(templateKey) {
   try {
+    // Vérifier si la table existe
     const template = await prisma.smsTemplate.findUnique({
       where: { key: templateKey }
     });
     return template;
   } catch (error) {
+    // Si la table n'existe pas (migration pas exécutée), utiliser fallback
+    if (error.code === 'P2021' || error.message.includes('does not exist')) {
+      console.warn(`⚠️ Table sms_templates n'existe pas encore, utilisation fallback`);
+      return null;
+    }
     console.error(`❌ Erreur chargement template ${templateKey}:`, error.message);
     return null;
   }
