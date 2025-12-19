@@ -32,7 +32,10 @@ interface ProductStatsTotals {
 }
 
 export default function ProductStats() {
-  const [selectedDate, setSelectedDate] = useState<string>(
+  const [startDate, setStartDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
   const [products, setProducts] = useState<ProductStat[]>([]);
@@ -55,7 +58,10 @@ export default function ProductStats() {
     try {
       setLoading(true);
       const response = await api.get('/stats/products-by-date', {
-        params: { date: selectedDate }
+        params: { 
+          startDate: startDate,
+          endDate: endDate
+        }
       });
       setProducts(response.data.products);
       setTotals(response.data.totals);
@@ -81,7 +87,7 @@ export default function ProductStats() {
     }, 30000); // 30 secondes
 
     return () => clearInterval(interval);
-  }, [autoRefresh, selectedDate]);
+  }, [autoRefresh, startDate, endDate]);
 
   const getTauxValidation = (recus: number, valides: number): string => {
     if (recus === 0) return '0.00';
@@ -100,22 +106,35 @@ export default function ProductStats() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Statistiques par Produit</h1>
           <p className="text-gray-600 mt-1">
-            Suivi en temps réel des produits reçus et validés
+            Suivi en temps réel des produits reçus et validés sur une période
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Sélecteur de date */}
+          {/* Sélecteur de période */}
           <div className="flex items-center gap-2">
-            <label htmlFor="date-picker" className="text-sm font-medium text-gray-700">
-              Date :
+            <label htmlFor="start-date" className="text-sm font-medium text-gray-700">
+              Du :
             </label>
             <input
-              id="date-picker"
+              id="start-date"
               type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="input w-48"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="input w-40"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="end-date" className="text-sm font-medium text-gray-700">
+              Au :
+            </label>
+            <input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input w-40"
             />
           </div>
 
@@ -139,9 +158,106 @@ export default function ProductStats() {
         </div>
       </div>
 
-      {/* Dernière mise à jour */}
-      <div className="text-sm text-gray-500">
-        Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')}
+      {/* Raccourcis de période */}
+      <div className="card">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Raccourcis de période :</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0];
+              setStartDate(today);
+              setEndDate(today);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            Aujourd'hui
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStr = yesterday.toISOString().split('T')[0];
+              setStartDate(yesterdayStr);
+              setEndDate(yesterdayStr);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            Hier
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const weekStart = new Date(today);
+              weekStart.setDate(today.getDate() - today.getDay() + 1);
+              setStartDate(weekStart.toISOString().split('T')[0]);
+              setEndDate(today.toISOString().split('T')[0]);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            Cette semaine
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+              setStartDate(monthStart.toISOString().split('T')[0]);
+              setEndDate(today.toISOString().split('T')[0]);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            Ce mois
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+              const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+              setStartDate(lastMonth.toISOString().split('T')[0]);
+              setEndDate(lastMonthEnd.toISOString().split('T')[0]);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            Mois dernier
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const last7Days = new Date(today);
+              last7Days.setDate(today.getDate() - 7);
+              setStartDate(last7Days.toISOString().split('T')[0]);
+              setEndDate(today.toISOString().split('T')[0]);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            7 derniers jours
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const last30Days = new Date(today);
+              last30Days.setDate(today.getDate() - 30);
+              setStartDate(last30Days.toISOString().split('T')[0]);
+              setEndDate(today.toISOString().split('T')[0]);
+            }}
+            className="btn btn-secondary text-sm"
+          >
+            30 derniers jours
+          </button>
+        </div>
+        
+        {/* Période active */}
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <span className="font-medium text-blue-900">Période active : </span>
+          <span className="text-blue-700">
+            {new Date(startDate).toLocaleDateString('fr-FR')} 
+            {' → '}
+            {new Date(endDate).toLocaleDateString('fr-FR')}
+          </span>
+          <span className="text-gray-500 ml-2">
+            • Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')}
+          </span>
+        </div>
       </div>
 
       {/* Cartes de résumé */}

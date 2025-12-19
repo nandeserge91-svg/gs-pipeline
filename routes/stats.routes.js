@@ -464,11 +464,29 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
 // GET /api/stats/products-by-date - Statistiques par produit et par date
 router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT'), async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, startDate, endDate } = req.query;
 
     // Filtre de date
     const dateFilter = {};
-    if (date) {
+    
+    // Si plage de dates (startDate et endDate)
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) {
+        // Début de journée : 00:00:00
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.createdAt.gte = start;
+      }
+      if (endDate) {
+        // Fin de journée : 23:59:59
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.lte = end;
+      }
+    }
+    // Sinon, si date unique (pour rétrocompatibilité)
+    else if (date) {
       // Début de journée : 00:00:00
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
@@ -597,7 +615,8 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
     res.json({ 
       products: result,
       totals,
-      date: date || 'all',
+      startDate: startDate || date || null,
+      endDate: endDate || date || null,
       count: result.length
     });
   } catch (error) {
