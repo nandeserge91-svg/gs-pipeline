@@ -3,6 +3,7 @@ import Overview from './Overview';
 import Orders from './Orders';
 import Users from './Users';
 import Stats from './Stats';
+import ProductStats from './ProductStats';
 import ClientDatabase from '../common/ClientDatabase';
 import CallerSupervision from '../common/CallerSupervision';
 import AppelantOrders from '../appelant/Orders';
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
       <Route path="database" element={<ClientDatabase />} />
       <Route path="supervision" element={<CallerSupervision />} />
       <Route path="stats" element={<Stats />} />
+      <Route path="product-stats" element={<ProductStats />} />
       <Route path="accounting" element={<Accounting />} />
       <Route path="sms-settings" element={<SmsSettings />} />
     </Routes>

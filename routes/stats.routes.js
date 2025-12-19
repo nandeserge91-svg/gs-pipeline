@@ -461,6 +461,136 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
   }
 });
 
+// GET /api/stats/products-by-date - Statistiques par produit et par date
+router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT'), async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    // Filtre de date
+    const dateFilter = {};
+    if (date) {
+      // Début de journée : 00:00:00
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      // Fin de journée : 23:59:59
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.createdAt = { gte: start, lte: end };
+    }
+
+    // Récupérer toutes les commandes de la date
+    const orders = await prisma.order.findMany({
+      where: dateFilter,
+      select: {
+        id: true,
+        produitNom: true,
+        productId: true,
+        quantite: true,
+        status: true,
+        createdAt: true,
+        product: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            stockActuel: true,
+            stockExpress: true
+          }
+        }
+      }
+    });
+
+    // Grouper par produit et calculer les statistiques
+    const productStats = {};
+
+    orders.forEach(order => {
+      // Utiliser productId si disponible, sinon produitNom
+      const key = order.productId || order.produitNom;
+      const productName = order.product?.nom || order.produitNom;
+      const productCode = order.product?.code || 'N/A';
+
+      if (!productStats[key]) {
+        productStats[key] = {
+          productId: order.productId,
+          productCode,
+          productName,
+          stockActuel: order.product?.stockActuel || 0,
+          stockExpress: order.product?.stockExpress || 0,
+          totalRecus: 0,
+          totalValides: 0,
+          totalLivres: 0,
+          totalAnnules: 0,
+          quantiteRecue: 0,
+          quantiteValidee: 0,
+          quantiteLivree: 0
+        };
+      }
+
+      const stats = productStats[key];
+      
+      // Compter les produits reçus (NOUVELLE, A_APPELER)
+      if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+        stats.totalRecus++;
+        stats.quantiteRecue += order.quantite;
+      }
+      
+      // Compter les produits validés (tous les statuts après A_APPELER sauf ANNULEE et INJOIGNABLE)
+      if (
+        order.status === 'VALIDEE' || 
+        order.status === 'ASSIGNEE' || 
+        order.status === 'LIVREE' || 
+        order.status === 'REFUSEE' ||
+        order.status === 'ANNULEE_LIVRAISON' ||
+        order.status === 'RETOURNE' ||
+        order.status === 'EXPEDITION' || 
+        order.status === 'EXPRESS' || 
+        order.status === 'EXPRESS_ARRIVE' || 
+        order.status === 'EXPRESS_LIVRE'
+      ) {
+        stats.totalValides++;
+        stats.quantiteValidee += order.quantite;
+      }
+      
+      // Compter les produits livrés
+      if (order.status === 'LIVREE' || order.status === 'EXPRESS_LIVRE') {
+        stats.totalLivres++;
+        stats.quantiteLivree += order.quantite;
+      }
+      
+      // Compter les annulations
+      if (order.status === 'ANNULEE' || order.status === 'INJOIGNABLE') {
+        stats.totalAnnules++;
+      }
+    });
+
+    // Convertir en tableau et trier par nombre de produits reçus
+    const result = Object.values(productStats).sort((a, b) => 
+      (b.totalRecus + b.totalValides) - (a.totalRecus + a.totalValides)
+    );
+
+    // Calculer les totaux globaux
+    const totals = {
+      totalRecus: result.reduce((sum, p) => sum + p.totalRecus, 0),
+      totalValides: result.reduce((sum, p) => sum + p.totalValides, 0),
+      totalLivres: result.reduce((sum, p) => sum + p.totalLivres, 0),
+      totalAnnules: result.reduce((sum, p) => sum + p.totalAnnules, 0),
+      quantiteRecue: result.reduce((sum, p) => sum + p.quantiteRecue, 0),
+      quantiteValidee: result.reduce((sum, p) => sum + p.quantiteValidee, 0),
+      quantiteLivree: result.reduce((sum, p) => sum + p.quantiteLivree, 0)
+    };
+
+    res.json({ 
+      products: result,
+      totals,
+      date: date || 'all',
+      count: result.length
+    });
+  } catch (error) {
+    console.error('Erreur récupération statistiques produits par date:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des statistiques produits.' });
+  }
+});
+
 // GET /api/stats/export - Export des données (Admin)
 router.get('/export', authorize('ADMIN'), async (req, res) => {
   try {

@@ -55,6 +55,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Database, label: 'Base Clients', path: '/admin/database' },
           { icon: Eye, label: 'Supervision Appelants', path: '/admin/supervision' },
           { icon: BarChart3, label: 'Statistiques', path: '/admin/stats' },
+          { icon: Package, label: 'Stats par Produit', path: '/admin/product-stats' },
           { icon: DollarSign, label: 'Comptabilité', path: '/admin/accounting' },
           { icon: Settings, label: 'Paramètres SMS', path: '/admin/sms-settings' },
         ];
