@@ -73,10 +73,10 @@ export default function ProductStats() {
     }
   };
 
-  // Charger les données au montage et quand la date change
+  // Charger les données au montage et quand les dates changent
   useEffect(() => {
     fetchProductStats();
-  }, [selectedDate]);
+  }, [startDate, endDate]);
 
   // Auto-refresh toutes les 30 secondes si activé
   useEffect(() => {
