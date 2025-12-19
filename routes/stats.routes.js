@@ -520,9 +520,11 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
           totalValides: 0,
           totalLivres: 0,
           totalAnnules: 0,
+          totalExpeditionExpress: 0,
           quantiteRecue: 0,
           quantiteValidee: 0,
-          quantiteLivree: 0
+          quantiteLivree: 0,
+          quantiteExpeditionExpress: 0
         };
       }
 
@@ -561,6 +563,17 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       if (order.status === 'ANNULEE' || order.status === 'INJOIGNABLE') {
         stats.totalAnnules++;
       }
+      
+      // Compter les EXPEDITION et EXPRESS
+      if (
+        order.status === 'EXPEDITION' || 
+        order.status === 'EXPRESS' || 
+        order.status === 'EXPRESS_ARRIVE' || 
+        order.status === 'EXPRESS_LIVRE'
+      ) {
+        stats.totalExpeditionExpress++;
+        stats.quantiteExpeditionExpress += order.quantite;
+      }
     });
 
     // Convertir en tableau et trier par nombre de produits reçus
@@ -574,9 +587,11 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       totalValides: result.reduce((sum, p) => sum + p.totalValides, 0),
       totalLivres: result.reduce((sum, p) => sum + p.totalLivres, 0),
       totalAnnules: result.reduce((sum, p) => sum + p.totalAnnules, 0),
+      totalExpeditionExpress: result.reduce((sum, p) => sum + p.totalExpeditionExpress, 0),
       quantiteRecue: result.reduce((sum, p) => sum + p.quantiteRecue, 0),
       quantiteValidee: result.reduce((sum, p) => sum + p.quantiteValidee, 0),
-      quantiteLivree: result.reduce((sum, p) => sum + p.quantiteLivree, 0)
+      quantiteLivree: result.reduce((sum, p) => sum + p.quantiteLivree, 0),
+      quantiteExpeditionExpress: result.reduce((sum, p) => sum + p.quantiteExpeditionExpress, 0)
     };
 
     res.json({ 

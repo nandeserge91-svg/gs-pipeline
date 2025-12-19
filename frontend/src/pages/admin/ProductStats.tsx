@@ -12,9 +12,11 @@ interface ProductStat {
   totalValides: number;
   totalLivres: number;
   totalAnnules: number;
+  totalExpeditionExpress: number;
   quantiteRecue: number;
   quantiteValidee: number;
   quantiteLivree: number;
+  quantiteExpeditionExpress: number;
 }
 
 interface ProductStatsTotals {
@@ -22,9 +24,11 @@ interface ProductStatsTotals {
   totalValides: number;
   totalLivres: number;
   totalAnnules: number;
+  totalExpeditionExpress: number;
   quantiteRecue: number;
   quantiteValidee: number;
   quantiteLivree: number;
+  quantiteExpeditionExpress: number;
 }
 
 export default function ProductStats() {
@@ -37,9 +41,11 @@ export default function ProductStats() {
     totalValides: 0,
     totalLivres: 0,
     totalAnnules: 0,
+    totalExpeditionExpress: 0,
     quantiteRecue: 0,
     quantiteValidee: 0,
-    quantiteLivree: 0
+    quantiteLivree: 0,
+    quantiteExpeditionExpress: 0
   });
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -139,7 +145,7 @@ export default function ProductStats() {
       </div>
 
       {/* Cartes de résumé */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
@@ -181,6 +187,21 @@ export default function ProductStats() {
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
               <TrendingUp size={24} className="text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Expédition/Express</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">{totals.totalExpeditionExpress}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Quantité : {totals.quantiteExpeditionExpress}
+              </p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <Package size={24} className="text-purple-600" />
             </div>
           </div>
         </div>
@@ -230,6 +251,7 @@ export default function ProductStats() {
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Reçus</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Validés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Livrés</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-purple-50">📦⚡ Expédition/Express</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Annulés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Taux Validation</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Taux Livraison</th>
@@ -278,6 +300,12 @@ export default function ProductStats() {
                         <div className="font-semibold text-sm text-blue-600">{product.totalLivres}</div>
                         <div className="text-xs text-gray-500">
                           Qté: {product.quantiteLivree}
+                        </div>
+                      </td>
+                      <td className="text-center py-3 px-4 bg-purple-50">
+                        <div className="font-semibold text-sm text-purple-600">{product.totalExpeditionExpress}</div>
+                        <div className="text-xs text-gray-500">
+                          Qté: {product.quantiteExpeditionExpress}
                         </div>
                       </td>
                       <td className="text-center py-3 px-4">
