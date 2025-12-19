@@ -1,0 +1,87 @@
+════════════════════════════════════════════════════════════════
+📋 VARIABLES À AJOUTER SUR RAILWAY - DÉSACTIVATION SMS
+════════════════════════════════════════════════════════════════
+
+🔗 URL: https://railway.app
+📍 Projet: gs-pipeline-production
+⚙️  Section: Variables
+
+────────────────────────────────────────────────────────────────
+✅ VARIABLES À CONSERVER (déjà configurées)
+────────────────────────────────────────────────────────────────
+
+SMS_ENABLED=true
+SMS8_API_KEY=6a854258b60b92bd3a87ee563ac8a375ed28a78f
+SMS8_API_URL=https://app.sms8.io/services/send.php
+SMS_DEVICE_ID=5298
+SMS_SIM_SLOT=0
+SMS_SENDER_NUMBER=+2250595871746
+SMS_SENDER_NAME=GS-Pipeline
+
+────────────────────────────────────────────────────────────────
+➕ NOUVELLES VARIABLES À AJOUTER (SMS à désactiver)
+────────────────────────────────────────────────────────────────
+
+Variable: SMS_ORDER_DELIVERED
+Value: false
+
+Variable: SMS_ORDER_CANCELLED
+Value: false
+
+Variable: SMS_DELIVERY_ASSIGNED
+Value: false
+
+Variable: SMS_RDV_REMINDER
+Value: false
+
+Variable: SMS_NOTIFICATION
+Value: false
+
+────────────────────────────────────────────────────────────────
+📊 RÉSUMÉ
+────────────────────────────────────────────────────────────────
+
+Total SMS types: 12
+
+✅ Actifs (7):
+   - ORDER_CREATED (Commande créée)
+   - ORDER_VALIDATED (Commande validée)
+   - EXPEDITION_CONFIRMED (Expédition confirmée)
+   - EXPEDITION_EN_ROUTE (Expédition en route)
+   - EXPRESS_ARRIVED (EXPRESS arrivé)
+   - EXPRESS_PAYMENT_PENDING (EXPRESS paiement)
+   - RDV_SCHEDULED (RDV programmé)
+
+❌ Désactivés (5):
+   - ORDER_DELIVERED (Commande livrée)
+   - ORDER_CANCELLED (Commande annulée)
+   - DELIVERY_ASSIGNED (Livreur assigné)
+   - RDV_REMINDER (Rappel RDV)
+   - NOTIFICATION (Alerte livreur)
+
+────────────────────────────────────────────────────────────────
+🔧 ÉTAPES D'APPLICATION
+────────────────────────────────────────────────────────────────
+
+1. Allez sur https://railway.app
+2. Sélectionnez "gs-pipeline-production"
+3. Cliquez sur votre service backend
+4. Onglet "Variables"
+5. Cliquez "New Variable" pour chaque variable
+6. Entrez le nom et la valeur (false)
+7. Railway redémarre automatiquement (~30s)
+8. Testez avec: node verifier_config_sms.js
+
+────────────────────────────────────────────────────────────────
+💡 NOTES IMPORTANTES
+────────────────────────────────────────────────────────────────
+
+- Les variables avec "false" désactivent le type de SMS
+- Les variables absentes = SMS actif par défaut
+- Changements immédiat après redémarrage Railway
+- Réversible à tout moment (changez false → true)
+- Vérifiez avec le panneau admin: Paramètres SMS
+
+────────────────────────────────────────────────────────────────
+📚 Documentation: DESACTIVER_SMS_SPECIFIQUES.md
+════════════════════════════════════════════════════════════════
