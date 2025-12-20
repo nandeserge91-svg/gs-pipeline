@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2 } from 'lucide-react';
+import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, rdvApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
@@ -232,7 +232,7 @@ export default function Orders() {
       ].includes(order.status);
       
       // Exclure les commandes avec RDV programmé
-      const hasRdv = (order as any).rdvProgramme;
+      const hasRdv = order.rdvProgramme;
       
       if (!isToCall || hasRdv) return false; // Masquer toutes les autres commandes et les RDV
       
@@ -250,8 +250,8 @@ export default function Orders() {
     })
     .sort((a, b) => {
       // ✅ Tri intelligent : Commandes renvoyées en HAUT, puis par date de création
-      const aRenvoye = (a as any).renvoyeAAppelerAt;
-      const bRenvoye = (b as any).renvoyeAAppelerAt;
+      const aRenvoye = a.renvoyeAAppelerAt;
+      const bRenvoye = b.renvoyeAAppelerAt;
       
       // Si les deux sont renvoyées, trier par date de renvoi (plus récente en premier)
       if (aRenvoye && bRenvoye) {
@@ -420,6 +420,12 @@ export default function Orders() {
                     <span className={`badge ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
+                    {order.renvoyeAAppelerAt && (
+                      <span className="badge bg-orange-100 text-orange-700 border border-orange-300 text-xs flex items-center gap-1">
+                        <RotateCcw size={12} />
+                        Réinitialisée
+                      </span>
+                    )}
                     {order.enAttentePaiement && (
                       <span className="badge bg-purple-100 text-purple-700 border border-purple-300 text-xs flex items-center gap-1">
                         <Clock size={12} />
@@ -444,9 +450,9 @@ export default function Orders() {
                   <strong>Quantité:</strong> {order.quantite}
                 </div>
                 {/* 🆕 Afficher noteGestionnaire (taille, code, etc.) */}
-                {(order as any).noteGestionnaire && (
+                {order.noteGestionnaire && (
                   <div className="p-2 bg-purple-50 rounded border border-purple-200">
-                    <p className="text-xs text-purple-600 font-medium">👕 {(order as any).noteGestionnaire}</p>
+                    <p className="text-xs text-purple-600 font-medium">👕 {order.noteGestionnaire}</p>
                   </div>
                 )}
                 <div className="text-sm font-medium text-gray-900">

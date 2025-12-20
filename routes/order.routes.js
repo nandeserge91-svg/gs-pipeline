@@ -624,12 +624,36 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
         delivererId: null,
         deliveryDate: null,
         deliveryListId: null,
+        deliveredAt: null,
         // ✅ NOUVEAU : Réinitialiser les RDV programmés
         rdvProgramme: false,
         rdvDate: null,
         rdvNote: null,
         rdvRappele: false,
         rdvProgrammePar: null,
+        // ✅ NOUVEAU : Réinitialiser l'attente de paiement
+        enAttentePaiement: false,
+        attentePaiementAt: null,
+        // ✅ NOUVEAU : Réinitialiser les champs EXPEDITION/EXPRESS
+        // NOTE: deliveryType est CONSERVÉ (LOCAL/EXPEDITION/EXPRESS) car c'est une info fondamentale
+        montantPaye: null,
+        montantRestant: null,
+        modePaiement: null,
+        referencePayment: null,
+        codeExpedition: null,
+        photoRecuExpedition: null,
+        photoRecuExpeditionUploadedAt: null,
+        expedieAt: null,
+        clientNotifie: false,
+        notifieAt: null,
+        notifiePar: null,
+        agenceRetrait: null,
+        arriveAt: null,
+        // ✅ NOUVEAU : Réinitialiser les retours
+        raisonRetour: null,
+        retourneAt: null,
+        noteLivreur: null,
+        noteGestionnaire: null,
         // Conserver la note avec l'historique
         noteAppelant: noteComplete,
         // ✅ NOUVEAU : Marquer comme renvoyée pour affichage prioritaire
