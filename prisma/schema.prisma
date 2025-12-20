@@ -144,6 +144,9 @@ model Order {
   rdvProgrammePar Int?        // ID de l'appelant qui a programmé le RDV
   rdvRappele      Boolean     @default(false)  // RDV traité (client rappelé)
   
+  // Priorisation "À appeler" (pour tri intelligent)
+  renvoyeAAppelerAt DateTime?  // Date de renvoi vers "À appeler" (pour affichage prioritaire en haut)
+  
   // Dates de suivi
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt

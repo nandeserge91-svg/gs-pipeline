@@ -101,9 +101,14 @@ router.get('/', async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // ✅ Tri par date de modification : commandes récemment modifiées en premier
-    // Cela permet aux commandes renvoyées vers "À appeler" d'apparaître en haut
-    const orderBy = { updatedAt: 'desc' };
+    // ✅ Tri intelligent pour "À appeler" :
+    // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
+    // 2. Puis les autres commandes par date de création (plus récentes en premier)
+    // NULLS LAST = les commandes avec renvoyeAAppelerAt = null viennent après
+    const orderBy = [
+      { renvoyeAAppelerAt: 'desc' as const }, // Commandes renvoyées d'abord (triées par date de renvoi)
+      { createdAt: 'desc' as const }          // Puis par date de création normale
+    ];
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -306,7 +311,9 @@ router.put('/:id/status', async (req, res) => {
           retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
           // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
           rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
-          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
+          rdvRappele: order.rdvProgramme ? true : order.rdvRappele,
+          // ✅ NOUVEAU: Réinitialiser renvoyeAAppelerAt quand la commande change de statut (sauf si A_APPELER)
+          renvoyeAAppelerAt: status === 'A_APPELER' ? order.renvoyeAAppelerAt : null
         },
         include: {
           caller: {
@@ -619,6 +626,8 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
         deliveryListId: null,
         // Conserver la note avec l'historique
         noteAppelant: noteComplete,
+        // ✅ NOUVEAU : Marquer comme renvoyée pour affichage prioritaire
+        renvoyeAAppelerAt: new Date(),
       },
       include: {
         caller: { select: { id: true, nom: true, prenom: true } },
