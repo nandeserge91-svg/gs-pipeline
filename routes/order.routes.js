@@ -101,8 +101,9 @@ router.get('/', async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // ✅ Tri par date de création : commandes les plus récentes en premier
-    const orderBy = { createdAt: 'desc' };
+    // ✅ Tri par date de modification : commandes récemment modifiées en premier
+    // Cela permet aux commandes renvoyées vers "À appeler" d'apparaître en haut
+    const orderBy = { updatedAt: 'desc' };
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
