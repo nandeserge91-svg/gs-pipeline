@@ -249,7 +249,22 @@ export default function Orders() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      // ✅ Trier par date de création (createdAt) : Les plus récentes en premier
+      // ✅ Tri intelligent : Commandes renvoyées en HAUT, puis par date de création
+      const aRenvoye = (a as any).renvoyeAAppelerAt;
+      const bRenvoye = (b as any).renvoyeAAppelerAt;
+      
+      // Si les deux sont renvoyées, trier par date de renvoi (plus récente en premier)
+      if (aRenvoye && bRenvoye) {
+        return new Date(bRenvoye).getTime() - new Date(aRenvoye).getTime();
+      }
+      
+      // Si seulement A est renvoyée, elle vient en premier
+      if (aRenvoye && !bRenvoye) return -1;
+      
+      // Si seulement B est renvoyée, elle vient en premier
+      if (!aRenvoye && bRenvoye) return 1;
+      
+      // Si aucune n'est renvoyée, trier par date de création (plus récente en premier)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
