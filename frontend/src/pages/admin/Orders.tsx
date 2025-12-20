@@ -86,7 +86,11 @@ export default function Orders() {
       ordersApi.renvoyerAppel(orderId, motif),
     onSuccess: () => {
       toast.success('✅ Commande renvoyée vers "À appeler"');
+      // ✅ Invalider TOUS les caches de commandes pour rafraîchir toutes les listes
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-pending-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors du renvoi');
