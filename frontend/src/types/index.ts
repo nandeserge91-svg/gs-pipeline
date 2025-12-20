@@ -88,17 +88,6 @@ export interface Order {
   // Attente paiement
   enAttentePaiement?: boolean;
   attentePaiementAt?: string;
-  
-  // Gestion des RDV
-  rdvProgramme?: boolean;
-  rdvDate?: string;
-  rdvNote?: string;
-  rdvRappele?: boolean;
-  rdvProgrammePar?: number;
-  
-  // Priorisation "À appeler"
-  renvoyeAAppelerAt?: string;
-  deliveryListId?: number;
 }
 
 export interface StatusHistory {
