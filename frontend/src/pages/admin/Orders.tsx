@@ -91,6 +91,8 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ['appelant-pending-orders'] });
       queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      // ✅ Forcer le rafraîchissement immédiat de la page actuelle
+      refetch();
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors du renvoi');
