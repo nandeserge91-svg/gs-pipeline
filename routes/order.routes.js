@@ -106,8 +106,8 @@ router.get('/', async (req, res) => {
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
     // NULLS LAST = les commandes avec renvoyeAAppelerAt = null viennent après
     const orderBy = [
-      { renvoyeAAppelerAt: 'desc' as const }, // Commandes renvoyées d'abord (triées par date de renvoi)
-      { createdAt: 'desc' as const }          // Puis par date de création normale
+      { renvoyeAAppelerAt: 'desc' }, // Commandes renvoyées d'abord (triées par date de renvoi)
+      { createdAt: 'desc' }          // Puis par date de création normale
     ];
 
     const [orders, total] = await Promise.all([
