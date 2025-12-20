@@ -624,6 +624,12 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
         delivererId: null,
         deliveryDate: null,
         deliveryListId: null,
+        // ✅ NOUVEAU : Réinitialiser les RDV programmés
+        rdvProgramme: false,
+        rdvDate: null,
+        rdvNote: null,
+        rdvRappele: false,
+        rdvProgrammePar: null,
         // Conserver la note avec l'historique
         noteAppelant: noteComplete,
         // ✅ NOUVEAU : Marquer comme renvoyée pour affichage prioritaire
