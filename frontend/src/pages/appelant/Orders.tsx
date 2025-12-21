@@ -274,23 +274,38 @@ export default function Orders() {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      // ✅ Tri intelligent : Commandes renvoyées en HAUT, puis par date de création
-      const aRenvoye = (a as any).renvoyeAAppelerAt;
-      const bRenvoye = (b as any).renvoyeAAppelerAt;
-      
-      // Si les deux sont renvoyées, trier par date de renvoi (plus récente en premier)
-      if (aRenvoye && bRenvoye) {
-        return new Date(bRenvoye).getTime() - new Date(aRenvoye).getTime();
+      // 🔥 Tri intelligent multi-niveaux :
+      // 1. NOUVELLES commandes (créées APRÈS la priorisation) → EN HAUT
+      // 2. Commandes PRIORITAIRES (remontées manuellement)
+      // 3. Anciennes commandes normales
+      const aCreatedAt = new Date(a.createdAt).getTime();
+      const bCreatedAt = new Date(b.createdAt).getTime();
+      const aRenvoyeAt = (a as any).renvoyeAAppelerAt ? new Date((a as any).renvoyeAAppelerAt).getTime() : null;
+      const bRenvoyeAt = (b as any).renvoyeAAppelerAt ? new Date((b as any).renvoyeAAppelerAt).getTime() : null;
+
+      // CAS 1 : A est prioritaire, B est normale
+      if (aRenvoyeAt && !bRenvoyeAt) {
+        // Si B (normale) est plus récente que la date de priorisation de A, B vient en premier
+        if (bCreatedAt > aRenvoyeAt) return 1;
+        // Sinon A (prioritaire) vient en premier
+        return -1;
       }
-      
-      // Si seulement A est renvoyée, elle vient en premier
-      if (aRenvoye && !bRenvoye) return -1;
-      
-      // Si seulement B est renvoyée, elle vient en premier
-      if (!aRenvoye && bRenvoye) return 1;
-      
-      // Si aucune n'est renvoyée, trier par date de création (plus récente en premier)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+      // CAS 2 : B est prioritaire, A est normale
+      if (!aRenvoyeAt && bRenvoyeAt) {
+        // Si A (normale) est plus récente que la date de priorisation de B, A vient en premier
+        if (aCreatedAt > bRenvoyeAt) return -1;
+        // Sinon B (prioritaire) vient en premier
+        return 1;
+      }
+
+      // CAS 3 : Les deux sont prioritaires, trier par date de priorisation (plus récente en premier)
+      if (aRenvoyeAt && bRenvoyeAt) {
+        return bRenvoyeAt - aRenvoyeAt;
+      }
+
+      // CAS 4 : Aucune n'est prioritaire, trier par date de création (NOUVELLES en haut)
+      return bCreatedAt - aCreatedAt;
     });
 
   // Détecter les nouvelles commandes
