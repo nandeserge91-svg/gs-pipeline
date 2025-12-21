@@ -491,6 +491,8 @@ export default function Orders() {
               className={`card hover:shadow-lg transition-all ${
                 selectedOrderIds.includes(order.id) 
                   ? 'ring-2 ring-primary-500 bg-primary-50' 
+                  : order.enAttentePaiement
+                  ? 'border-l-4 border-yellow-500 bg-yellow-50'
                   : (order as any).renvoyeAAppelerAt 
                   ? 'border-l-4 border-green-500 bg-green-50' 
                   : ''
@@ -532,9 +534,9 @@ export default function Orders() {
                       </span>
                     )}
                     {order.enAttentePaiement && (
-                      <span className="badge bg-purple-100 text-purple-700 border border-purple-300 text-xs flex items-center gap-1">
+                      <span className="badge bg-yellow-100 text-yellow-800 border border-yellow-400 text-xs flex items-center gap-1">
                         <Clock size={12} />
-                        Attente paiement
+                        ⏳ Attente paiement
                       </span>
                     )}
                   </div>

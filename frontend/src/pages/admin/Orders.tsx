@@ -346,11 +346,20 @@ export default function Orders() {
                     <tr 
                       key={order.id} 
                       className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        order.renvoyeAAppelerAt ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                        order.enAttentePaiement 
+                          ? 'bg-yellow-50 border-l-4 border-l-yellow-500' 
+                          : order.renvoyeAAppelerAt 
+                          ? 'bg-green-50 border-l-4 border-l-green-500' 
+                          : ''
                       }`}
                     >
                       <td className="py-3 px-4 text-sm font-medium">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {order.enAttentePaiement && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800" title="En attente de paiement">
+                              ⏳ Attente paiement
+                            </span>
+                          )}
                           {order.renvoyeAAppelerAt && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Commande priorisée">
                               📌 Prioritaire
