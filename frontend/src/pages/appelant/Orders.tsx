@@ -246,6 +246,46 @@ export default function Orders() {
     deleteOrdersMutation.mutate(selectedOrderIds);
   };
 
+  const handlePrioritizeSelected = async () => {
+    if (selectedOrderIds.length === 0) {
+      toast.error('Aucune commande sélectionnée');
+      return;
+    }
+    
+    try {
+      // Prioriser toutes les commandes sélectionnées en parallèle
+      await Promise.all(
+        selectedOrderIds.map(orderId => ordersApi.prioritize(orderId))
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      setSelectedOrderIds([]);
+      toast.success(`✅ ${selectedOrderIds.length} commande(s) remontée(s) en haut`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erreur lors de la priorisation');
+    }
+  };
+
+  const handleUnprioritizeSelected = async () => {
+    if (selectedOrderIds.length === 0) {
+      toast.error('Aucune commande sélectionnée');
+      return;
+    }
+    
+    try {
+      // Retirer la priorité de toutes les commandes sélectionnées
+      await Promise.all(
+        selectedOrderIds.map(orderId => ordersApi.unprioritize(orderId))
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      setSelectedOrderIds([]);
+      toast.success(`✅ Priorité retirée pour ${selectedOrderIds.length} commande(s)`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erreur lors de la dépriorisation');
+    }
+  };
+
   const filteredOrders = ordersData?.orders
     ?.filter((order: Order) => {
       // IMPORTANT : Afficher UNIQUEMENT les commandes NOUVELLE et A_APPELER
@@ -332,8 +372,8 @@ export default function Orders() {
             <div className="text-right">
               <p className="text-2xl font-bold text-primary-600">{filteredOrders.length}</p>
               <p className="text-sm text-gray-600">commande(s)</p>
-              {canDeleteOrders && selectedOrderIds.length > 0 && (
-                <p className="text-sm text-red-600 font-medium mt-1">
+              {(canPrioritize || canDeleteOrders) && selectedOrderIds.length > 0 && (
+                <p className="text-sm text-green-600 font-medium mt-1">
                   {selectedOrderIds.length} sélectionnée(s)
                 </p>
               )}
@@ -360,6 +400,26 @@ export default function Orders() {
                 <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
                 Actualiser
               </button>
+              {canPrioritize && selectedOrderIds.length > 0 && (
+                <>
+                  <button
+                    onClick={handlePrioritizeSelected}
+                    className="btn bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 text-sm py-2"
+                    title="Remonter en haut les commandes sélectionnées"
+                  >
+                    <ArrowUpCircle size={16} />
+                    📌 Remonter ({selectedOrderIds.length})
+                  </button>
+                  <button
+                    onClick={handleUnprioritizeSelected}
+                    className="btn bg-gray-600 text-white hover:bg-gray-700 flex items-center gap-2 text-sm py-2"
+                    title="Retirer la priorité des commandes sélectionnées"
+                  >
+                    <ArrowDownCircle size={16} />
+                    Retirer priorité ({selectedOrderIds.length})
+                  </button>
+                </>
+              )}
               {canDeleteOrders && selectedOrderIds.length > 0 && (
                 <button
                   onClick={handleDeleteSelected}
@@ -378,7 +438,7 @@ export default function Orders() {
 
       <div className="card">
         <div className="flex flex-col md:flex-row gap-4">
-          {canDeleteOrders && filteredOrders && filteredOrders.length > 0 && (
+          {(canPrioritize || canDeleteOrders) && filteredOrders && filteredOrders.length > 0 && (
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -430,7 +490,7 @@ export default function Orders() {
               key={order.id} 
               className={`card hover:shadow-lg transition-all ${
                 selectedOrderIds.includes(order.id) 
-                  ? 'ring-2 ring-red-500 bg-red-50' 
+                  ? 'ring-2 ring-primary-500 bg-primary-50' 
                   : (order as any).renvoyeAAppelerAt 
                   ? 'border-l-4 border-green-500 bg-green-50' 
                   : ''
@@ -438,12 +498,12 @@ export default function Orders() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-start gap-2 flex-1">
-                  {canDeleteOrders && (
+                  {(canPrioritize || canDeleteOrders) && (
                     <input
                       type="checkbox"
                       checked={selectedOrderIds.includes(order.id)}
                       onChange={() => handleToggleOrder(order.id)}
-                      className="mt-1 w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
+                      className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
                       onClick={(e) => e.stopPropagation()}
                     />
                   )}
@@ -509,31 +569,6 @@ export default function Orders() {
                   </div>
                 )}
               </div>
-
-              {/* Boutons de priorisation (Admin/Gestionnaire uniquement) */}
-              {canPrioritize && (order.status === 'NOUVELLE' || order.status === 'A_APPELER') && (
-                <div className="mb-3">
-                  {(order as any).renvoyeAAppelerAt ? (
-                    <button
-                      onClick={() => unprioritizeOrderMutation.mutate(order.id)}
-                      className="btn bg-gray-500 text-white hover:bg-gray-600 w-full flex items-center justify-center gap-2"
-                      disabled={unprioritizeOrderMutation.isPending}
-                    >
-                      <ArrowDownCircle size={18} />
-                      Retirer la priorité
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => prioritizeOrderMutation.mutate(order.id)}
-                      className="btn bg-green-500 text-white hover:bg-green-600 w-full flex items-center justify-center gap-2"
-                      disabled={prioritizeOrderMutation.isPending}
-                    >
-                      <ArrowUpCircle size={18} />
-                      📌 Remonter en haut
-                    </button>
-                  )}
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-2">
                 <button
