@@ -169,6 +169,17 @@ export const ordersApi = {
     const { data } = await api.post(`/orders/${orderId}/expedition/assign`, { delivererId });
     return data;
   },
+
+  // Priorisation des commandes
+  prioritize: async (orderId: number) => {
+    const { data } = await api.post(`/orders/${orderId}/prioritize`);
+    return data;
+  },
+
+  unprioritize: async (orderId: number) => {
+    const { data } = await api.post(`/orders/${orderId}/unprioritize`);
+    return data;
+  },
 };
 
 // Delivery API

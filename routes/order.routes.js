@@ -1672,6 +1672,87 @@ router.delete('/:id', authorize('ADMIN'), async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/prioritize - Faire remonter une commande en haut de la liste (Admin/Gestionnaire)
+router.post('/:id/prioritize', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+
+    // Vérifier que la commande est bien "À appeler"
+    if (!['NOUVELLE', 'A_APPELER', 'INJOIGNABLE', 'RETOURNE'].includes(order.status)) {
+      return res.status(400).json({ 
+        error: 'Seules les commandes "À appeler" peuvent être priorisées.' 
+      });
+    }
+
+    // Mettre à jour renvoyeAAppelerAt pour faire remonter en haut
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id) },
+      data: {
+        renvoyeAAppelerAt: new Date(), // Date actuelle pour tri en haut
+        status: 'A_APPELER' // Forcer le statut à A_APPELER si c'était NOUVELLE
+      }
+    });
+
+    // Créer un historique
+    await prisma.statusHistory.create({
+      data: {
+        orderId: parseInt(id),
+        oldStatus: order.status,
+        newStatus: 'A_APPELER',
+        changedBy: req.user.id,
+        comment: `📌 Commande priorisée par ${req.user.prenom} ${req.user.nom} - Remontée en haut de la liste`
+      }
+    });
+
+    res.json({ 
+      order: updatedOrder,
+      message: 'Commande priorisée avec succès. Elle apparaîtra en haut de la liste "À appeler".' 
+    });
+  } catch (error) {
+    console.error('Erreur priorisation commande:', error);
+    res.status(500).json({ error: 'Erreur lors de la priorisation de la commande.' });
+  }
+});
+
+// POST /api/orders/:id/unprioritize - Retirer la priorité d'une commande (Admin/Gestionnaire)
+router.post('/:id/unprioritize', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+
+    // Retirer la priorité
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id) },
+      data: {
+        renvoyeAAppelerAt: null // Retirer la date de priorisation
+      }
+    });
+
+    res.json({ 
+      order: updatedOrder,
+      message: 'Priorité retirée avec succès.' 
+    });
+  } catch (error) {
+    console.error('Erreur dé-priorisation commande:', error);
+    res.status(500).json({ error: 'Erreur lors de la dé-priorisation de la commande.' });
+  }
+});
+
 export default router;
 
 

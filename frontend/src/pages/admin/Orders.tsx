@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare } from 'lucide-react';
+import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { ordersApi, productsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
@@ -96,6 +96,34 @@ export default function Orders() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors du renvoi');
+    },
+  });
+
+  // Mutation pour prioriser une commande
+  const prioritizeMutation = useMutation({
+    mutationFn: (orderId: number) => ordersApi.prioritize(orderId),
+    onSuccess: () => {
+      toast.success('📌 Commande priorisée ! Elle apparaîtra en haut de la liste "À appeler"');
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la priorisation');
+    },
+  });
+
+  // Mutation pour retirer la priorité
+  const unprioritizeMutation = useMutation({
+    mutationFn: (orderId: number) => ordersApi.unprioritize(orderId),
+    onSuccess: () => {
+      toast.success('✅ Priorité retirée');
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur');
     },
   });
 
@@ -315,8 +343,22 @@ export default function Orders() {
                 </thead>
                 <tbody>
                   {filteredOrders?.map((order: Order) => (
-                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium">{order.orderReference}</td>
+                    <tr 
+                      key={order.id} 
+                      className={`border-b border-gray-100 hover:bg-gray-50 ${
+                        order.renvoyeAAppelerAt ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          {order.renvoyeAAppelerAt && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Commande priorisée">
+                              📌 Prioritaire
+                            </span>
+                          )}
+                          <span>{order.orderReference}</span>
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-sm">{order.clientNom}</td>
                       <td className="py-3 px-4 text-sm">{order.clientTelephone}</td>
                       <td className="py-3 px-4 text-sm">{order.clientVille}</td>
@@ -354,6 +396,39 @@ export default function Orders() {
                       {(canDelete || canRenvoyerAppel) && (
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
+                            {/* Bouton Prioriser/Déprioriser - Visible pour Admin et Gestionnaire */}
+                            {canRenvoyerAppel && ['NOUVELLE', 'A_APPELER', 'INJOIGNABLE', 'RETOURNE'].includes(order.status) && (
+                              <>
+                                {order.renvoyeAAppelerAt ? (
+                                  // Bouton pour retirer la priorité
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Retirer la priorité de cette commande ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\n\nLa commande ne sera plus en haut de la liste.`)) {
+                                        unprioritizeMutation.mutate(order.id);
+                                      }
+                                    }}
+                                    className="text-purple-600 hover:text-purple-800 transition-colors"
+                                    title="Retirer la priorité (actuellement priorisée)"
+                                  >
+                                    <ArrowDownCircle size={18} />
+                                  </button>
+                                ) : (
+                                  // Bouton pour prioriser
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`📌 Prioriser cette commande ?\n\nCommande: ${order.orderReference}\nClient: ${order.clientNom}\n\nLa commande remontera en haut de la liste "À appeler".`)) {
+                                        prioritizeMutation.mutate(order.id);
+                                      }
+                                    }}
+                                    className="text-green-600 hover:text-green-800 transition-colors"
+                                    title="Faire remonter en haut de la liste"
+                                  >
+                                    <ArrowUpCircle size={18} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            
                             {/* Bouton Renvoyer à appeler - Visible pour Admin et Gestionnaire */}
                             {/* ✅ Maintenant disponible aussi pour les commandes ASSIGNEE */}
                             {canRenvoyerAppel && !['LIVREE', 'EXPEDITION', 'EXPRESS', 'EXPRESS_ARRIVE', 'EXPRESS_LIVRE'].includes(order.status) && (
