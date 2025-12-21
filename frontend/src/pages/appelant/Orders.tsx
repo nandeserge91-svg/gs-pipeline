@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2 } from 'lucide-react';
+import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, rdvApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
@@ -31,6 +31,9 @@ export default function Orders() {
   
   // Vérifier si l'utilisateur peut supprimer des commandes (Admin uniquement)
   const canDeleteOrders = user?.role === 'ADMIN';
+
+  // Vérifier si l'utilisateur peut prioriser des commandes (Admin ou Gestionnaire)
+  const canPrioritize = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
@@ -132,6 +135,28 @@ export default function Orders() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
+    },
+  });
+
+  const prioritizeOrderMutation = useMutation({
+    mutationFn: (orderId: number) => ordersApi.prioritize(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      toast.success('📌 Commande remontée en haut de la liste');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la priorisation');
+    },
+  });
+
+  const unprioritizeOrderMutation = useMutation({
+    mutationFn: (orderId: number) => ordersApi.unprioritize(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
+      toast.success('✅ Priorité retirée');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la dépriorisation');
     },
   });
 
@@ -388,7 +413,13 @@ export default function Orders() {
           {filteredOrders?.map((order: Order) => (
             <div 
               key={order.id} 
-              className={`card hover:shadow-lg transition-all ${selectedOrderIds.includes(order.id) ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+              className={`card hover:shadow-lg transition-all ${
+                selectedOrderIds.includes(order.id) 
+                  ? 'ring-2 ring-red-500 bg-red-50' 
+                  : (order as any).renvoyeAAppelerAt 
+                  ? 'border-l-4 border-green-500 bg-green-50' 
+                  : ''
+              }`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-start gap-2 flex-1">
@@ -420,6 +451,11 @@ export default function Orders() {
                     <span className={`badge ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
+                    {(order as any).renvoyeAAppelerAt && (
+                      <span className="badge bg-green-100 text-green-700 border border-green-300 text-xs flex items-center gap-1">
+                        📌 Prioritaire
+                      </span>
+                    )}
                     {order.enAttentePaiement && (
                       <span className="badge bg-purple-100 text-purple-700 border border-purple-300 text-xs flex items-center gap-1">
                         <Clock size={12} />
@@ -458,6 +494,31 @@ export default function Orders() {
                   </div>
                 )}
               </div>
+
+              {/* Boutons de priorisation (Admin/Gestionnaire uniquement) */}
+              {canPrioritize && (order.status === 'NOUVELLE' || order.status === 'A_APPELER') && (
+                <div className="mb-3">
+                  {(order as any).renvoyeAAppelerAt ? (
+                    <button
+                      onClick={() => unprioritizeOrderMutation.mutate(order.id)}
+                      className="btn bg-gray-500 text-white hover:bg-gray-600 w-full flex items-center justify-center gap-2"
+                      disabled={unprioritizeOrderMutation.isPending}
+                    >
+                      <ArrowDownCircle size={18} />
+                      Retirer la priorité
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => prioritizeOrderMutation.mutate(order.id)}
+                      className="btn bg-green-500 text-white hover:bg-green-600 w-full flex items-center justify-center gap-2"
+                      disabled={prioritizeOrderMutation.isPending}
+                    >
+                      <ArrowUpCircle size={18} />
+                      📌 Remonter en haut
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2">
                 <button
