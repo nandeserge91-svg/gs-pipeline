@@ -104,12 +104,6 @@ router.get('/', async (req, res) => {
     // ✅ Tri intelligent pour "À appeler" :
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
-    // NULLS LAST = les commandes avec renvoyeAAppelerAt = null viennent après
-    const orderBy = [
-      { renvoyeAAppelerAt: 'desc' }, // Commandes renvoyées d'abord (triées par date de renvoi)
-      { createdAt: 'desc' }          // Puis par date de création normale
-    ];
-
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -121,15 +115,32 @@ router.get('/', async (req, res) => {
             select: { id: true, nom: true, prenom: true }
           }
         },
-        orderBy,
+        orderBy: [
+          { createdAt: 'desc' }  // Tri par défaut
+        ],
         skip,
         take: parseInt(limit)
       }),
       prisma.order.count({ where })
     ]);
 
+    // 🔥 Tri côté serveur pour forcer les commandes prioritaires en haut
+    // (Prisma ne gère pas bien les NULLS LAST/FIRST, donc on trie manuellement)
+    const sortedOrders = orders.sort((a, b) => {
+      // Si a est prioritaire et b ne l'est pas, a vient en premier
+      if (a.renvoyeAAppelerAt && !b.renvoyeAAppelerAt) return -1;
+      // Si b est prioritaire et a ne l'est pas, b vient en premier
+      if (!a.renvoyeAAppelerAt && b.renvoyeAAppelerAt) return 1;
+      // Si les deux sont prioritaires, trier par date de renvoi (plus récent en premier)
+      if (a.renvoyeAAppelerAt && b.renvoyeAAppelerAt) {
+        return new Date(b.renvoyeAAppelerAt) - new Date(a.renvoyeAAppelerAt);
+      }
+      // Si aucun n'est prioritaire, garder l'ordre par createdAt (déjà trié par Prisma)
+      return 0;
+    });
+
     res.json({
-      orders,
+      orders: sortedOrders,
       pagination: {
         total,
         page: parseInt(page),
