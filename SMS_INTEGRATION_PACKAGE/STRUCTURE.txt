@@ -1,0 +1,28 @@
+﻿SMS_INTEGRATION_PACKAGE/
+â”‚
+â”œâ”€â”€ README.md (Ã€ LIRE EN PREMIER)
+â”‚
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ services/
+â”‚   â”‚   â””â”€â”€ sms.service.js (545 lignes)
+â”‚   â”œâ”€â”€ routes/
+â”‚   â”‚   â”œâ”€â”€ sms.routes.js (364 lignes)
+â”‚   â”‚   â”œâ”€â”€ sms-settings.routes.js (349 lignes)
+â”‚   â”‚   â””â”€â”€ sms-templates.routes.js (274 lignes)
+â”‚   â””â”€â”€ utils/
+â”‚       â””â”€â”€ phone.util.js (76 lignes)
+â”‚
+â”œâ”€â”€ frontend/
+â”‚   â””â”€â”€ src/
+â”‚       â””â”€â”€ pages/
+â”‚           â””â”€â”€ admin/
+â”‚               â”œâ”€â”€ SmsSettings.tsx (462 lignes)
+â”‚               â””â”€â”€ SmsTemplateEditor.tsx (379 lignes)
+â”‚
+â””â”€â”€ documentation/
+    â”œâ”€â”€ POUR_AUTRE_PROJET_CURSOR.md (ðŸ“˜ GUIDE PRINCIPAL)
+    â”œâ”€â”€ INTEGRATION_SMS8_COMPLETE_GUIDE.md
+    â”œâ”€â”€ CONFIG_RAILWAY_ANDROID.md
+    â””â”€â”€ COMMENT_PARTAGER_FICHIERS.md
+
+TOTAL : 11 fichiers + 4 guides
