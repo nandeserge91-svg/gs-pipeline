@@ -25,7 +25,7 @@ export default function ExpressAgence() {
   const [nonRetiresOnly, setNonRetiresOnly] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [triPar, setTriPar] = useState<'date' | 'notifications' | 'jours'>('jours');
+  const [triPar, setTriPar] = useState<'date' | 'notifications' | 'jours' | 'dateRetrait'>('jours');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [noteNotification, setNoteNotification] = useState('');
   
@@ -110,6 +110,11 @@ export default function ExpressAgence() {
         return b.nombreNotifications - a.nombreNotifications;
       case 'jours':
         return a.joursEnAgence - b.joursEnAgence; // ✅ Récents en premier (moins de jours)
+      case 'dateRetrait':
+        // Tri par date de retrait (pour les EXPRESS_LIVRE uniquement)
+        const aRetraitAt = a.status === 'EXPRESS_LIVRE' ? new Date(a.updatedAt).getTime() : 0;
+        const bRetraitAt = b.status === 'EXPRESS_LIVRE' ? new Date(b.updatedAt).getTime() : 0;
+        return bRetraitAt - aRetraitAt; // Plus récent en premier
       default:
         return 0;
     }
@@ -301,6 +306,7 @@ export default function ExpressAgence() {
               <option value="jours">Date d'arrivée (récent en premier)</option>
               <option value="notifications">Notifications (à relancer)</option>
               <option value="date">Date d'arrivée exacte (récent)</option>
+              <option value="dateRetrait">Date de retrait (récent en premier)</option>
             </select>
           </div>
 
