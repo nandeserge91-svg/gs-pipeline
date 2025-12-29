@@ -25,6 +25,7 @@ export default function ExpressAgence() {
   const [nonRetiresOnly, setNonRetiresOnly] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateType, setDateType] = useState<'arrive' | 'retrait'>('arrive'); // Type de filtre de date
   const [triPar, setTriPar] = useState<'date' | 'notifications' | 'jours' | 'dateRetrait'>('jours');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [noteNotification, setNoteNotification] = useState('');
@@ -32,14 +33,15 @@ export default function ExpressAgence() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['express-en-agence', searchTerm, agenceFilter, statutFilter, nonRetiresOnly, startDate, endDate],
+    queryKey: ['express-en-agence', searchTerm, agenceFilter, statutFilter, nonRetiresOnly, startDate, endDate, dateType],
     queryFn: () => expressApi.getEnAgence({
       search: searchTerm,
       agence: agenceFilter,
       statut: statutFilter,
       nonRetires: nonRetiresOnly ? 'true' : 'false',
       startDate: startDate || undefined,
-      endDate: endDate || undefined
+      endDate: endDate || undefined,
+      dateType: dateType || undefined
     }),
     refetchInterval: 30000, // Refresh toutes les 30 secondes
   });
@@ -265,6 +267,21 @@ export default function ExpressAgence() {
                 className="input pl-10 w-full"
               />
             </div>
+          </div>
+
+          {/* Type de filtre de date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              📆 Filtrer les dates par
+            </label>
+            <select
+              value={dateType}
+              onChange={(e) => setDateType(e.target.value as 'arrive' | 'retrait')}
+              className="input w-full"
+            >
+              <option value="arrive">Date d'arrivée en agence</option>
+              <option value="retrait">Date de retrait par client</option>
+            </select>
           </div>
 
           {/* Date de début */}

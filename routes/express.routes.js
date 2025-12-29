@@ -8,7 +8,7 @@ import prisma from '../config/prisma.js';
 // GET /api/express/en-agence - Récupérer tous les EXPRESS en agence avec stats
 router.get('/en-agence', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
   try {
-    const { search, agence, statut, nonRetires, startDate, endDate } = req.query;
+    const { search, agence, statut, nonRetires, startDate, endDate, dateType } = req.query;
 
     // Construire le filtre
     const where = {
@@ -43,11 +43,28 @@ router.get('/en-agence', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPEL
       where.status = 'EXPRESS_ARRIVE';
     }
 
-    // Filtre par dates (utiliser arriveAt pour les dates d'arrivée en agence)
+    // Filtre par dates
+    // dateType: 'arrive' (par défaut) ou 'retrait'
     if (startDate || endDate) {
-      where.arriveAt = {};
-      if (startDate) where.arriveAt.gte = new Date(startDate + 'T00:00:00.000Z');
-      if (endDate) where.arriveAt.lte = new Date(endDate + 'T23:59:59.999Z');
+      const filterDateType = dateType || 'arrive'; // Par défaut: date d'arrivée
+      
+      if (filterDateType === 'retrait') {
+        // Filtrer par date de retrait (updatedAt pour EXPRESS_LIVRE)
+        where.AND = [
+          { status: 'EXPRESS_LIVRE' }, // Seulement les colis retirés
+          {
+            updatedAt: {
+              ...(startDate && { gte: new Date(startDate + 'T00:00:00.000Z') }),
+              ...(endDate && { lte: new Date(endDate + 'T23:59:59.999Z') })
+            }
+          }
+        ];
+      } else {
+        // Filtrer par date d'arrivée en agence (arriveAt)
+        where.arriveAt = {};
+        if (startDate) where.arriveAt.gte = new Date(startDate + 'T00:00:00.000Z');
+        if (endDate) where.arriveAt.lte = new Date(endDate + 'T23:59:59.999Z');
+      }
     }
 
     // Récupérer les commandes avec notifications
