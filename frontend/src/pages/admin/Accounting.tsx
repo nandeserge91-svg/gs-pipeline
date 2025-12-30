@@ -464,8 +464,94 @@ export default function Accounting() {
                   <MapPin className="text-amber-600" size={24} />
                   <h2 className="text-xl font-bold">🏢 Express Retrait (90%) par Agence</h2>
                 </div>
-                <div className="text-sm text-gray-600">
-                  {expressRetraitParVille.villes.length} agence(s) • {expressRetraitParVille.totalGeneral.nombreCommandes} commande(s)
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => {
+                      // Générer le CSV
+                      const csvRows = [];
+                      
+                      // En-tête principal
+                      csvRows.push(['COMPTABILITE EXPRESS RETRAIT (90%) PAR AGENCE']);
+                      csvRows.push(['Période', `Du ${new Date(expressRetraitParVille.periode.debut).toLocaleDateString('fr-FR')} au ${new Date(expressRetraitParVille.periode.fin).toLocaleDateString('fr-FR')}`]);
+                      csvRows.push([]);
+                      
+                      // Résumé global
+                      csvRows.push(['RESUME GLOBAL']);
+                      csvRows.push(['Total Agences', expressRetraitParVille.totalGeneral.nombreVilles]);
+                      csvRows.push(['Total Commandes', expressRetraitParVille.totalGeneral.nombreCommandes]);
+                      csvRows.push(['Montant Total (90%)', `${expressRetraitParVille.totalGeneral.montant} FCFA`]);
+                      csvRows.push([]);
+                      
+                      // Détails par agence
+                      csvRows.push(['DETAILS PAR AGENCE']);
+                      csvRows.push(['Rang', 'Agence', 'Nombre Commandes', 'Montant Total', 'Retrait 90%', '% du Total']);
+                      
+                      expressRetraitParVille.villes.forEach((agence: any, index: number) => {
+                        const percentageOfTotal = ((agence.montantRetrait90 / expressRetraitParVille.totalGeneral.montant) * 100).toFixed(2);
+                        csvRows.push([
+                          index + 1,
+                          agence.ville,
+                          agence.nombreCommandes,
+                          `${agence.montantTotal} FCFA`,
+                          `${agence.montantRetrait90} FCFA`,
+                          `${percentageOfTotal}%`
+                        ]);
+                      });
+                      
+                      csvRows.push([]);
+                      csvRows.push([]);
+                      
+                      // Détails des commandes par agence
+                      csvRows.push(['DETAILS DES COMMANDES PAR AGENCE']);
+                      csvRows.push([]);
+                      
+                      expressRetraitParVille.villes.forEach((agence: any) => {
+                        csvRows.push([`AGENCE: ${agence.ville}`]);
+                        csvRows.push(['Référence', 'Client', 'Ville Client', 'Téléphone', 'Produit', 'Montant Total', 'Retrait 90%', 'Statut', 'Date Arrivée', 'Date Retrait']);
+                        
+                        agence.commandes.forEach((cmd: any) => {
+                          const dateRetrait = cmd.dateRetrait 
+                            ? new Date(cmd.dateRetrait).toLocaleString('fr-FR')
+                            : 'En attente';
+                          csvRows.push([
+                            cmd.reference,
+                            cmd.client,
+                            cmd.ville || 'N/A',
+                            cmd.telephone,
+                            cmd.produit,
+                            `${cmd.montantTotal} FCFA`,
+                            `${cmd.montantRetrait} FCFA`,
+                            cmd.status === 'EXPRESS_LIVRE' ? 'Retiré' : 'En attente',
+                            new Date(cmd.dateArrivee).toLocaleString('fr-FR'),
+                            dateRetrait
+                          ]);
+                        });
+                        
+                        csvRows.push([]);
+                      });
+                      
+                      // Convertir en CSV
+                      const csvContent = csvRows.map(row => 
+                        row.map(cell => `"${cell}"`).join(',')
+                      ).join('\n');
+                      
+                      // Télécharger le fichier
+                      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `express_retrait_agence_${dateDebut}_${dateFin}.csv`;
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                    }}
+                    className="btn btn-secondary flex items-center gap-2"
+                  >
+                    <Download size={18} />
+                    Exporter CSV
+                  </button>
+                  <div className="text-sm text-gray-600">
+                    {expressRetraitParVille.villes.length} agence(s) • {expressRetraitParVille.totalGeneral.nombreCommandes} commande(s)
+                  </div>
                 </div>
               </div>
 
