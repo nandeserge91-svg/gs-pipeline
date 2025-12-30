@@ -15,7 +15,7 @@ export default function ClientDatabase() {
   const [filterCaller, setFilterCaller] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // Requête pour récupérer toutes les commandes TRAITÉES (pas NOUVELLE ni A_APPELER)
+  // Requête pour récupérer TOUTES les commandes (y compris NOUVELLE et A_APPELER)
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['client-database', searchTerm, filterStatus, filterVille, startDate, endDate, filterCaller],
     queryFn: async () => {
@@ -45,15 +45,10 @@ export default function ClientDatabase() {
     },
   });
 
-  // Filtrer uniquement les commandes TRAITÉES (exclure NOUVELLE et A_APPELER)
-  // IMPORTANT : Pour le Gestionnaire de Stock, exclure aussi VALIDEE (commandes non assignées)
-  const commandesTraitees = ordersData?.orders?.filter((order: any) => {
-    // Exclure toujours les commandes nouvelles et à appeler
-    if (['NOUVELLE', 'A_APPELER'].includes(order.status)) {
-      return false;
-    }
-    
-    // Pour Gestionnaire de Stock : exclure aussi les commandes VALIDÉE non assignées
+  // Afficher TOUTES les commandes (y compris NOUVELLE et A_APPELER)
+  // IMPORTANT : Pour le Gestionnaire de Stock, exclure uniquement VALIDEE (commandes non assignées)
+  const toutesLesCommandes = ordersData?.orders?.filter((order: any) => {
+    // Pour Gestionnaire de Stock : exclure uniquement les commandes VALIDÉE non assignées
     if (user?.role === 'GESTIONNAIRE_STOCK' && order.status === 'VALIDEE') {
       return false;
     }
@@ -63,13 +58,15 @@ export default function ClientDatabase() {
 
   // Statistiques en temps réel
   const stats = {
-    total: commandesTraitees.length,
-    validees: commandesTraitees.filter((o: any) => o.status === 'VALIDEE').length,
-    annulees: commandesTraitees.filter((o: any) => o.status === 'ANNULEE').length,
-    injoignables: commandesTraitees.filter((o: any) => o.status === 'INJOIGNABLE').length,
-    assignees: commandesTraitees.filter((o: any) => o.status === 'ASSIGNEE').length,
-    livrees: commandesTraitees.filter((o: any) => o.status === 'LIVREE').length,
-    montantTotal: commandesTraitees.reduce((sum: number, o: any) => {
+    total: toutesLesCommandes.length,
+    nouvelles: toutesLesCommandes.filter((o: any) => o.status === 'NOUVELLE').length,
+    aAppeler: toutesLesCommandes.filter((o: any) => o.status === 'A_APPELER').length,
+    validees: toutesLesCommandes.filter((o: any) => o.status === 'VALIDEE').length,
+    annulees: toutesLesCommandes.filter((o: any) => o.status === 'ANNULEE').length,
+    injoignables: toutesLesCommandes.filter((o: any) => o.status === 'INJOIGNABLE').length,
+    assignees: toutesLesCommandes.filter((o: any) => o.status === 'ASSIGNEE').length,
+    livrees: toutesLesCommandes.filter((o: any) => o.status === 'LIVREE').length,
+    montantTotal: toutesLesCommandes.reduce((sum: number, o: any) => {
       if (['VALIDEE', 'ASSIGNEE', 'LIVREE'].includes(o.status)) {
         return sum + o.montant;
       }
@@ -78,20 +75,28 @@ export default function ClientDatabase() {
   };
 
   // Extraction des villes uniques
-  const villes = [...new Set(commandesTraitees.map((o: any) => o.clientVille))].filter(Boolean);
+  const villes = [...new Set(toutesLesCommandes.map((o: any) => o.clientVille))].filter(Boolean);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Base de Données Clients</h1>
-        <p className="text-gray-600 mt-1">Historique complet de toutes les commandes traitées</p>
+        <h1 className="text-3xl font-bold text-gray-900">📚 Base de Données Clients</h1>
+        <p className="text-gray-600 mt-1">Historique complet de toutes les commandes (y compris non traitées)</p>
       </div>
 
       {/* Statistiques en temps réel - En haut */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
         <div className="card bg-blue-50 border-blue-200">
           <p className="text-xs text-blue-600 font-medium">Total</p>
           <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
+        </div>
+        <div className="card bg-gray-50 border-gray-200">
+          <p className="text-xs text-gray-600 font-medium">Nouvelles</p>
+          <p className="text-2xl font-bold text-gray-700">{stats.nouvelles}</p>
+        </div>
+        <div className="card bg-yellow-50 border-yellow-200">
+          <p className="text-xs text-yellow-600 font-medium">À Appeler</p>
+          <p className="text-2xl font-bold text-yellow-700">{stats.aAppeler}</p>
         </div>
         {/* Gestionnaire de Stock ne voit pas les Validées */}
         {user?.role !== 'GESTIONNAIRE_STOCK' && (
@@ -156,6 +161,8 @@ export default function ClientDatabase() {
               className="input"
             >
               <option value="ALL">Tous les statuts</option>
+              <option value="NOUVELLE">Nouvelle</option>
+              <option value="A_APPELER">À Appeler</option>
               {/* Gestionnaire de Stock ne voit pas les commandes VALIDÉE non assignées */}
               {user?.role !== 'GESTIONNAIRE_STOCK' && (
                 <option value="VALIDEE">Validée</option>
@@ -166,6 +173,10 @@ export default function ClientDatabase() {
               <option value="LIVREE">Livrée</option>
               <option value="REFUSEE">Refusée</option>
               <option value="ANNULEE_LIVRAISON">Annulée livraison</option>
+              <option value="EXPEDITION">Expédition</option>
+              <option value="EXPRESS">Express</option>
+              <option value="EXPRESS_ARRIVE">Express Arrivé</option>
+              <option value="EXPRESS_LIVRE">Express Livré</option>
             </select>
           </div>
 
@@ -250,7 +261,7 @@ export default function ClientDatabase() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">
-            {commandesTraitees.length} commande(s) traitée(s)
+            {toutesLesCommandes.length} commande(s)
           </h3>
           <div className="text-sm text-gray-500">
             Actualisation automatique toutes les 5 secondes
@@ -261,10 +272,10 @@ export default function ClientDatabase() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
-        ) : commandesTraitees.length === 0 ? (
+        ) : toutesLesCommandes.length === 0 ? (
           <div className="text-center py-12">
             <Package size={48} className="mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500">Aucune commande traitée trouvée</p>
+            <p className="text-gray-500">Aucune commande trouvée</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -283,7 +294,7 @@ export default function ClientDatabase() {
                 </tr>
               </thead>
               <tbody>
-                {commandesTraitees.map((order: any) => (
+                {toutesLesCommandes.map((order: any) => (
                   <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 text-sm text-gray-600">
                       {formatDateTime(order.createdAt)}
