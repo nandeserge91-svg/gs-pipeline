@@ -8,7 +8,8 @@ import {
   Zap, 
   Calendar,
   Download,
-  Users
+  Users,
+  MapPin
 } from 'lucide-react';
 import {
   AreaChart,
@@ -38,6 +39,12 @@ export default function Accounting() {
   const { data: stats, isLoading, refetch } = useQuery({
     queryKey: ['accounting-stats', dateDebut, dateFin],
     queryFn: () => accountingApi.getStats({ dateDebut, dateFin }),
+  });
+
+  // Récupérer les données Express Retrait par ville
+  const { data: expressRetraitParVille, isLoading: isLoadingVilles } = useQuery({
+    queryKey: ['express-retrait-par-ville', dateDebut, dateFin],
+    queryFn: () => accountingApi.getExpressRetraitParVille({ dateDebut, dateFin }),
   });
 
   const handleExport = () => {
@@ -439,6 +446,205 @@ export default function Accounting() {
                       <td className="px-4 py-3 text-right">
                         <span className="font-bold text-green-600 text-lg">
                           {formatCurrency(stats.topLivreurs.reduce((sum, l) => sum + l.montant, 0))}
+                        </span>
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Express Retrait par Ville */}
+          {expressRetraitParVille && expressRetraitParVille.villes && expressRetraitParVille.villes.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="text-amber-600" size={24} />
+                  <h2 className="text-xl font-bold">🏙️ Express Retrait (90%) par Ville</h2>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {expressRetraitParVille.villes.length} ville(s) • {expressRetraitParVille.totalGeneral.nombreCommandes} commande(s)
+                </div>
+              </div>
+
+              {/* Carte résumé */}
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-lg p-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Total Villes</p>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {expressRetraitParVille.totalGeneral.nombreVilles}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Total Commandes</p>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {expressRetraitParVille.totalGeneral.nombreCommandes}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Montant Total (90%)</p>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {formatCurrency(expressRetraitParVille.totalGeneral.montant)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Tableau des villes */}
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-200 rounded-lg">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200 bg-gray-50 sticky top-0">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rang</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ville</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Commandes</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Montant Total</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Retrait 90%</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">% du Total</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {expressRetraitParVille.villes.map((ville: any, index: number) => {
+                      const isTop3 = index < 3;
+                      const percentageOfTotal = (ville.montantRetrait90 / expressRetraitParVille.totalGeneral.montant) * 100;
+                      
+                      return (
+                        <tr 
+                          key={index} 
+                          className={`hover:bg-gray-50 transition-colors ${
+                            index === 0 ? 'bg-yellow-50' : 
+                            index === 1 ? 'bg-gray-50' : 
+                            index === 2 ? 'bg-orange-50' : ''
+                          }`}
+                        >
+                          <td className="px-4 py-3 text-sm font-medium">
+                            <span className="text-2xl">
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                                index === 0 ? 'bg-yellow-500' :
+                                index === 1 ? 'bg-gray-400' :
+                                index === 2 ? 'bg-orange-500' :
+                                'bg-amber-500'
+                              }`}>
+                                <MapPin size={20} />
+                              </div>
+                              <span className="font-medium text-gray-900">{ville.ville}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                              {ville.nombreCommandes}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="text-sm text-gray-600">
+                              {formatCurrency(ville.montantTotal)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`font-bold ${isTop3 ? 'text-amber-600 text-lg' : 'text-gray-900'}`}>
+                              {formatCurrency(ville.montantRetrait90)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-24">
+                                <div 
+                                  className={`h-2 rounded-full ${
+                                    index === 0 ? 'bg-yellow-500' :
+                                    index === 1 ? 'bg-gray-400' :
+                                    index === 2 ? 'bg-orange-500' :
+                                    'bg-amber-500'
+                                  }`}
+                                  style={{ 
+                                    width: `${percentageOfTotal}%` 
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500 w-12 text-right">
+                                {percentageOfTotal.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => {
+                                // Ouvrir modal avec détails des commandes de cette ville
+                                const modal = document.createElement('div');
+                                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                                modal.innerHTML = `
+                                  <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                                    <div class="flex justify-between items-center mb-4">
+                                      <h3 class="text-xl font-bold">Détails - ${ville.ville}</h3>
+                                      <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                                        ✕
+                                      </button>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                      <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                          <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Référence</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Client</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Agence</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Statut</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Retrait 90%</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 bg-white">
+                                          ${ville.commandes.map((cmd: any) => `
+                                            <tr>
+                                              <td class="px-3 py-2 text-xs">${cmd.reference}</td>
+                                              <td class="px-3 py-2 text-xs">${cmd.client}</td>
+                                              <td class="px-3 py-2 text-xs">${cmd.agence || 'N/A'}</td>
+                                              <td class="px-3 py-2 text-xs">
+                                                <span class="px-2 py-1 rounded ${cmd.status === 'EXPRESS_LIVRE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                                  ${cmd.status === 'EXPRESS_LIVRE' ? 'Retiré' : 'En attente'}
+                                                </span>
+                                              </td>
+                                              <td class="px-3 py-2 text-xs text-right font-medium">${formatCurrency(cmd.montantRetrait)}</td>
+                                            </tr>
+                                          `).join('')}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                `;
+                                document.body.appendChild(modal);
+                              }}
+                              className="text-xs px-3 py-1 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-md font-medium transition-colors"
+                            >
+                              Voir détails
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="border-t-2 border-gray-300 bg-gray-50 sticky bottom-0">
+                    <tr>
+                      <td colSpan={2} className="px-4 py-3 text-sm font-bold text-gray-900">TOTAL GÉNÉRAL</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-amber-200 text-amber-900 font-bold">
+                          {expressRetraitParVille.totalGeneral.nombreCommandes}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-bold text-gray-900">
+                          {formatCurrency(expressRetraitParVille.villes.reduce((sum: number, v: any) => sum + v.montantTotal, 0))}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-bold text-amber-600 text-lg">
+                          {formatCurrency(expressRetraitParVille.totalGeneral.montant)}
                         </span>
                       </td>
                       <td colSpan={2}></td>

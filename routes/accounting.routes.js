@@ -260,6 +260,109 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
   }
 });
 
+// GET /api/accounting/express-retrait-par-ville - Comptabilité Express Retrait par ville
+// Accessible uniquement par ADMIN
+router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async (req, res) => {
+  try {
+    const { dateDebut, dateFin } = req.query;
+
+    // Définir les dates (même logique que /stats)
+    let startDate, endDate;
+    
+    if (dateDebut) {
+      startDate = new Date(`${dateDebut}T00:00:00.000Z`);
+    } else {
+      const now = new Date();
+      startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    }
+    
+    if (dateFin) {
+      endDate = new Date(`${dateFin}T23:59:59.999Z`);
+    } else {
+      const now = new Date();
+      endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    }
+
+    // Récupérer toutes les commandes Express Retrait (90%)
+    // Statuts : EXPRESS_ARRIVE (en attente retrait) et EXPRESS_LIVRE (déjà retiré)
+    const commandesExpressRetrait = await prisma.order.findMany({
+      where: {
+        deliveryType: 'EXPRESS',
+        status: { in: ['EXPRESS_ARRIVE', 'EXPRESS_LIVRE'] },
+        arriveAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      include: {
+        product: { select: { nom: true } }
+      },
+      orderBy: {
+        arriveAt: 'desc'
+      }
+    });
+
+    // Grouper par ville
+    const parVille = {};
+    
+    commandesExpressRetrait.forEach(commande => {
+      const ville = commande.clientVille || 'Non spécifié';
+      
+      if (!parVille[ville]) {
+        parVille[ville] = {
+          ville: ville,
+          nombreCommandes: 0,
+          montantTotal: 0,
+          montantRetrait90: 0, // 90% du montant total
+          commandes: []
+        };
+      }
+      
+      const montantRetrait = commande.montant * 0.90;
+      
+      parVille[ville].nombreCommandes += 1;
+      parVille[ville].montantTotal += commande.montant;
+      parVille[ville].montantRetrait90 += montantRetrait;
+      parVille[ville].commandes.push({
+        id: commande.id,
+        reference: commande.orderReference,
+        client: commande.clientNom,
+        telephone: commande.clientTelephone,
+        agence: commande.agenceRetrait,
+        produit: commande.product ? commande.product.nom : commande.produitNom,
+        montantTotal: commande.montant,
+        montantRetrait: montantRetrait,
+        status: commande.status,
+        dateArrivee: commande.arriveAt,
+        codeExpedition: commande.codeExpedition
+      });
+    });
+
+    // Convertir en tableau et trier par montant décroissant
+    const villesArray = Object.values(parVille).sort((a, b) => b.montantRetrait90 - a.montantRetrait90);
+
+    // Calculer les totaux
+    const totalGeneral = villesArray.reduce((sum, ville) => sum + ville.montantRetrait90, 0);
+    const totalCommandes = villesArray.reduce((sum, ville) => sum + ville.nombreCommandes, 0);
+
+    res.json({
+      periode: {
+        debut: startDate.toISOString(),
+        fin: endDate.toISOString()
+      },
+      totalGeneral: {
+        montant: totalGeneral,
+        nombreCommandes: totalCommandes,
+        nombreVilles: villesArray.length
+      },
+      villes: villesArray
+    });
+  } catch (error) {
+    console.error('Erreur récupération Express Retrait par ville:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des données.' });
+  }
+});
+
 export default router;
 
 
