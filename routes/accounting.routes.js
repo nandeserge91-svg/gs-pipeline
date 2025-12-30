@@ -334,6 +334,7 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
         montantRetrait: montantRetrait,
         status: commande.status,
         dateArrivee: commande.arriveAt,
+        dateRetrait: commande.status === 'EXPRESS_LIVRE' ? commande.updatedAt : null,
         codeExpedition: commande.codeExpedition
       });
     });

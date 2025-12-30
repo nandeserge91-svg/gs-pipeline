@@ -596,11 +596,22 @@ export default function Accounting() {
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Client</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Agence</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Statut</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Date Retrait</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Retrait 90%</th>
                                           </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200 bg-white">
-                                          ${ville.commandes.map((cmd: any) => `
+                                          ${ville.commandes.map((cmd: any) => {
+                                            const dateRetrait = cmd.dateRetrait 
+                                              ? new Date(cmd.dateRetrait).toLocaleDateString('fr-FR', { 
+                                                  day: '2-digit', 
+                                                  month: '2-digit', 
+                                                  year: 'numeric',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit'
+                                                })
+                                              : '<span class="text-gray-400 italic">En attente</span>';
+                                            return `
                                             <tr>
                                               <td class="px-3 py-2 text-xs">${cmd.reference}</td>
                                               <td class="px-3 py-2 text-xs">${cmd.client}</td>
@@ -610,9 +621,11 @@ export default function Accounting() {
                                                   ${cmd.status === 'EXPRESS_LIVRE' ? 'Retiré' : 'En attente'}
                                                 </span>
                                               </td>
+                                              <td class="px-3 py-2 text-xs text-center">${dateRetrait}</td>
                                               <td class="px-3 py-2 text-xs text-right font-medium">${formatCurrency(cmd.montantRetrait)}</td>
                                             </tr>
-                                          `).join('')}
+                                            `;
+                                          }).join('')}
                                         </tbody>
                                       </table>
                                     </div>
