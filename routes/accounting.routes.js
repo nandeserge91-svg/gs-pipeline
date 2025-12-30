@@ -302,31 +302,31 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
       }
     });
 
-    // Grouper par ville (normaliser pour éviter les doublons)
-    const parVille = {};
+    // Grouper par agence de retrait (normaliser pour éviter les doublons)
+    const parAgence = {};
     
     commandesExpressRetrait.forEach(commande => {
-      // Normaliser le nom de la ville : trim, supprimer espaces multiples, capitaliser correctement
-      let villeOriginal = commande.clientVille || 'Non spécifié';
+      // Utiliser l'agence de retrait au lieu de la ville client
+      let agenceOriginal = commande.agenceRetrait || 'Non spécifié';
       
       // Normaliser : trim, remplacer espaces multiples par un seul, mettre en majuscules pour la clé
-      const villeNormalisee = villeOriginal
+      const agenceNormalisee = agenceOriginal
         .trim()
         .replace(/\s+/g, ' ')
         .toUpperCase();
       
       // Utiliser la version normalisée comme clé, mais garder une version propre pour l'affichage
-      if (!parVille[villeNormalisee]) {
+      if (!parAgence[agenceNormalisee]) {
         // Capitaliser correctement pour l'affichage (première lettre de chaque mot en majuscule)
-        const villeAffichage = villeOriginal
+        const agenceAffichage = agenceOriginal
           .trim()
           .replace(/\s+/g, ' ')
           .split(' ')
           .map(mot => mot.charAt(0).toUpperCase() + mot.slice(1).toLowerCase())
           .join(' ');
         
-        parVille[villeNormalisee] = {
-          ville: villeAffichage,
+        parAgence[agenceNormalisee] = {
+          ville: agenceAffichage, // Nom affiché (on garde "ville" pour compatibilité frontend)
           nombreCommandes: 0,
           montantTotal: 0,
           montantRetrait90: 0, // 90% du montant total
@@ -336,14 +336,15 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
       
       const montantRetrait = commande.montant * 0.90;
       
-      parVille[villeNormalisee].nombreCommandes += 1;
-      parVille[villeNormalisee].montantTotal += commande.montant;
-      parVille[villeNormalisee].montantRetrait90 += montantRetrait;
-      parVille[villeNormalisee].commandes.push({
+      parAgence[agenceNormalisee].nombreCommandes += 1;
+      parAgence[agenceNormalisee].montantTotal += commande.montant;
+      parAgence[agenceNormalisee].montantRetrait90 += montantRetrait;
+      parAgence[agenceNormalisee].commandes.push({
         id: commande.id,
         reference: commande.orderReference,
         client: commande.clientNom,
         telephone: commande.clientTelephone,
+        ville: commande.clientVille, // Ville du client
         agence: commande.agenceRetrait,
         produit: commande.product ? commande.product.nom : commande.produitNom,
         montantTotal: commande.montant,
@@ -356,11 +357,11 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
     });
 
     // Convertir en tableau et trier par montant décroissant
-    const villesArray = Object.values(parVille).sort((a, b) => b.montantRetrait90 - a.montantRetrait90);
+    const agencesArray = Object.values(parAgence).sort((a, b) => b.montantRetrait90 - a.montantRetrait90);
 
     // Calculer les totaux
-    const totalGeneral = villesArray.reduce((sum, ville) => sum + ville.montantRetrait90, 0);
-    const totalCommandes = villesArray.reduce((sum, ville) => sum + ville.nombreCommandes, 0);
+    const totalGeneral = agencesArray.reduce((sum, agence) => sum + agence.montantRetrait90, 0);
+    const totalCommandes = agencesArray.reduce((sum, agence) => sum + agence.nombreCommandes, 0);
 
     res.json({
       periode: {
@@ -370,9 +371,9 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
       totalGeneral: {
         montant: totalGeneral,
         nombreCommandes: totalCommandes,
-        nombreVilles: villesArray.length
+        nombreVilles: agencesArray.length // Nombre d'agences
       },
-      villes: villesArray
+      villes: agencesArray // On garde "villes" pour compatibilité frontend
     });
   } catch (error) {
     console.error('Erreur récupération Express Retrait par ville:', error);

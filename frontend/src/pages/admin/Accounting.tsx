@@ -456,16 +456,16 @@ export default function Accounting() {
             </div>
           )}
 
-          {/* Express Retrait par Ville */}
+          {/* Express Retrait par Agence */}
           {expressRetraitParVille && expressRetraitParVille.villes && expressRetraitParVille.villes.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <MapPin className="text-amber-600" size={24} />
-                  <h2 className="text-xl font-bold">🏙️ Express Retrait (90%) par Ville</h2>
+                  <h2 className="text-xl font-bold">🏢 Express Retrait (90%) par Agence</h2>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {expressRetraitParVille.villes.length} ville(s) • {expressRetraitParVille.totalGeneral.nombreCommandes} commande(s)
+                  {expressRetraitParVille.villes.length} agence(s) • {expressRetraitParVille.totalGeneral.nombreCommandes} commande(s)
                 </div>
               </div>
 
@@ -473,7 +473,7 @@ export default function Accounting() {
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-lg p-4 mb-4">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">Total Villes</p>
+                    <p className="text-xs text-gray-600 mb-1">Total Agences</p>
                     <p className="text-2xl font-bold text-amber-700">
                       {expressRetraitParVille.totalGeneral.nombreVilles}
                     </p>
@@ -493,13 +493,13 @@ export default function Accounting() {
                 </div>
               </div>
               
-              {/* Tableau des villes */}
+              {/* Tableau des agences */}
               <div className="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-200 rounded-lg">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-gray-200 bg-gray-50 sticky top-0">
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rang</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ville</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Agence</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Commandes</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Montant Total</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Retrait 90%</th>
@@ -581,9 +581,9 @@ export default function Accounting() {
                                 const modal = document.createElement('div');
                                 modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
                                 modal.innerHTML = `
-                                  <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                                  <div class="bg-white rounded-lg p-6 max-w-5xl w-full mx-4 max-h-[80vh] overflow-y-auto">
                                     <div class="flex justify-between items-center mb-4">
-                                      <h3 class="text-xl font-bold">Détails - ${ville.ville}</h3>
+                                      <h3 class="text-xl font-bold">🏢 Détails Agence - ${ville.ville}</h3>
                                       <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
                                         ✕
                                       </button>
@@ -594,7 +594,7 @@ export default function Accounting() {
                                           <tr>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Référence</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Client</th>
-                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Agence</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Ville Client</th>
                                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Statut</th>
                                             <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Date Retrait</th>
                                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Retrait 90%</th>
@@ -615,7 +615,7 @@ export default function Accounting() {
                                             <tr>
                                               <td class="px-3 py-2 text-xs">${cmd.reference}</td>
                                               <td class="px-3 py-2 text-xs">${cmd.client}</td>
-                                              <td class="px-3 py-2 text-xs">${cmd.agence || 'N/A'}</td>
+                                              <td class="px-3 py-2 text-xs">${cmd.ville || 'N/A'}</td>
                                               <td class="px-3 py-2 text-xs">
                                                 <span class="px-2 py-1 rounded ${cmd.status === 'EXPRESS_LIVRE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
                                                   ${cmd.status === 'EXPRESS_LIVRE' ? 'Retiré' : 'En attente'}
