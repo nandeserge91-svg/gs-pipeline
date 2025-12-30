@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Filter, Calendar, Phone, MapPin, Package, User } from 'lucide-react';
+import { Search, Filter, Calendar, Phone, MapPin, Package, User, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import { useAuthStore } from '@/store/authStore';
@@ -77,11 +77,107 @@ export default function ClientDatabase() {
   // Extraction des villes uniques
   const villes = [...new Set(toutesLesCommandes.map((o: any) => o.clientVille))].filter(Boolean);
 
+  // Fonction d'export CSV
+  const handleExportCSV = () => {
+    const csvRows = [];
+    
+    // En-tête
+    csvRows.push(['BASE DE DONNEES CLIENTS']);
+    csvRows.push(['Exporté le', new Date().toLocaleString('fr-FR')]);
+    csvRows.push([]);
+    
+    // Résumé des statistiques
+    csvRows.push(['STATISTIQUES GLOBALES']);
+    csvRows.push(['Total Commandes', stats.total]);
+    csvRows.push(['Nouvelles', stats.nouvelles]);
+    csvRows.push(['À Appeler', stats.aAppeler]);
+    if (user?.role !== 'GESTIONNAIRE_STOCK') {
+      csvRows.push(['Validées', stats.validees]);
+    }
+    csvRows.push(['Annulées', stats.annulees]);
+    csvRows.push(['Injoignables', stats.injoignables]);
+    csvRows.push(['Assignées', stats.assignees]);
+    csvRows.push(['Livrées', stats.livrees]);
+    csvRows.push(['Montant Total', `${stats.montantTotal} FCFA`]);
+    csvRows.push([]);
+    
+    // Détails des commandes
+    csvRows.push(['DETAILS DES COMMANDES']);
+    csvRows.push([
+      'Date Création',
+      'Référence',
+      'Client',
+      'Téléphone',
+      'Ville',
+      'Commune',
+      'Adresse',
+      'Produit',
+      'Quantité',
+      'Montant',
+      'Statut',
+      'Appelant',
+      'Date Appel',
+      'Note Appelant',
+      'Livreur',
+      'Note Livreur',
+      'Type Livraison',
+      'Agence Retrait'
+    ]);
+    
+    toutesLesCommandes.forEach((order: any) => {
+      csvRows.push([
+        formatDateTime(order.createdAt),
+        order.orderReference || 'N/A',
+        order.clientNom,
+        order.clientTelephone,
+        order.clientVille,
+        order.clientCommune || 'N/A',
+        order.clientAdresse || 'N/A',
+        order.produitNom,
+        order.quantite,
+        `${order.montant} FCFA`,
+        getStatusLabel(order.status),
+        order.caller ? `${order.caller.prenom} ${order.caller.nom}` : 'N/A',
+        order.calledAt ? formatDateTime(order.calledAt) : 'N/A',
+        order.noteAppelant || 'N/A',
+        order.deliverer ? `${order.deliverer.prenom} ${order.deliverer.nom}` : 'N/A',
+        order.noteLivreur || 'N/A',
+        order.deliveryType || 'N/A',
+        order.agenceRetrait || 'N/A'
+      ]);
+    });
+    
+    // Convertir en CSV
+    const csvContent = csvRows.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+    
+    // Télécharger
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.download = `base_donnees_clients_${dateStr}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">📚 Base de Données Clients</h1>
-        <p className="text-gray-600 mt-1">Historique complet de toutes les commandes (y compris non traitées)</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">📚 Base de Données Clients</h1>
+          <p className="text-gray-600 mt-1">Historique complet de toutes les commandes (y compris non traitées)</p>
+        </div>
+        <button
+          onClick={handleExportCSV}
+          disabled={toutesLesCommandes.length === 0}
+          className="btn btn-secondary flex items-center gap-2"
+        >
+          <Download size={18} />
+          Exporter CSV
+        </button>
       </div>
 
       {/* Statistiques en temps réel - En haut */}
