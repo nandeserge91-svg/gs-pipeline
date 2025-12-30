@@ -302,15 +302,31 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
       }
     });
 
-    // Grouper par ville
+    // Grouper par ville (normaliser pour éviter les doublons)
     const parVille = {};
     
     commandesExpressRetrait.forEach(commande => {
-      const ville = commande.clientVille || 'Non spécifié';
+      // Normaliser le nom de la ville : trim, supprimer espaces multiples, capitaliser correctement
+      let villeOriginal = commande.clientVille || 'Non spécifié';
       
-      if (!parVille[ville]) {
-        parVille[ville] = {
-          ville: ville,
+      // Normaliser : trim, remplacer espaces multiples par un seul, mettre en majuscules pour la clé
+      const villeNormalisee = villeOriginal
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toUpperCase();
+      
+      // Utiliser la version normalisée comme clé, mais garder une version propre pour l'affichage
+      if (!parVille[villeNormalisee]) {
+        // Capitaliser correctement pour l'affichage (première lettre de chaque mot en majuscule)
+        const villeAffichage = villeOriginal
+          .trim()
+          .replace(/\s+/g, ' ')
+          .split(' ')
+          .map(mot => mot.charAt(0).toUpperCase() + mot.slice(1).toLowerCase())
+          .join(' ');
+        
+        parVille[villeNormalisee] = {
+          ville: villeAffichage,
           nombreCommandes: 0,
           montantTotal: 0,
           montantRetrait90: 0, // 90% du montant total
@@ -320,10 +336,10 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
       
       const montantRetrait = commande.montant * 0.90;
       
-      parVille[ville].nombreCommandes += 1;
-      parVille[ville].montantTotal += commande.montant;
-      parVille[ville].montantRetrait90 += montantRetrait;
-      parVille[ville].commandes.push({
+      parVille[villeNormalisee].nombreCommandes += 1;
+      parVille[villeNormalisee].montantTotal += commande.montant;
+      parVille[villeNormalisee].montantRetrait90 += montantRetrait;
+      parVille[villeNormalisee].commandes.push({
         id: commande.id,
         reference: commande.orderReference,
         client: commande.clientNom,
