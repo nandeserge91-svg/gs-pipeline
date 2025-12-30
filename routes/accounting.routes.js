@@ -284,11 +284,11 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
     }
 
     // Récupérer toutes les commandes Express Retrait (90%)
-    // Statuts : EXPRESS_ARRIVE (en attente retrait) et EXPRESS_LIVRE (déjà retiré)
+    // Statut : EXPRESS_LIVRE uniquement (colis réellement retirés par le client)
     const commandesExpressRetrait = await prisma.order.findMany({
       where: {
         deliveryType: 'EXPRESS',
-        status: { in: ['EXPRESS_ARRIVE', 'EXPRESS_LIVRE'] },
+        status: 'EXPRESS_LIVRE',
         arriveAt: {
           gte: startDate,
           lte: endDate
