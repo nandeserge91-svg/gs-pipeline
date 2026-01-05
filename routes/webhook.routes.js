@@ -286,18 +286,39 @@ router.post('/google-sheet', [
       quantite: quantite || 1
     });
 
+    // 🆕 NETTOYAGE DU TAG : Enlever le préfixe de quantité (1_, 2_, 3_)
+    let searchTerm = tag || offre;
+    let cleanedSearchTerm = searchTerm;
+    
+    if (searchTerm) {
+      // Supprimer le préfixe numérique (1_, 2_, 3_) si présent
+      cleanedSearchTerm = searchTerm.replace(/^\d+_/, '');
+      
+      // Supprimer les espaces en trop au début et à la fin
+      cleanedSearchTerm = cleanedSearchTerm.trim();
+      
+      // Supprimer les underscores multiples
+      cleanedSearchTerm = cleanedSearchTerm.replace(/_+/g, '_');
+      
+      console.log('📥 Tag reçu:', searchTerm);
+      console.log('🧹 Tag nettoyé:', cleanedSearchTerm);
+    }
+
     // Chercher un produit correspondant à l'offre
     // On cherche d'abord par code, sinon par nom (recherche partielle)
     let product = null;
     
-    if (offre || tag) {
-      const searchTerm = offre || tag;
+    if (cleanedSearchTerm) {
+      console.log('🔍 Recherche produit avec terme:', cleanedSearchTerm);
       
-      console.log('🔍 Recherche produit avec terme:', searchTerm);
-      
-      // Essayer de trouver par code exact
+      // 🆕 Essayer de trouver par code (case-insensitive pour plus de flexibilité)
       product = await prisma.product.findFirst({
-        where: { code: searchTerm }
+        where: { 
+          code: {
+            equals: cleanedSearchTerm,
+            mode: 'insensitive'
+          }
+        }
       });
       
       if (product) {
@@ -310,7 +331,7 @@ router.post('/google-sheet', [
         product = await prisma.product.findFirst({
           where: { 
             nom: {
-              contains: searchTerm,
+              contains: cleanedSearchTerm,
               mode: 'insensitive'
             }
           }
@@ -319,8 +340,10 @@ router.post('/google-sheet', [
         if (product) {
           console.log('✅ Produit trouvé par nom:', product.code, '|', product.nom, '| ID:', product.id);
         } else {
-          console.log('❌ PRODUIT NON TROUVÉ pour:', searchTerm);
-          console.log('💡 Vérifiez que le produit existe avec code "BEE" ou nom contenant "Bee Venom"');
+          console.log('❌ PRODUIT NON TROUVÉ pour:', cleanedSearchTerm);
+          console.log('💡 Vérifiez que le produit existe dans la base de données');
+          console.log('   Tag original:', searchTerm);
+          console.log('   Tag nettoyé:', cleanedSearchTerm);
         }
       }
     } else {
