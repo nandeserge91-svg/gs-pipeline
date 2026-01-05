@@ -9,6 +9,9 @@ import ExpeditionModal from '@/components/modals/ExpeditionModal';
 import ExpressModal from '@/components/modals/ExpressModal';
 import { useAuthStore } from '@/store/authStore';
 
+// 🚀 CONSTANTE DE PAGINATION
+const ITEMS_PER_PAGE = 50; // Afficher 50 commandes par page
+
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -23,6 +26,7 @@ export default function Orders() {
   const [newQuantite, setNewQuantite] = useState(1);
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1); // 🆕 Pagination
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
@@ -38,7 +42,9 @@ export default function Orders() {
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
     queryFn: () => ordersApi.getAll({ limit: 1000 }), // Limite augmentée pour voir TOUTES les commandes à traiter
-    refetchInterval: 30000, // Actualisation automatique toutes les 30 secondes
+    staleTime: 60000, // 🚀 OPTIMISATION : Considérer les données fraîches pendant 1 minute
+    gcTime: 300000, // 🚀 OPTIMISATION : Garder en cache 5 minutes (anciennement cacheTime)
+    refetchInterval: 60000, // 🚀 OPTIMISATION : Refetch toutes les 60s au lieu de 30s
     refetchIntervalInBackground: true, // Continue même si l'onglet n'est pas actif
   });
 
@@ -348,6 +354,18 @@ export default function Orders() {
       return bCreatedAt - aCreatedAt;
     });
 
+  // 🚀 PAGINATION : Calcul des commandes paginées
+  const totalOrders = filteredOrders?.length || 0;
+  const totalPages = Math.ceil(totalOrders / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedOrders = filteredOrders?.slice(startIndex, endIndex) || [];
+
+  // Réinitialiser la page à 1 quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   // Détecter les nouvelles commandes
   useEffect(() => {
     if (filteredOrders && previousCount > 0 && filteredOrders.length > previousCount) {
@@ -485,7 +503,7 @@ export default function Orders() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredOrders?.map((order: Order) => (
+          {paginatedOrders?.map((order: Order) => (
             <div 
               key={order.id} 
               className={`card hover:shadow-lg transition-all ${
@@ -594,6 +612,53 @@ export default function Orders() {
               </p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 🚀 PAGINATION */}
+      {totalOrders > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-lg shadow">
+          <div className="text-sm text-gray-600">
+            Affichage <span className="font-semibold">{startIndex + 1}</span> à{' '}
+            <span className="font-semibold">{Math.min(endIndex, totalOrders)}</span> sur{' '}
+            <span className="font-semibold">{totalOrders}</span> commande(s)
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              ⏮ Première
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              ← Précédent
+            </button>
+            
+            <div className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold">
+              {currentPage} / {totalPages}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Suivant →
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Dernière ⏭
+            </button>
+          </div>
         </div>
       )}
 
