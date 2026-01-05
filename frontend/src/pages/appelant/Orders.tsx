@@ -10,7 +10,7 @@ import ExpressModal from '@/components/modals/ExpressModal';
 import { useAuthStore } from '@/store/authStore';
 
 // 🚀 CONSTANTE DE PAGINATION
-const ITEMS_PER_PAGE = 50; // Afficher 50 commandes par page
+const ITEMS_PER_PAGE = 200; // Afficher 200 commandes par page
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
