@@ -167,8 +167,9 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
       // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
       stats.totalAppels++;
       
+      // 🆕 CORRECTION PERFORMANCE APPELANTS : Ne pas pénaliser pour les échecs de livraison
       // Compter selon le statut
-      // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
+      // ✅ VALIDÉES : Commandes que l'appelant a réussi à valider (incluant celles refusées à la livraison)
       if (
         order.status === 'VALIDEE' || 
         order.status === 'ASSIGNEE' || 
@@ -178,10 +179,12 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
         order.status === 'EXPRESS' || 
         order.status === 'EXPRESS_ARRIVE' || 
         order.status === 'EXPRESS_LIVRE' ||
-        order.status === 'RETOURNE'
+        order.status === 'RETOURNE' ||
+        order.status === 'REFUSEE' ||              // 🆕 Le client a refusé à la livraison (pas la faute de l'appelant)
+        order.status === 'ANNULEE_LIVRAISON'       // 🆕 Annulée pendant livraison (pas la faute de l'appelant)
       ) {
         stats.totalValides++;
-      } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
+      } else if (order.status === 'ANNULEE') {     // 🆕 UNIQUEMENT les annulations par l'appelant
         stats.totalAnnules++;
       } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
         stats.totalInjoignables++;
