@@ -309,13 +309,7 @@ router.put('/:id/status', async (req, res) => {
       if (!['VALIDEE', 'ANNULEE', 'INJOIGNABLE'].includes(status)) {
         return res.status(400).json({ error: 'Statut invalide pour un appelant.' });
       }
-      // Assigner l'appelant si ce n'est pas déjà fait
-      if (!order.callerId) {
-        await prisma.order.update({
-          where: { id: parseInt(id) },
-          data: { callerId: user.id, calledAt: new Date() }
-        });
-      }
+      // ✅ Note: Le callerId sera assigné dans la transaction ci-dessous
     } else if (user.role === 'LIVREUR') {
       // Le livreur peut changer : ASSIGNEE -> LIVREE/REFUSEE/ANNULEE_LIVRAISON/RETOURNE
       if (!['LIVREE', 'REFUSEE', 'ANNULEE_LIVRAISON', 'RETOURNE'].includes(status)) {
@@ -328,24 +322,34 @@ router.put('/:id/status', async (req, res) => {
 
     // Transaction pour gérer le statut + stock de manière cohérente
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      // 🆕 AMÉLIORATION: Préparer les données de mise à jour
+      const updateData = {
+        status,
+        noteAppelant: user.role === 'APPELANT' && note ? note : order.noteAppelant,
+        noteLivreur: user.role === 'LIVREUR' && note ? note : order.noteLivreur,
+        noteGestionnaire: (user.role === 'GESTIONNAIRE' || user.role === 'ADMIN') && note ? note : order.noteGestionnaire,
+        validatedAt: status === 'VALIDEE' ? new Date() : order.validatedAt,
+        deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
+        raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
+        retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
+        // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+        rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+        rdvRappele: order.rdvProgramme ? true : order.rdvRappele,
+        // ✅ NOUVEAU: Réinitialiser renvoyeAAppelerAt quand la commande change de statut (sauf si A_APPELER)
+        renvoyeAAppelerAt: status === 'A_APPELER' ? order.renvoyeAAppelerAt : null
+      };
+
+      // 🆕 CORRECTION STATS: Si c'est un APPELANT qui change le statut, assigner automatiquement le callerId
+      if (user.role === 'APPELANT' && !order.callerId) {
+        updateData.callerId = user.id;
+        updateData.calledAt = new Date();
+        console.log('📞 Assignation automatique du callerId:', user.id, 'à la commande', order.orderReference);
+      }
+
       // Mettre à jour le statut de la commande
       const updated = await tx.order.update({
         where: { id: parseInt(id) },
-        data: {
-          status,
-          noteAppelant: user.role === 'APPELANT' && note ? note : order.noteAppelant,
-          noteLivreur: user.role === 'LIVREUR' && note ? note : order.noteLivreur,
-          noteGestionnaire: (user.role === 'GESTIONNAIRE' || user.role === 'ADMIN') && note ? note : order.noteGestionnaire,
-          validatedAt: status === 'VALIDEE' ? new Date() : order.validatedAt,
-          deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
-          raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
-          retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
-          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
-          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
-          rdvRappele: order.rdvProgramme ? true : order.rdvRappele,
-          // ✅ NOUVEAU: Réinitialiser renvoyeAAppelerAt quand la commande change de statut (sauf si A_APPELER)
-          renvoyeAAppelerAt: status === 'A_APPELER' ? order.renvoyeAAppelerAt : null
-        },
+        data: updateData,
         include: {
           caller: {
             select: { id: true, nom: true, prenom: true }
@@ -1091,25 +1095,33 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
         }
       });
 
+      // 🆕 CORRECTION STATS: Préparer les données de mise à jour
+      const updateData = {
+        status: 'EXPEDITION',
+        deliveryType: 'EXPEDITION',
+        montantPaye: parseFloat(montantPaye),
+        montantRestant: 0,
+        modePaiement,
+        referencePayment,
+        noteAppelant: note || order.noteAppelant,
+        validatedAt: new Date(),
+        expedieAt: new Date(), // ✅ Date de paiement EXPEDITION pour comptabilité
+        // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+        rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+        rdvRappele: order.rdvProgramme ? true : order.rdvRappele
+      };
+
+      // 🆕 CORRECTION STATS: Assigner le callerId uniquement si c'est un APPELANT et que la commande n'a pas déjà un callerId
+      if (req.user.role === 'APPELANT' && !order.callerId) {
+        updateData.callerId = req.user.id;
+        updateData.calledAt = new Date();
+        console.log('📞 EXPEDITION: Assignation automatique du callerId:', req.user.id, 'à la commande', order.orderReference);
+      }
+
       // Mettre à jour la commande
       const updatedOrder = await tx.order.update({
         where: { id: parseInt(id) },
-        data: {
-          status: 'EXPEDITION',
-          deliveryType: 'EXPEDITION',
-          montantPaye: parseFloat(montantPaye),
-          montantRestant: 0,
-          modePaiement,
-          referencePayment,
-          noteAppelant: note || order.noteAppelant,
-          validatedAt: new Date(),
-          expedieAt: new Date(), // ✅ Date de paiement EXPEDITION pour comptabilité
-          callerId: req.user.id,
-          calledAt: new Date(),
-          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
-          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
-          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
-        },
+        data: updateData,
       });
 
       // Créer l'historique
@@ -1175,25 +1187,33 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
 
     // Transaction pour gérer le stock EXPRESS
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      // 🆕 CORRECTION STATS: Préparer les données de mise à jour
+      const updateData = {
+        status: 'EXPRESS',
+        deliveryType: 'EXPRESS',
+        montantPaye: parseFloat(montantPaye),
+        montantRestant,
+        modePaiement,
+        referencePayment,
+        agenceRetrait,
+        noteAppelant: note || order.noteAppelant,
+        validatedAt: new Date(),
+        expedieAt: new Date(), // ✅ Date de paiement avance EXPRESS (10%) pour comptabilité
+        // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
+        rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
+        rdvRappele: order.rdvProgramme ? true : order.rdvRappele
+      };
+
+      // 🆕 CORRECTION STATS: Assigner le callerId uniquement si c'est un APPELANT et que la commande n'a pas déjà un callerId
+      if (req.user.role === 'APPELANT' && !order.callerId) {
+        updateData.callerId = req.user.id;
+        updateData.calledAt = new Date();
+        console.log('📞 EXPRESS: Assignation automatique du callerId:', req.user.id, 'à la commande', order.orderReference);
+      }
+
       const updated = await tx.order.update({
         where: { id: parseInt(id) },
-        data: {
-          status: 'EXPRESS',
-          deliveryType: 'EXPRESS',
-          montantPaye: parseFloat(montantPaye),
-          montantRestant,
-          modePaiement,
-          referencePayment,
-          agenceRetrait,
-          noteAppelant: note || order.noteAppelant,
-          validatedAt: new Date(),
-          expedieAt: new Date(), // ✅ Date de paiement avance EXPRESS (10%) pour comptabilité
-          callerId: req.user.id,
-          calledAt: new Date(),
-          // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
-          rdvProgramme: order.rdvProgramme ? false : order.rdvProgramme,
-          rdvRappele: order.rdvProgramme ? true : order.rdvRappele
-        },
+        data: updateData,
       });
 
       // Déplacer le stock vers stock EXPRESS (réservé)
