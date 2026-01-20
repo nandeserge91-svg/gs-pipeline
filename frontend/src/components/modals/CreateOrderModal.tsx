@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Package, User, Phone, MapPin, Home, ShoppingCart, DollarSign } from 'lucide-react';
+import { X, Package, User, Phone, MapPin, ShoppingCart } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi, productsApi } from '@/lib/api';
@@ -12,8 +12,6 @@ interface OrderFormData {
   clientNom: string;
   clientTelephone: string;
   clientVille: string;
-  clientCommune: string;
-  clientAdresse: string;
   produitNom: string;
   productId: number | null;
   quantite: number;
@@ -26,8 +24,6 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
     clientNom: '',
     clientTelephone: '',
     clientVille: '',
-    clientCommune: '',
-    clientAdresse: '',
     produitNom: '',
     productId: null,
     quantite: 1,
@@ -122,8 +118,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
       toast.error('La quantité doit être au moins 1');
       return;
     }
+    if (!formData.productId) {
+      toast.error('Veuillez sélectionner un produit');
+      return;
+    }
     if (formData.montant <= 0) {
-      toast.error('Le montant doit être supérieur à 0');
+      toast.error('Erreur de calcul du prix. Veuillez vérifier le produit sélectionné.');
       return;
     }
 
@@ -192,53 +192,22 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </div>
             </div>
 
-            {/* Ville et Commune */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ville <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.clientVille}
-                    onChange={(e) => setFormData({ ...formData, clientVille: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ex: Abidjan"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Commune
-                </label>
-                <input
-                  type="text"
-                  value={formData.clientCommune}
-                  onChange={(e) => setFormData({ ...formData, clientCommune: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Yopougon"
-                />
-              </div>
-            </div>
-
-            {/* Adresse */}
+            {/* Ville/Commune */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Adresse complète
+                Ville/Commune <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <Home className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <textarea
-                  value={formData.clientAdresse}
-                  onChange={(e) => setFormData({ ...formData, clientAdresse: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows={2}
-                  placeholder="Ex: Quartier Sicogi, près de l'école primaire"
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.clientVille}
+                  onChange={(e) => setFormData({ ...formData, clientVille: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ex: Abidjan - Yopougon"
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Saisissez la ville et la commune (ex: Abidjan - Yopougon)</p>
             </div>
           </div>
 
@@ -268,45 +237,29 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               </select>
             </div>
 
-            {/* Quantité et Montant */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantité <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.quantite}
-                  onChange={(e) => setFormData({ ...formData, quantite: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant Total (FCFA) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    value={formData.montant}
-                    onChange={(e) => setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
+            {/* Quantité */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantité <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.quantite}
+                onChange={(e) => setFormData({ ...formData, quantite: parseInt(e.target.value) || 1 })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
 
             {/* Affichage du prix calculé */}
-            {formData.productId && formData.quantite > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <span className="font-semibold">Prix calculé:</span> {formData.montant.toLocaleString()} FCFA pour {formData.quantite} unité(s)
+            {formData.productId && formData.quantite > 0 && formData.montant > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Montant Total:</span>
+                  <span className="text-2xl font-bold text-blue-600">{formData.montant.toLocaleString()} FCFA</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Prix calculé automatiquement pour {formData.quantite} unité(s)
                 </p>
               </div>
             )}
