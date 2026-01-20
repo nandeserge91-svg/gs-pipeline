@@ -214,8 +214,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/orders - Créer une commande manuellement (Admin/Gestionnaire)
-router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
+// POST /api/orders - Créer une commande manuellement (Admin/Gestionnaire/Appelant)
+router.post('/', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), [
   body('clientNom').notEmpty().withMessage('Nom du client requis'),
   body('clientTelephone').notEmpty().withMessage('Téléphone requis'),
   body('clientVille').notEmpty().withMessage('Ville requise'),
@@ -233,6 +233,9 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
     const cleanedPhone = cleanPhoneNumber(req.body.clientTelephone);
     console.log(`📞 Numéro nettoyé: ${req.body.clientTelephone} → ${cleanedPhone}`);
 
+    // Déterminer le statut initial (A_APPELER par défaut pour les commandes manuelles)
+    const initialStatus = req.body.status || 'A_APPELER';
+
     const orderData = {
       clientNom: req.body.clientNom,
       clientTelephone: cleanedPhone,
@@ -245,7 +248,8 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
       montant: req.body.montant,
       sourceCampagne: req.body.sourceCampagne,
       sourcePage: req.body.sourcePage,
-      status: 'NOUVELLE'
+      status: initialStatus,
+      productId: req.body.productId ? parseInt(req.body.productId) : null
     };
 
     const order = await prisma.order.create({
@@ -256,7 +260,7 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
     await prisma.statusHistory.create({
       data: {
         orderId: order.id,
-        newStatus: 'NOUVELLE',
+        newStatus: initialStatus,
         changedBy: req.user.id,
         comment: 'Commande créée manuellement'
       }

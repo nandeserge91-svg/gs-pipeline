@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, rdvApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import ExpeditionModal from '@/components/modals/ExpeditionModal';
 import ExpressModal from '@/components/modals/ExpressModal';
+import CreateOrderModal from '@/components/modals/CreateOrderModal';
 import { useAuthStore } from '@/store/authStore';
 
 // 🚀 CONSTANTE DE PAGINATION
@@ -19,6 +20,7 @@ export default function Orders() {
   const [note, setNote] = useState('');
   const [showExpeditionModal, setShowExpeditionModal] = useState(false);
   const [showExpressModal, setShowExpressModal] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [showRdvModal, setShowRdvModal] = useState(false);
   const [rdvDate, setRdvDate] = useState('');
   const [rdvNote, setRdvNote] = useState('');
@@ -409,6 +411,14 @@ export default function Orders() {
               </span>
             )}
             <div className="flex gap-2">
+              <button
+                onClick={() => setShowCreateOrderModal(true)}
+                className="btn bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm py-2"
+                title="Créer une nouvelle commande manuellement"
+              >
+                <Plus size={16} />
+                Nouvelle commande
+              </button>
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
@@ -987,6 +997,11 @@ export default function Orders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de création de commande */}
+      {showCreateOrderModal && (
+        <CreateOrderModal onClose={() => setShowCreateOrderModal(false)} />
       )}
     </div>
   );

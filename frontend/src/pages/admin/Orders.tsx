@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
 import { ordersApi, productsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import CreateOrderModal from '@/components/modals/CreateOrderModal';
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +18,7 @@ export default function Orders() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -166,6 +168,14 @@ export default function Orders() {
               Mis à jour il y a {secondsSinceUpdate}s
             </span>
           )}
+          <button
+            onClick={() => setShowCreateOrderModal(true)}
+            className="btn bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+            title="Créer une nouvelle commande manuellement"
+          >
+            <Plus size={18} />
+            Nouvelle commande
+          </button>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
@@ -563,6 +573,11 @@ export default function Orders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de création de commande */}
+      {showCreateOrderModal && (
+        <CreateOrderModal onClose={() => setShowCreateOrderModal(false)} />
       )}
     </div>
   );
