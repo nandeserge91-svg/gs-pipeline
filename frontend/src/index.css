@@ -4,57 +4,246 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  * {
+    @apply transition-colors duration-200;
   }
 }
 
 @layer components {
+  /* ==================== BOUTONS ULTRA-MODERNES ==================== */
   .btn {
-    @apply px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base;
+    @apply px-3 py-2 sm:px-4 sm:py-2 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base;
+    @apply transform hover:scale-105 active:scale-95;
+    @apply shadow-md hover:shadow-xl;
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 text-white;
+    @apply hover:from-primary-700 hover:to-primary-800;
+    @apply disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+    @apply shadow-primary-500/50 hover:shadow-primary-600/50;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+    @apply bg-white text-gray-700 border-2 border-gray-200;
+    @apply hover:border-gray-300 hover:bg-gray-50;
+    @apply shadow-sm hover:shadow-md;
   }
   
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700;
+    @apply bg-gradient-to-r from-danger-500 to-danger-600 text-white;
+    @apply hover:from-danger-600 hover:to-danger-700;
+    @apply shadow-danger-500/50 hover:shadow-danger-600/50;
   }
   
   .btn-success {
-    @apply bg-green-600 text-white hover:bg-green-700;
+    @apply bg-gradient-to-r from-success-500 to-success-600 text-white;
+    @apply hover:from-success-600 hover:to-success-700;
+    @apply shadow-success-500/50 hover:shadow-success-600/50;
+  }
+
+  .btn-warning {
+    @apply bg-gradient-to-r from-warning-500 to-warning-600 text-white;
+    @apply hover:from-warning-600 hover:to-warning-700;
+    @apply shadow-warning-500/50 hover:shadow-warning-600/50;
+  }
+
+  .btn-accent {
+    @apply bg-gradient-to-r from-accent-500 to-accent-600 text-white;
+    @apply hover:from-accent-600 hover:to-accent-700;
+    @apply shadow-accent-500/50 hover:shadow-accent-600/50;
   }
   
+  /* ==================== INPUTS MODERNES ==================== */
   .input {
-    @apply w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-sm sm:text-base;
+    @apply w-full px-3 py-2 sm:px-4 sm:py-3 border-2 border-gray-200 rounded-xl;
+    @apply focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500;
+    @apply bg-white/80 backdrop-blur-sm;
+    @apply outline-none text-sm sm:text-base;
+    @apply transition-all duration-300;
+    @apply hover:border-gray-300;
+  }
+
+  .input:focus {
+    @apply shadow-lg shadow-primary-500/20;
   }
   
+  /* ==================== CARDS GLASS-MORPHISM ==================== */
   .card {
-    @apply bg-white rounded-lg shadow-md p-4 sm:p-6;
+    @apply bg-white/80 backdrop-blur-md rounded-2xl shadow-elegant p-4 sm:p-6;
+    @apply border border-white/20;
+    @apply transition-all duration-300;
+    @apply hover:shadow-elegant-lg hover:scale-[1.02];
+  }
+
+  .card-glass {
+    @apply bg-white/60 backdrop-blur-lg rounded-2xl shadow-glass p-4 sm:p-6;
+    @apply border border-white/40;
+    @apply transition-all duration-300;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-primary-500 to-purple-600 text-white;
+    @apply rounded-2xl shadow-elegant p-4 sm:p-6;
+    @apply transition-all duration-300;
+    @apply hover:shadow-elegant-lg hover:scale-[1.02];
   }
   
+  /* ==================== BADGES MODERNES ==================== */
   .badge {
     @apply px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs font-semibold;
+    @apply shadow-sm;
+    @apply transition-all duration-200;
+    @apply hover:scale-105;
+  }
+
+  .badge-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-purple-500 text-white;
+    @apply shadow-md;
+  }
+
+  .badge-glow {
+    @apply shadow-glow;
+  }
+
+  /* ==================== MODALS ÉLÉGANTS ==================== */
+  .modal-overlay {
+    @apply fixed inset-0 bg-gray-900/60 backdrop-blur-sm;
+    @apply flex items-center justify-center p-4 z-50;
+    @apply animate-fade-in;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-2xl shadow-elegant-lg;
+    @apply animate-scale-in;
+    @apply max-h-[90vh] overflow-y-auto;
+  }
+
+  /* ==================== STATS CARDS ==================== */
+  .stat-card {
+    @apply bg-gradient-to-br from-white to-gray-50;
+    @apply rounded-2xl shadow-elegant p-6;
+    @apply border border-gray-100;
+    @apply transition-all duration-300;
+    @apply hover:shadow-elegant-lg hover:scale-105;
+    @apply cursor-pointer;
+  }
+
+  .stat-card-gradient {
+    @apply bg-gradient-to-br rounded-2xl shadow-elegant p-6;
+    @apply text-white;
+    @apply transition-all duration-300;
+    @apply hover:shadow-elegant-lg hover:scale-105;
+    @apply cursor-pointer;
+  }
+
+  /* ==================== TABLES MODERNES ==================== */
+  .table-modern {
+    @apply w-full rounded-xl overflow-hidden;
+    @apply shadow-md;
+  }
+
+  .table-modern thead {
+    @apply bg-gradient-to-r from-gray-50 to-gray-100;
+  }
+
+  .table-modern th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider;
+  }
+
+  .table-modern td {
+    @apply px-4 py-3 text-sm;
+  }
+
+  .table-modern tbody tr {
+    @apply bg-white border-b border-gray-100;
+    @apply transition-all duration-200;
+    @apply hover:bg-blue-50/50;
+  }
+
+  /* ==================== LOADING SHIMMER ==================== */
+  .shimmer {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 0%,
+      #f8f8f8 50%,
+      #f0f0f0 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* ==================== GLOW EFFECTS ==================== */
+  .glow-primary {
+    @apply shadow-glow;
+  }
+
+  .glow-success {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+  }
+
+  .glow-danger {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  }
+
+  .glow-warning {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
   }
 }
 
-/* Amélioration de la responsivité des tables */
+/* ==================== UTILITIES AVANCÉES ==================== */
 @layer utilities {
   .table-responsive {
-    @apply overflow-x-auto -mx-4 sm:mx-0;
+    @apply overflow-x-auto -mx-4 sm:mx-0 rounded-xl;
   }
   
   .modal-responsive {
     @apply mx-4 sm:mx-auto max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary-600 to-purple-600;
+  }
+
+  .text-gradient-success {
+    @apply bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-success-500 to-emerald-500;
+  }
+
+  .hover-lift {
+    @apply transition-transform duration-300;
+    @apply hover:-translate-y-1;
+  }
+
+  .glass-effect {
+    @apply bg-white/60 backdrop-blur-lg;
+    @apply border border-white/40;
+  }
+
+  /* Scrollbar personnalisé */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full;
+    @apply hover:bg-gray-500;
   }
 }
 

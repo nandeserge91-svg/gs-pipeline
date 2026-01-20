@@ -131,34 +131,36 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Package className="w-6 h-6 text-blue-600" />
+    <div className="modal-overlay animate-fade-in">
+      <div className="modal-content bg-white rounded-3xl shadow-elegant-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+        {/* Header avec gradient */}
+        <div className="sticky top-0 bg-gradient-to-r from-primary-600 to-purple-600 px-6 py-5 flex items-center justify-between rounded-t-3xl">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl shadow-lg animate-float">
+              <Package className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Créer une commande</h2>
-              <p className="text-sm text-gray-500">Ajouter une commande manuelle dans le système</p>
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">Créer une commande</h2>
+              <p className="text-sm text-white/90">✨ Ajouter une nouvelle commande dans le système</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/20 rounded-xl transition-all duration-300 transform hover:scale-110 backdrop-blur-sm"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-6 h-6 text-white" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 bg-gradient-to-br from-white to-gray-50">
           {/* Section Client */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-gray-700 font-semibold">
-              <User className="w-5 h-5" />
-              <span>Informations Client</span>
+          <div className="space-y-4 animate-slide-up">
+            <div className="flex items-center gap-3 text-gray-800 font-bold text-lg pb-2 border-b-2 border-primary-200">
+              <div className="p-2 bg-gradient-to-br from-primary-100 to-purple-100 rounded-xl">
+                <User className="w-5 h-5 text-primary-600" />
+              </div>
+              <span className="text-gradient">Informations Client</span>
             </div>
 
             {/* Nom du client */}
@@ -212,10 +214,12 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
           </div>
 
           {/* Section Produit */}
-          <div className="space-y-4 pt-4 border-t">
-            <div className="flex items-center gap-2 text-gray-700 font-semibold">
-              <ShoppingCart className="w-5 h-5" />
-              <span>Informations Produit</span>
+          <div className="space-y-4 pt-4 border-t-2 border-gray-100 animate-slide-up">
+            <div className="flex items-center gap-3 text-gray-800 font-bold text-lg pb-2 border-b-2 border-success-200">
+              <div className="p-2 bg-gradient-to-br from-success-100 to-emerald-100 rounded-xl">
+                <ShoppingCart className="w-5 h-5 text-success-600" />
+              </div>
+              <span className="text-gradient-success">Informations Produit</span>
             </div>
 
             {/* Sélection du produit */}
@@ -251,36 +255,58 @@ export default function CreateOrderModal({ onClose }: CreateOrderModalProps) {
               />
             </div>
 
-            {/* Affichage du prix calculé */}
+            {/* Affichage du prix calculé avec animation */}
             {formData.productId && formData.quantite > 0 && formData.montant > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-blue-200 rounded-2xl p-5 shadow-lg glow-primary animate-scale-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Montant Total:</span>
-                  <span className="text-2xl font-bold text-blue-600">{formData.montant.toLocaleString()} FCFA</span>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-xl shadow-md">
+                      <Package className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-700">Montant Total</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-3xl font-black text-gradient animate-pulse-soft">
+                      {formData.montant.toLocaleString()}
+                    </span>
+                    <span className="text-xl font-bold text-primary-600 ml-1">FCFA</span>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Prix calculé automatiquement pour {formData.quantite} unité(s)
-                </p>
+                <div className="mt-3 flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-xl p-2">
+                  <span className="text-xs font-medium text-gray-600">
+                    ✨ Prix calculé automatiquement pour <span className="font-bold text-primary-600">{formData.quantite}</span> unité(s)
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t">
+          {/* Actions avec gradient */}
+          <div className="flex gap-4 pt-6 border-t-2 border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 transform hover:scale-105 shadow-md"
               disabled={mutation.isPending}
             >
-              Annuler
+              ❌ Annuler
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-success-500 to-success-600 text-white rounded-xl font-bold hover:from-success-600 hover:to-success-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-success-500/50 hover:shadow-xl hover:shadow-success-600/50"
               disabled={mutation.isPending}
             >
-              {mutation.isPending ? 'Création...' : 'Créer la commande'}
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Création...
+                </span>
+              ) : (
+                '✨ Créer la commande'
+              )}
             </button>
           </div>
         </form>
