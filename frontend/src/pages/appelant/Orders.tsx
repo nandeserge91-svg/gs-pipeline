@@ -381,82 +381,100 @@ export default function Orders() {
   }, [filteredOrders?.length]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Commandes à appeler</h1>
-          <p className="text-gray-600 mt-1">Liste des commandes en attente de traitement</p>
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+      {/* Header responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 truncate">
+            📞 À appeler
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1">Commandes en attente</p>
         </div>
-        <div className="flex items-center gap-4">
+        
+        {/* Compteur et actions */}
+        <div className="flex items-center gap-2 sm:gap-4">
           {filteredOrders && (
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary-600">{filteredOrders.length}</p>
-              <p className="text-sm text-gray-600">commande(s)</p>
+            <div className="text-center sm:text-right flex-shrink-0">
+              <p className="text-lg sm:text-2xl font-bold text-primary-600">{filteredOrders.length}</p>
+              <p className="text-[10px] sm:text-sm text-gray-600 whitespace-nowrap">commande(s)</p>
               {(canPrioritize || canDeleteOrders) && selectedOrderIds.length > 0 && (
-                <p className="text-sm text-green-600 font-medium mt-1">
-                  {selectedOrderIds.length} sélectionnée(s)
+                <p className="text-[10px] sm:text-sm text-green-600 font-medium mt-0.5">
+                  {selectedOrderIds.length} sélect.
                 </p>
               )}
             </div>
           )}
-          <div className="flex flex-col items-end gap-2">
+          
+          {/* Actions - Plus compactes sur mobile */}
+          <div className="flex flex-col items-end gap-1.5 sm:gap-2">
             {isFetching ? (
-              <span className="text-sm text-gray-500 flex items-center gap-2">
-                <RefreshCw size={16} className="animate-spin" />
-                Actualisation...
+              <span className="text-[10px] sm:text-sm text-gray-500 flex items-center gap-1">
+                <RefreshCw size={14} className="animate-spin" />
+                <span className="hidden sm:inline">Actualisation...</span>
               </span>
             ) : (
-              <span className="text-xs text-gray-400">
-                Mis à jour il y a {secondsSinceUpdate}s
+              <span className="text-[10px] sm:text-xs text-gray-400">
+                {secondsSinceUpdate}s
               </span>
             )}
-            <div className="flex gap-2">
+            
+            {/* Boutons - Version mobile optimisée */}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-end">
               <button
                 onClick={() => setShowCreateOrderModal(true)}
-                className="btn bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm py-2"
-                title="Créer une nouvelle commande manuellement"
+                className="btn bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 shadow-md"
+                title="Créer une commande"
               >
-                <Plus size={16} />
-                Nouvelle commande
+                <Plus size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Nouvelle</span>
+                <span className="sm:hidden">+</span>
               </button>
+              
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
-                className="btn btn-secondary flex items-center gap-2 text-sm py-2"
-                title="Actualiser les commandes"
+                className="btn btn-secondary flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                title="Actualiser"
               >
-                <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-                Actualiser
+                <RefreshCw size={14} className={`sm:w-4 sm:h-4 ${isFetching ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualiser</span>
               </button>
+              
               {canPrioritize && selectedOrderIds.length > 0 && (
                 <>
                   <button
                     onClick={handlePrioritizeSelected}
-                    className="btn bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 text-sm py-2"
-                    title="Remonter en haut les commandes sélectionnées"
+                    className="btn bg-gradient-to-r from-success-500 to-emerald-500 text-white hover:from-success-600 hover:to-emerald-600 flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 shadow-md"
+                    title="Remonter"
                   >
-                    <ArrowUpCircle size={16} />
-                    📌 Remonter ({selectedOrderIds.length})
+                    <ArrowUpCircle size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">📌 Remonter</span>
+                    <span className="sm:hidden">↑</span>
+                    <span className="sm:hidden">({selectedOrderIds.length})</span>
                   </button>
+                  
                   <button
                     onClick={handleUnprioritizeSelected}
-                    className="btn bg-gray-600 text-white hover:bg-gray-700 flex items-center gap-2 text-sm py-2"
-                    title="Retirer la priorité des commandes sélectionnées"
+                    className="btn bg-gray-600 text-white hover:bg-gray-700 flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                    title="Retirer priorité"
                   >
-                    <ArrowDownCircle size={16} />
-                    Retirer priorité ({selectedOrderIds.length})
+                    <ArrowDownCircle size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Retirer</span>
+                    <span className="sm:hidden">↓</span>
                   </button>
                 </>
               )}
+              
               {canDeleteOrders && selectedOrderIds.length > 0 && (
                 <button
                   onClick={handleDeleteSelected}
                   disabled={deleteOrdersMutation.isPending}
-                  className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2 text-sm py-2"
-                  title="Supprimer les commandes sélectionnées"
+                  className="btn bg-gradient-to-r from-danger-500 to-red-600 text-white hover:from-danger-600 hover:to-red-700 flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 shadow-md"
+                  title="Supprimer"
                 >
-                  <Trash2 size={16} />
-                  Supprimer ({selectedOrderIds.length})
+                  <Trash2 size={14} className="sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Supprimer</span>
+                  <span className="sm:hidden">🗑️</span>
                 </button>
               )}
             </div>
@@ -464,41 +482,49 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="flex flex-col md:flex-row gap-4">
-          {(canPrioritize || canDeleteOrders) && filteredOrders && filteredOrders.length > 0 && (
-            <div className="flex items-center gap-2">
+      {/* Filtres - Version mobile optimisée */}
+      <div className="card p-3 sm:p-4 md:p-6">
+        <div className="flex flex-col gap-3">
+          {/* Checkbox + Recherche sur une ligne sur mobile */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {(canPrioritize || canDeleteOrders) && filteredOrders && filteredOrders.length > 0 && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <input
+                  type="checkbox"
+                  id="select-all"
+                  checked={selectedOrderIds.length === filteredOrders.length}
+                  onChange={handleToggleAll}
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                />
+                <label htmlFor="select-all" className="text-xs sm:text-sm font-medium text-gray-700 cursor-pointer whitespace-nowrap">
+                  Tout
+                </label>
+              </div>
+            )}
+            
+            {/* Recherche */}
+            <div className="flex-1 relative min-w-0">
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
-                type="checkbox"
-                id="select-all"
-                checked={selectedOrderIds.length === filteredOrders.length}
-                onChange={handleToggleAll}
-                className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                type="text"
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input pl-8 sm:pl-10 text-sm pr-2"
               />
-              <label htmlFor="select-all" className="text-sm font-medium text-gray-700 cursor-pointer">
-                Tout sélectionner
-              </label>
             </div>
-          )}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Rechercher par nom ou téléphone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10"
-            />
+            
+            {/* Filtre statut */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input text-sm w-full sm:w-auto sm:min-w-[140px]"
+            >
+              <option value="">📋 Tous</option>
+              <option value="NOUVELLE">🆕 Nouvelle</option>
+              <option value="A_APPELER">📞 À appeler</option>
+            </select>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input md:w-48"
-          >
-            <option value="">Tous</option>
-            <option value="NOUVELLE">Nouvelle</option>
-            <option value="A_APPELER">À appeler</option>
-          </select>
         </div>
       </div>
 
@@ -512,161 +538,188 @@ export default function Orders() {
           <p className="text-gray-400 text-sm mt-2">Essayez de modifier vos filtres</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Grid responsive - 1 colonne sur mobile, 2 sur tablette, 3 sur desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {paginatedOrders?.map((order: Order) => (
             <div 
               key={order.id} 
-              className={`card hover:shadow-lg transition-all ${
+              className={`card p-3 sm:p-4 hover:shadow-xl transition-all duration-300 ${
                 selectedOrderIds.includes(order.id) 
-                  ? 'ring-2 ring-primary-500 bg-primary-50' 
+                  ? 'ring-2 ring-primary-500 bg-primary-50/50 scale-[0.98]' 
                   : order.enAttentePaiement
-                  ? 'border-l-4 border-yellow-500 bg-yellow-50'
+                  ? 'border-l-4 border-yellow-500 bg-yellow-50/30'
                   : (order as any).renvoyeAAppelerAt 
-                  ? 'border-l-4 border-green-500 bg-green-50' 
+                  ? 'border-l-4 border-success-500 bg-success-50/30' 
                   : ''
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start gap-2 flex-1">
+              {/* Header compacte */}
+              <div className="flex items-start justify-between mb-2 sm:mb-3">
+                <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
                   {(canPrioritize || canDeleteOrders) && (
                     <input
                       type="checkbox"
                       checked={selectedOrderIds.includes(order.id)}
                       onChange={() => handleToggleOrder(order.id)}
-                      className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     />
                   )}
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-900">{order.clientNom}</h3>
-                    <p className="text-sm text-gray-600">{order.clientVille}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 truncate">{order.clientNom}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{order.clientVille}</p>
                   </div>
                 </div>
-                <div className="flex gap-2 items-start">
+                
+                <div className="flex gap-1 sm:gap-2 items-start flex-shrink-0 ml-2">
                   {canEditQuantite && (
                     <button
                       onClick={() => handleEditQuantite(order)}
-                      className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      className="p-1 sm:p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                       title="Modifier la quantité"
                     >
-                      <Edit2 size={18} />
+                      <Edit2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </button>
                   )}
-                  <div className="flex flex-col gap-1 items-end">
-                    <span className={`badge ${getStatusColor(order.status)}`}>
+                  <div className="flex flex-col gap-0.5 sm:gap-1 items-end">
+                    <span className={`badge text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
                     {(order as any).renvoyeAAppelerAt && (
-                      <span className="badge bg-green-100 text-green-700 border border-green-300 text-xs flex items-center gap-1">
-                        📌 Prioritaire
+                      <span className="badge bg-success-100 text-success-700 border border-success-300 text-[10px] sm:text-xs flex items-center gap-0.5 px-1.5 py-0.5">
+                        📌 <span className="hidden sm:inline">Prior.</span>
                       </span>
                     )}
                     {order.enAttentePaiement && (
-                      <span className="badge bg-yellow-100 text-yellow-800 border border-yellow-400 text-xs flex items-center gap-1">
-                        <Clock size={12} />
-                        ⏳ Attente paiement
+                      <span className="badge bg-warning-100 text-warning-800 border border-warning-400 text-[10px] sm:text-xs flex items-center gap-0.5 px-1.5 py-0.5">
+                        <Clock size={10} className="sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline">⏳</span>
                       </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone size={16} className="text-gray-400" />
-                  <a href={`tel:${order.clientTelephone}`} className="text-primary-600 hover:underline">
+              {/* Infos - Version compacte */}
+              <div className="space-y-1.5 sm:space-y-2 mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                  <Phone size={14} className="text-gray-400 flex-shrink-0 sm:w-4 sm:h-4" />
+                  <a href={`tel:${order.clientTelephone}`} className="text-primary-600 hover:underline font-medium truncate">
                     {order.clientTelephone}
                   </a>
                 </div>
-                <div className="text-sm text-gray-600">
-                  <strong>Produit:</strong> {order.produitNom}
+                
+                <div className="flex items-start gap-1 text-xs sm:text-sm text-gray-700">
+                  <span className="font-semibold flex-shrink-0">📦</span>
+                  <span className="line-clamp-2">{order.produitNom}</span>
                 </div>
-                <div className="text-sm text-gray-600">
-                  <strong>Quantité:</strong> {order.quantite}
+                
+                <div className="flex items-center gap-4 text-xs sm:text-sm">
+                  <div className="text-gray-700">
+                    <span className="font-semibold">Qté:</span> <span className="text-primary-600 font-bold">{order.quantite}</span>
+                  </div>
+                  <div className="text-gray-900 font-bold">
+                    💰 <span className="text-primary-600">{formatCurrency(order.montant)}</span>
+                  </div>
                 </div>
-                {/* 🆕 Afficher noteGestionnaire (taille, code, etc.) */}
+                
+                {/* Note gestionnaire */}
                 {(order as any).noteGestionnaire && (
-                  <div className="p-2 bg-purple-50 rounded border border-purple-200">
-                    <p className="text-xs text-purple-600 font-medium">👕 {(order as any).noteGestionnaire}</p>
+                  <div className="p-1.5 sm:p-2 bg-purple-50 rounded border border-purple-200">
+                    <p className="text-[10px] sm:text-xs text-purple-600 font-medium truncate">👕 {(order as any).noteGestionnaire}</p>
                   </div>
                 )}
-                <div className="text-sm font-medium text-gray-900">
-                  <strong>Montant:</strong> {formatCurrency(order.montant)}
-                </div>
+                
+                {/* Adresse - affichage conditionnel */}
                 {order.clientAdresse && (
-                  <div className="text-sm text-gray-600">
-                    <strong>Adresse:</strong> {order.clientAdresse}
+                  <div className="text-[10px] sm:text-xs text-gray-600 line-clamp-1">
+                    📍 {order.clientAdresse}
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              {/* Boutons d'action */}
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setSelectedOrder(order)}
-                  className="btn btn-primary flex items-center justify-center gap-2"
+                  className="btn btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
                 >
-                  <Phone size={18} />
-                  Traiter
+                  <Phone size={14} className="sm:w-[18px] sm:h-[18px]" />
+                  <span>Traiter</span>
                 </button>
                 <button
                   onClick={() => handleProgrammerRdv(order)}
-                  className="btn bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center gap-2"
+                  className="btn bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
                 >
-                  <Calendar size={18} />
-                  RDV
+                  <Calendar size={14} className="sm:w-[18px] sm:h-[18px]" />
+                  <span>RDV</span>
                 </button>
               </div>
 
-              <p className="text-xs text-gray-500 mt-2">
-                Reçue le {formatDateTime(order.createdAt)}
+              {/* Date - Plus compacte */}
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-2 truncate">
+                🕐 {formatDateTime(order.createdAt)}
               </p>
             </div>
           ))}
         </div>
       )}
 
-      {/* 🚀 PAGINATION */}
+      {/* 🚀 PAGINATION - Responsive optimisée */}
       {totalOrders > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-lg shadow">
-          <div className="text-sm text-gray-600">
-            Affichage <span className="font-semibold">{startIndex + 1}</span> à{' '}
-            <span className="font-semibold">{Math.min(endIndex, totalOrders)}</span> sur{' '}
-            <span className="font-semibold">{totalOrders}</span> commande(s)
+        <div className="mt-4 sm:mt-6 flex flex-col gap-3 p-3 sm:p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-elegant border border-gray-200">
+          {/* Compteur */}
+          <div className="text-xs sm:text-sm text-center sm:text-left text-gray-600">
+            <span className="font-semibold text-primary-600">{startIndex + 1}</span> à{' '}
+            <span className="font-semibold text-primary-600">{Math.min(endIndex, totalOrders)}</span> sur{' '}
+            <span className="font-bold text-primary-700">{totalOrders}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Boutons de pagination */}
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
+            {/* Première page */}
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl border-2 border-gray-300 text-xs sm:text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary-50 hover:border-primary-500 transition-all"
             >
-              ⏮ Première
+              <span className="hidden sm:inline">⏮ Première</span>
+              <span className="sm:hidden">⏮</span>
             </button>
+            
+            {/* Précédent */}
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-gray-300 text-xs sm:text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:from-primary-100 hover:to-primary-200 hover:border-primary-500 transition-all shadow-sm"
             >
-              ← Précédent
+              <span className="hidden sm:inline">← Préc.</span>
+              <span className="sm:hidden">←</span>
             </button>
             
-            <div className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold">
-              {currentPage} / {totalPages}
+            {/* Numéro de page */}
+            <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-primary-600 to-purple-600 text-white text-xs sm:text-sm font-black shadow-lg whitespace-nowrap">
+              <span className="hidden sm:inline">Page </span>{currentPage} <span className="text-white/70">/ {totalPages}</span>
             </div>
-
+            
+            {/* Suivant */}
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-gray-300 text-xs sm:text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:from-primary-100 hover:to-primary-200 hover:border-primary-500 transition-all shadow-sm"
             >
-              Suivant →
+              <span className="hidden sm:inline">Suiv. →</span>
+              <span className="sm:hidden">→</span>
             </button>
+            
+            {/* Dernière page */}
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl border-2 border-gray-300 text-xs sm:text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary-50 hover:border-primary-500 transition-all"
             >
-              Dernière ⏭
+              <span className="hidden sm:inline">Dernière ⏭</span>
+              <span className="sm:hidden">⏭</span>
             </button>
           </div>
         </div>
