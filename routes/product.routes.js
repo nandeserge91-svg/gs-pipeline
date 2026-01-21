@@ -9,7 +9,7 @@ import prisma from '../config/prisma.js';
 router.use(authenticate);
 
 // GET /api/products - Liste des produits
-router.get('/', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) => {
+router.get('/', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT'), async (req, res) => {
   try {
     const { actif, search } = req.query;
 
@@ -35,7 +35,7 @@ router.get('/', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) => {
 });
 
 // GET /api/products/:id - Détail d'un produit
-router.get('/:id', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) => {
+router.get('/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT'), async (req, res) => {
   try {
     const { id } = req.params;
 
