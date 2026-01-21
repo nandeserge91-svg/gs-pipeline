@@ -60,57 +60,58 @@ export default function ExpressModal({ order, onClose }: ExpressModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Zap className="text-amber-600" size={24} />
-            EXPRESS - Paiement partiel
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 max-w-md w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-elegant-lg glass-effect transform animate-slide-down">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white p-3 sm:p-4 rounded-t-xl -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 shadow-md">
+          <h2 className="text-base sm:text-xl font-bold flex items-center gap-2">
+            <Zap className="animate-pulse" size={20} />
+            <span className="hidden sm:inline">EXPRESS - Paiement partiel</span>
+            <span className="sm:hidden">EXPRESS</span>
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-white hover:text-gray-200 transition-colors"
             disabled={mutation.isPending}
           >
-            <X size={24} />
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
         
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-amber-800 mb-1">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 shadow-sm">
+          <p className="text-xs sm:text-sm text-amber-800 mb-1">
             <strong>Client :</strong> {order.clientNom}
           </p>
-          <p className="text-sm text-amber-800 mb-1">
+          <p className="text-xs sm:text-sm text-amber-800 mb-1">
             <strong>Ville :</strong> {order.clientVille}
           </p>
-          <p className="text-sm text-amber-800 mb-2">
+          <p className="text-xs sm:text-sm text-amber-800 mb-2">
             <strong>Produit :</strong> {order.produitNom} (x{order.quantite})
           </p>
           <div className="border-t border-amber-200 pt-2 mt-2">
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div>
                 <p className="text-xs text-amber-700">Montant total</p>
-                <p className="text-sm font-bold text-amber-900">
-                  {order.montant.toLocaleString()} FCFA
+                <p className="text-sm sm:text-base font-bold text-amber-900">
+                  {order.montant.toLocaleString()} F
                 </p>
               </div>
               <div>
                 <p className="text-xs text-amber-700">Acompte (10%)</p>
-                <p className="text-sm font-bold text-amber-900">
-                  {dixPourcent.toLocaleString()} FCFA
+                <p className="text-sm sm:text-base font-bold text-amber-900">
+                  {dixPourcent.toLocaleString()} F
                 </p>
               </div>
             </div>
-            <div className="bg-amber-100 rounded p-2">
+            <div className="bg-gradient-to-r from-amber-100 to-orange-100 rounded p-2 sm:p-3 text-center">
               <p className="text-xs text-amber-700">À payer au retrait (90%)</p>
-              <p className="text-lg font-bold text-amber-900">
+              <p className="text-xl sm:text-2xl font-black text-amber-900 animate-pulse-soft">
                 {montantRestant.toLocaleString()} FCFA
               </p>
             </div>
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Montant payé (acompte) <span className="text-red-500">*</span>
@@ -191,26 +192,29 @@ export default function ExpressModal({ order, onClose }: ExpressModalProps) {
             />
           </div>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-            <p className="font-medium mb-1">📌 Important :</p>
-            <p>Le client devra payer <strong>{montantRestant.toLocaleString()} FCFA</strong> lors du retrait du colis à l'agence <strong>{formData.agenceRetrait || '...'}</strong>.</p>
+          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 shadow-sm">
+            <p className="font-bold mb-1 flex items-center gap-1">
+              <span className="text-base sm:text-lg">📌</span>
+              Important :
+            </p>
+            <p>Le client devra payer <strong className="text-blue-900">{montantRestant.toLocaleString()} FCFA</strong> lors du retrait du colis à l'agence <strong className="text-blue-900">{formData.agenceRetrait || '...'}</strong>.</p>
           </div>
           
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-secondary flex-1"
+              className="btn btn-secondary flex-1 order-2 sm:order-1"
               disabled={mutation.isPending}
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="btn bg-amber-600 text-white hover:bg-amber-700 flex-1"
+              className="btn bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50 flex-1 order-1 sm:order-2 animate-bounce-soft"
               disabled={!formData.modePaiement || !formData.agenceRetrait || mutation.isPending}
             >
-              {mutation.isPending ? 'Traitement...' : 'Confirmer EXPRESS'}
+              {mutation.isPending ? '⏳ Traitement...' : '⚡ Confirmer EXPRESS'}
             </button>
           </div>
         </form>

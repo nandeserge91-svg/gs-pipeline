@@ -258,3 +258,14 @@ verifierPhotoGray()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
