@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 
