@@ -10,6 +10,7 @@ import ExpeditionsExpress from '../admin/ExpeditionsExpress';
 import ExpressAgence from './ExpressAgence';
 import AllOrders from '../admin/Orders';
 import Users from '../admin/Users';
+import Attendance from './Attendance';
 import RDV from '../appelant/RDV';
 import Tournees from '../stock/Tournees';
 
@@ -26,6 +27,7 @@ export default function GestionnaireDashboard() {
       <Route path="tournees" element={<Tournees />} />
       <Route path="deliveries" element={<Deliveries />} />
       <Route path="users" element={<Users />} />
+      <Route path="attendance" element={<Attendance />} />
       <Route path="database" element={<ClientDatabase />} />
       <Route path="supervision" element={<CallerSupervision />} />
       <Route path="stats" element={<Stats />} />

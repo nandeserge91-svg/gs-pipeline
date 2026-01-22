@@ -21,7 +21,8 @@ import {
   DollarSign,
   Bell,
   Calendar,
-  Settings
+  Settings,
+  UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -48,6 +49,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Zap, label: 'Expéditions & EXPRESS', path: '/admin/expeditions' },
           { icon: Bell, label: 'EXPRESS - En agence', path: '/admin/express-agence' },
           { icon: Users, label: 'Utilisateurs', path: '/admin/users' },
+          { icon: UserCheck, label: 'Présences & Absences', path: '/admin/attendance' },
           { icon: Truck, label: 'Gestion des Tournées', path: '/admin/tournees' },
           { icon: TrendingUp, label: 'Listes de livraison', path: '/admin/deliveries' },
           { icon: Package, label: 'Gestion des Produits', path: '/admin/products' },
@@ -71,6 +73,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Warehouse, label: 'Gestion des tournées', path: '/gestionnaire/tournees' },
           { icon: Truck, label: 'Livraisons', path: '/gestionnaire/deliveries' },
           { icon: Users, label: 'Utilisateurs', path: '/gestionnaire/users' },
+          { icon: UserCheck, label: 'Présences & Absences', path: '/gestionnaire/attendance' },
           { icon: Database, label: 'Base Clients', path: '/gestionnaire/database' },
           { icon: Eye, label: 'Supervision Appelants', path: '/gestionnaire/supervision' },
           { icon: BarChart3, label: 'Statistiques', path: '/gestionnaire/stats' },
