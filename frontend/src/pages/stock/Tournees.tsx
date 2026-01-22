@@ -623,7 +623,8 @@ export default function Tournees() {
       ) : viewMode === 'compact' ? (
         /* MODE COMPACT - Tableau */
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="min-w-[1000px]">
+            <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tournée</th>
@@ -714,6 +715,7 @@ export default function Tournees() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         /* MODE DÉTAILLÉ - Cartes */
@@ -826,8 +828,8 @@ export default function Tournees() {
 
       {/* Modal de confirmation de remise */}
       {modalType === 'remise' && selectedTournee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full my-8">
             <h2 className="text-xl font-bold mb-4">Confirmer la remise des colis</h2>
             
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -909,8 +911,8 @@ export default function Tournees() {
 
       {/* Modal de confirmation de retour */}
       {modalType === 'retour' && selectedTournee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full my-8">
             <h2 className="text-xl font-bold mb-4">Confirmer le retour des colis</h2>
             
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -939,7 +941,7 @@ export default function Tournees() {
               {/* Détail des produits non livrés attendus */}
               <div className="mt-4">
                 <h4 className="font-semibold text-gray-800 mb-2">Détail des produits non livrés attendus :</h4>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3">
                   {tourneeDetail?.orders
                     ?.filter((order: any) => ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status))
                     .map((order: any) => (
@@ -1054,8 +1056,8 @@ export default function Tournees() {
 
       {/* Modal de détails */}
       {modalType === 'detail' && selectedTournee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-4xl w-full my-8">
             <h2 className="text-2xl font-bold mb-4">{selectedTournee.nom}</h2>
 
             {!tourneeDetail ? (
@@ -1176,8 +1178,8 @@ export default function Tournees() {
                 {/* Liste des commandes */}
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-700 mb-3">📋 Commandes ({tourneeDetail?.tournee?.orders?.length || 0})</h3>
-                  <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
-                    <table className="w-full text-sm">
+                  <div className="border border-gray-200 rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm min-w-[600px]">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-left">Client</th>

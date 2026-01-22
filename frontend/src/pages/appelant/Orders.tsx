@@ -538,8 +538,9 @@ export default function Orders() {
           <p className="text-gray-400 text-sm mt-2">Essayez de modifier vos filtres</p>
         </div>
       ) : (
-        {/* Grid responsive - 1 colonne sur mobile, 2 sur tablette, 3 sur desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <>
+          {/* Grid responsive - 1 colonne sur mobile, 2 sur tablette, 3 sur desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {paginatedOrders?.map((order: Order) => (
             <div 
               key={order.id} 
@@ -662,7 +663,8 @@ export default function Orders() {
               </p>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       {/* 🚀 PAGINATION - Responsive optimisée */}
