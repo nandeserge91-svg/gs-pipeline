@@ -33,28 +33,40 @@ export default function Attendance() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Récupérer l'historique des présences
-  const { data: attendanceData, isLoading } = useQuery({
+  const { data: attendanceData, isLoading, isError: isAttendanceError, error: attendanceError } = useQuery({
     queryKey: ['attendance-history', dateFilter, userFilter, statusFilter],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (dateFilter) params.append('date', dateFilter);
-      if (userFilter) params.append('userId', userFilter);
-      // ✅ FIX : Le backend ne gère pas 'status', on filtre côté client
-      
-      const { data } = await api.get(`/attendance/history?${params.toString()}`);
-      return data;
+      try {
+        const params = new URLSearchParams();
+        if (dateFilter) params.append('date', dateFilter);
+        if (userFilter) params.append('userId', userFilter);
+        // ✅ FIX : Le backend ne gère pas 'status', on filtre côté client
+        
+        const { data } = await api.get(`/attendance/history?${params.toString()}`);
+        return data;
+      } catch (error) {
+        console.error('Erreur chargement présences:', error);
+        throw error; // Relancer l'erreur pour que React Query la gère
+      }
     },
     // ✅ NOUVEAU : Rafraîchir toutes les 30 secondes pour voir les nouveaux pointages
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    retry: 1 // Réessayer une seule fois
   });
 
   // Récupérer la liste des utilisateurs pour le filtre
-  const { data: usersData } = useQuery({
+  const { data: usersData, isError: isUsersError } = useQuery({
     queryKey: ['users-list'],
     queryFn: async () => {
-      const { data } = await api.get('/users');
-      return data;
-    }
+      try {
+        const { data } = await api.get('/users');
+        return data;
+      } catch (error) {
+        console.error('Erreur chargement utilisateurs:', error);
+        return { users: [] }; // Retourner un tableau vide en cas d'erreur
+      }
+    },
+    retry: 1 // Réessayer une seule fois
   });
 
   const attendances: AttendanceRecord[] = attendanceData?.attendances || [];
@@ -187,6 +199,32 @@ export default function Attendance() {
     link.download = `presences_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
+
+  // Affichage de l'erreur si le chargement échoue
+  if (isAttendanceError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="card p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="text-red-600" size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Erreur de chargement</h2>
+          <p className="text-gray-600 mb-4">
+            Impossible de charger l'historique des présences.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            {attendanceError?.message || 'Une erreur s\'est produite'}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn btn-primary"
+          >
+            Recharger la page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <LoadingSkeleton type="table" />;
