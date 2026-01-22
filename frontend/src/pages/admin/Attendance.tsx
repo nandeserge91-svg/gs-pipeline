@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, Users, CheckCircle, XCircle, Clock, AlertTriangle, Download, Filter, Search } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -20,14 +20,17 @@ interface AttendanceRecord {
   };
 }
 
-export default function Attendance() {
-  // ✅ NOUVEAU : Date par défaut = AUJOURD'HUI
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0]; // Format: "2026-01-22"
-  };
+// ✅ Fonction en dehors du composant pour éviter les recreations
+const getTodayDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // Format: "2026-01-22"
+};
 
-  const [dateFilter, setDateFilter] = useState(getTodayDate());
+export default function Attendance() {
+  // ✅ Mémoiser la date d'aujourd'hui
+  const todayDate = useMemo(() => getTodayDate(), []);
+
+  const [dateFilter, setDateFilter] = useState(todayDate);
   const [userFilter, setUserFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'retard' | 'hors_zone'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -246,9 +249,9 @@ export default function Attendance() {
                 'Historique complet des pointages'
               )}
             </p>
-            {dateFilter !== getTodayDate() && (
+            {dateFilter !== todayDate && (
               <button
-                onClick={() => setDateFilter(getTodayDate())}
+                onClick={() => setDateFilter(todayDate)}
                 className="text-xs px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-full font-medium transition-colors"
               >
                 📅 Aujourd'hui

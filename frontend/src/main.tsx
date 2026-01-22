@@ -10,8 +10,8 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: 1,
       staleTime: 5 * 60 * 1000, // ✅ Les données restent fraîches pendant 5 minutes
-      cacheTime: 10 * 60 * 1000, // ✅ Cache pendant 10 minutes
-      refetchOnMount: false, // ✅ Ne pas refetch si les données sont fraîches
+      gcTime: 10 * 60 * 1000, // ✅ gcTime remplace cacheTime (TanStack Query v5)
+      refetchOnMount: 'always', // ✅ Toujours refetch au mount pour éviter les bugs
     },
   },
 })
