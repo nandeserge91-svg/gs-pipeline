@@ -1,3 +1,3 @@
-// Réutilise la même page que l'admin
-export { default } from '../admin/Attendance';
+// Réutilise la version V2 simplifiée
+export { default } from '../admin/AttendanceV2';
 

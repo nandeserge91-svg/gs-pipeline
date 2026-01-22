@@ -2,8 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Overview from './Overview';
 import Orders from './Orders';
 import Users from './Users';
-// import Attendance from './Attendance';
-import AttendanceSimple from './AttendanceSimple'; // Temporaire pour diagnostic
+import AttendanceV2 from './AttendanceV2'; // Version simplifiée et robuste
 import Stats from './Stats';
 import ProductStats from './ProductStats';
 import ClientDatabase from '../common/ClientDatabase';
@@ -31,7 +30,7 @@ export default function AdminDashboard() {
       <Route path="expeditions" element={<ExpeditionsExpress />} />
       <Route path="express-agence" element={<ExpressAgence />} />
       <Route path="users" element={<Users />} />
-      <Route path="attendance" element={<AttendanceSimple />} />
+      <Route path="attendance" element={<AttendanceV2 />} />
       <Route path="tournees" element={<Tournees />} />
       <Route path="deliveries" element={<Deliveries />} />
       <Route path="products" element={<Products />} />
