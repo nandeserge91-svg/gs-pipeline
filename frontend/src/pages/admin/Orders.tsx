@@ -46,8 +46,9 @@ export default function Orders() {
       endDate: endDate || undefined,
       search: searchTerm || undefined, // ✅ AJOUTÉ : Recherche côté serveur
     }),
-    refetchInterval: 30000, // Actualisation automatique toutes les 30 secondes
-    refetchIntervalInBackground: true, // Continue même si l'onglet n'est pas actif
+    refetchInterval: 60000, // ✅ Optimisé : 1 minute
+    refetchIntervalInBackground: false, // ✅ Optimisé : Économise des requêtes
+    staleTime: 30000, // ✅ Données fraîches pendant 30 secondes
   });
 
   // Compteur pour afficher le temps écoulé depuis la dernière actualisation

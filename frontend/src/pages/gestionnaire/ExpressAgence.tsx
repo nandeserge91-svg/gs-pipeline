@@ -43,7 +43,8 @@ export default function ExpressAgence() {
       endDate: endDate || undefined,
       dateType: dateType || undefined
     }),
-    refetchInterval: 30000, // Refresh toutes les 30 secondes
+    refetchInterval: 60000, // ✅ Optimisé : 1 minute
+    staleTime: 30000, // ✅ Données fraîches pendant 30 secondes // Refresh toutes les 30 secondes
   });
 
   const notifierMutation = useMutation({

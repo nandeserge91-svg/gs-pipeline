@@ -7,11 +7,13 @@ export default function Overview() {
   const { data: stats } = useQuery({
     queryKey: ['appelant-my-stats'],
     queryFn: () => statsApi.getMyStats({ period: 'today' }),
+    staleTime: 2 * 60 * 1000, // ✅ Cache 2 minutes
   });
 
   const { data: ordersData } = useQuery({
     queryKey: ['appelant-pending-orders'],
     queryFn: () => ordersApi.getAll({ status: 'A_APPELER', limit: 10 }),
+    staleTime: 1 * 60 * 1000, // ✅ Cache 1 minute
   });
 
   const cards = [

@@ -33,7 +33,8 @@ export default function ClientDatabase() {
       });
       return data;
     },
-    refetchInterval: 5000 // Actualisation toutes les 5 secondes
+    refetchInterval: 60000, // ✅ Optimisé : 1 minute au lieu de 5 secondes
+    staleTime: 30000, // ✅ Données fraîches pendant 30 secondes
   });
 
   // Requête pour récupérer les appelants

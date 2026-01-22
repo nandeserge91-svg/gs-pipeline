@@ -38,7 +38,8 @@ export default function RDV() {
       rappele: filterRappele === 'tous' ? undefined : filterRappele === 'oui',
       search: searchTerm || undefined
     }),
-    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
+    refetchInterval: 60000, // ✅ Optimisé : 1 minute
+    staleTime: 30000, // ✅ Données fraîches pendant 30 secondes
   });
 
   const updateStatusMutation = useMutation({

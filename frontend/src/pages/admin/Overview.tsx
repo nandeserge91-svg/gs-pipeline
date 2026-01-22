@@ -46,16 +46,19 @@ export default function Overview() {
   const { data: statsData } = useQuery({
     queryKey: ['overview-stats', period],
     queryFn: () => statsApi.getOverview(getDateRange()),
+    staleTime: 2 * 60 * 1000, // ✅ Cache 2 minutes
   });
 
   const { data: recentOrders } = useQuery({
     queryKey: ['recent-orders'],
     queryFn: () => ordersApi.getAll({ page: 1, limit: 5 }),
+    staleTime: 1 * 60 * 1000, // ✅ Cache 1 minute
   });
 
   const { data: usersData } = useQuery({
     queryKey: ['users-count'],
     queryFn: () => usersApi.getAll(),
+    staleTime: 5 * 60 * 1000, // ✅ Cache 5 minutes (change rarement)
   });
 
   const stats = statsData?.overview;

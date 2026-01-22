@@ -10,6 +10,7 @@ export default function Overview() {
       const { data } = await api.get('/stock/stats');
       return data;
     },
+    staleTime: 2 * 60 * 1000, // ✅ Cache 2 minutes
   });
 
   const { data: tourneesData } = useQuery({
@@ -19,6 +20,7 @@ export default function Overview() {
       const { data } = await api.get('/stock/tournees', { params: { date: today } });
       return data;
     },
+    staleTime: 2 * 60 * 1000, // ✅ Cache 2 minutes
   });
 
   const { data: productsData } = useQuery({
@@ -27,6 +29,7 @@ export default function Overview() {
       const { data } = await api.get('/products/alerts/low-stock');
       return data;
     },
+    staleTime: 5 * 60 * 1000, // ✅ Cache 5 minutes (change rarement)
   });
 
   const stats = stockStats?.stats;

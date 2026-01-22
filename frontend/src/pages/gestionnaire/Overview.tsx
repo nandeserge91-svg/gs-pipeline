@@ -7,11 +7,13 @@ export default function Overview() {
   const { data: statsData } = useQuery({
     queryKey: ['gestionnaire-overview'],
     queryFn: () => statsApi.getOverview(),
+    staleTime: 2 * 60 * 1000, // ✅ Cache 2 minutes
   });
 
   const { data: validatedOrders } = useQuery({
     queryKey: ['validated-orders-count'],
     queryFn: () => deliveryApi.getValidatedOrders(),
+    staleTime: 1 * 60 * 1000, // ✅ Cache 1 minute
   });
 
   const stats = statsData?.overview;
