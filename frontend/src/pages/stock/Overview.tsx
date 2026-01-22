@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Package, TrendingDown, TrendingUp, AlertTriangle, Truck, CheckCircle } from 'lucide-react';
 import { api } from '@/lib/api';
+import AttendanceButton from '@/components/attendance/AttendanceButton';
 
 export default function Overview() {
   const { data: stockStats } = useQuery({
@@ -88,6 +89,9 @@ export default function Overview() {
           );
         })}
       </div>
+
+      {/* Pointage géolocalisé */}
+      <AttendanceButton />
 
       {/* Alertes stock faible */}
       {produitsAlerte.length > 0 && (

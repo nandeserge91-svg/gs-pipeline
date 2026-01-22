@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Package, CheckCircle, Truck, Clock, ArrowRight, TrendingUp, MapPin } from 'lucide-react';
 import { statsApi, deliveryApi } from '@/lib/api';
+import AttendanceButton from '@/components/attendance/AttendanceButton';
 
 export default function Overview() {
   const { data: statsData } = useQuery({
@@ -94,6 +95,11 @@ export default function Overview() {
             </div>
           );
         })}
+      </div>
+
+      {/* Pointage géolocalisé */}
+      <div className="animate-slide-up" style={{ animationDelay: '300ms' }}>
+        <AttendanceButton />
       </div>
 
       {/* Actions & Cities Grid */}

@@ -113,7 +113,7 @@
 
   .badge-glow {
     @apply shadow-glow;
-  }
+}
 
   /* ==================== MODALS ÉLÉGANTS ==================== */
   .modal-overlay {

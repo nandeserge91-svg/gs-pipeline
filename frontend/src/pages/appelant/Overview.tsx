@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Phone, CheckCircle, XCircle, PhoneOff, Truck, Zap } from 'lucide-react';
 import { statsApi, ordersApi } from '@/lib/api';
+import AttendanceButton from '@/components/attendance/AttendanceButton';
 
 export default function Overview() {
   const { data: stats } = useQuery({
@@ -125,6 +126,11 @@ export default function Overview() {
             </div>
           );
         })}
+      </div>
+
+      {/* Pointage géolocalisé */}
+      <div className="animate-slide-up">
+        <AttendanceButton />
       </div>
 
       {/* Taux de validation - Design moderne */}

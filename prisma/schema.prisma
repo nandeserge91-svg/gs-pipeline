@@ -64,6 +64,7 @@ model User {
   deliveryStats       DeliveryStatistic[]
   expressNotifications ExpressNotification[]
   smsLogs             SmsLog[]
+  attendances         Attendance[]    // Pointages de présence
 
   @@map("users")
 }
@@ -446,5 +447,77 @@ model SmsTemplate {
   @@map("sms_templates")
   @@index([key])
   @@index([category])
+}
+
+// 📍 SYSTÈME DE POINTAGE GÉOLOCALISÉ
+
+// Table de pointage des présences
+model Attendance {
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Date et heures
+  date              DateTime  @db.Date
+  heureArrivee      DateTime  @default(now())
+  heureDepart       DateTime?
+  
+  // Géolocalisation arrivée
+  latitudeArrivee   Float
+  longitudeArrivee  Float
+  distanceArrivee   Float     // Distance en mètres du magasin
+  
+  // Géolocalisation départ (optionnel)
+  latitudeDepart    Float?
+  longitudeDepart   Float?
+  distanceDepart    Float?
+  
+  // Validation
+  validee           Boolean   @default(false)
+  validation        String?   // "VALIDE", "HORS_ZONE", "RETARD"
+  
+  // Informations supplémentaires
+  note              String?
+  ipAddress         String?
+  deviceInfo        String?   @db.Text
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@unique([userId, date])  // Un seul pointage par personne par jour
+  @@map("attendances")
+  @@index([userId])
+  @@index([date])
+  @@index([validee])
+  @@index([validation])
+}
+
+// Configuration du magasin (coordonnées GPS et paramètres)
+model StoreConfig {
+  id                Int       @id @default(autoincrement())
+  nom               String    @default("Magasin Principal")
+  adresse           String?
+  
+  // Coordonnées GPS du magasin
+  latitude          Float     // Ex: 5.3599517 (Abidjan, Côte d'Ivoire)
+  longitude         Float     // Ex: -4.0082563
+  
+  // Rayon de tolérance (en mètres)
+  rayonTolerance    Int       @default(50)  // 50 mètres par défaut
+  
+  // Horaires de travail
+  heureOuverture    String    @default("08:00")
+  heureFermeture    String    @default("18:00")
+  
+  // Tolérance de retard (en minutes)
+  toleranceRetard   Int       @default(15)  // 15 minutes
+  
+  // Jours ouvrés (format JSON: ["lundi", "mardi", ...])
+  joursOuvres       String    @default("[\"lundi\",\"mardi\",\"mercredi\",\"jeudi\",\"vendredi\",\"samedi\"]") @db.Text
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("store_config")
 }
 
