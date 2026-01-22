@@ -21,7 +21,13 @@ interface AttendanceRecord {
 }
 
 export default function Attendance() {
-  const [dateFilter, setDateFilter] = useState('');
+  // ✅ NOUVEAU : Date par défaut = AUJOURD'HUI
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format: "2026-01-22"
+  };
+
+  const [dateFilter, setDateFilter] = useState(getTodayDate());
   const [userFilter, setUserFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'retard' | 'hors_zone'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,11 +39,13 @@ export default function Attendance() {
       const params = new URLSearchParams();
       if (dateFilter) params.append('date', dateFilter);
       if (userFilter) params.append('userId', userFilter);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
+      // ✅ FIX : Le backend ne gère pas 'status', on filtre côté client
       
       const { data } = await api.get(`/attendance/history?${params.toString()}`);
       return data;
-    }
+    },
+    // ✅ NOUVEAU : Rafraîchir toutes les 30 secondes pour voir les nouveaux pointages
+    refetchInterval: 30000
   });
 
   // Récupérer la liste des utilisateurs pour le filtre
@@ -52,10 +60,32 @@ export default function Attendance() {
   const attendances: AttendanceRecord[] = attendanceData?.attendances || [];
   const users = usersData?.users || [];
 
-  // Filtrer par recherche
+  // ✅ AMÉLIORATION : Filtrer par recherche ET par statut
   const filteredAttendances = attendances.filter(att => {
+    // Filtre par nom
     const fullName = `${att.user.prenom} ${att.user.nom}`.toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase());
+    const matchesSearch = fullName.includes(searchTerm.toLowerCase());
+
+    // Filtre par statut
+    let matchesStatus = true;
+    if (statusFilter !== 'all') {
+      switch (statusFilter) {
+        case 'present':
+          matchesStatus = att.validee && att.validation !== 'RETARD' && att.validation !== 'HORS_ZONE';
+          break;
+        case 'absent':
+          matchesStatus = !att.validee;
+          break;
+        case 'retard':
+          matchesStatus = att.validation === 'RETARD';
+          break;
+        case 'hors_zone':
+          matchesStatus = att.validation === 'HORS_ZONE';
+          break;
+      }
+    }
+
+    return matchesSearch && matchesStatus;
   });
 
   // Calculer les statistiques
@@ -170,7 +200,23 @@ export default function Attendance() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
             📊 Présences & Absences
           </h1>
-          <p className="text-gray-600 mt-1">Historique complet des pointages</p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-gray-600">
+              {dateFilter ? (
+                <>Pointages du <span className="font-bold text-primary-600">{new Date(dateFilter).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span></>
+              ) : (
+                'Historique complet des pointages'
+              )}
+            </p>
+            {dateFilter !== getTodayDate() && (
+              <button
+                onClick={() => setDateFilter(getTodayDate())}
+                className="text-xs px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-full font-medium transition-colors"
+              >
+                📅 Aujourd'hui
+              </button>
+            )}
+          </div>
         </div>
         <button
           onClick={exportToCSV}

@@ -284,7 +284,7 @@ router.get('/history',
   authorize('ADMIN', 'GESTIONNAIRE'),
   async (req, res) => {
     try {
-      const { userId, startDate, endDate, validee, page = 1, limit = 30 } = req.query;
+      const { userId, date, startDate, endDate, validee, page = 1, limit = 30 } = req.query;
       
       const where = {};
       
@@ -292,10 +292,35 @@ router.get('/history',
         where.userId = parseInt(userId);
       }
       
-      if (startDate && endDate) {
+      // ✅ NOUVEAU : Filtre par date unique (ex: "2026-01-22")
+      if (date) {
+        const selectedDate = new Date(date);
+        selectedDate.setHours(0, 0, 0, 0);
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        where.date = {
+          gte: selectedDate,
+          lt: nextDay
+        };
+      }
+      // ✅ Filtre par plage de dates
+      else if (startDate && endDate) {
         where.date = {
           gte: new Date(startDate),
           lte: new Date(endDate)
+        };
+      }
+      // ✅ PAR DÉFAUT : Afficher uniquement AUJOURD'HUI
+      else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        where.date = {
+          gte: today,
+          lt: tomorrow
         };
       }
 
