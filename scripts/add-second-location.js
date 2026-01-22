@@ -21,8 +21,8 @@ const prisma = new PrismaClient();
 const LOCATION_2 = {
   nom: 'Magasin Secondaire Abidjan',
   adresse: 'Abidjan, Côte d\'Ivoire (Site 2)',
-  latitude: 5.354706,   // 5°21'16.9"N
-  longitude: -3.872607, // 3°52'21.4"W
+  latitude: 5.354687,   // 5°21'16.9"N
+  longitude: -3.872683, // 3°52'21.7"W
   rayonTolerance: 75,   // 75 mètres
   heureOuverture: '08:00',
   heureFermeture: '18:00',

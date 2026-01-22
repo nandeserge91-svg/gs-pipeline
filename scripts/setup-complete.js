@@ -33,8 +33,8 @@ const LOCATION_1 = {
 const LOCATION_2 = {
   nom: 'Magasin Secondaire Abidjan',
   adresse: 'Abidjan, Côte d\'Ivoire (Site 2)',
-  latitude: 5.354706,
-  longitude: -3.872607,
+  latitude: 5.354687,
+  longitude: -3.872683,
   rayonTolerance: RAYON_TOLERANCE,
   heureOuverture: '08:00',
   heureFermeture: '18:00',
