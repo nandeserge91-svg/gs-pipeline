@@ -58,36 +58,58 @@ router.post('/mark-arrival',
         });
       }
 
-      // Récupérer la config du magasin
-      const storeConfig = await prisma.storeConfig.findFirst();
+      // ✅ Récupérer TOUTES les configurations de magasin
+      const storeConfigs = await prisma.storeConfig.findMany();
       
-      if (!storeConfig) {
+      if (!storeConfigs || storeConfigs.length === 0) {
         return res.status(500).json({ 
-          error: 'Configuration du magasin non trouvée. Veuillez contacter l\'administrateur.' 
+          error: 'Aucune configuration de magasin trouvée. Veuillez contacter l\'administrateur.' 
         });
       }
 
-      // Calculer la distance
-      const distance = calculateDistance(
-        latitude, 
-        longitude, 
-        storeConfig.latitude, 
-        storeConfig.longitude
-      );
+      // ✅ Vérifier la distance pour CHAQUE localisation autorisée
+      let validee = false;
+      let closestStore = null;
+      let minDistance = Infinity;
+      let validStoreNom = null;
 
-      // Vérifier si dans la zone
-      const validee = distance <= storeConfig.rayonTolerance;
+      for (const store of storeConfigs) {
+        const dist = calculateDistance(
+          latitude, 
+          longitude, 
+          store.latitude, 
+          store.longitude
+        );
+        
+        // Garder le magasin le plus proche
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestStore = store;
+        }
+
+        // Si dans le rayon d'AU MOINS UNE localisation → VALIDE
+        if (dist <= store.rayonTolerance) {
+          validee = true;
+          validStoreNom = store.nom;
+          console.log(`✅ Zone valide détectée : ${store.nom} (${Math.round(dist)}m)`);
+          break;
+        }
+      }
+
+      const distance = minDistance;
+      const storeConfig = closestStore; // Utiliser le magasin le plus proche pour la config
       
-      // ❌ NOUVEAU : REJETER si hors zone
+      // ❌ REJETER si hors zone de TOUS les magasins
       if (!validee) {
-        console.log(`❌ Pointage REFUSÉ - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m (max ${storeConfig.rayonTolerance}m)`);
+        console.log(`❌ Pointage REFUSÉ - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m du magasin le plus proche (${closestStore.nom})`);
         
         return res.status(400).json({
           success: false,
           error: 'HORS_ZONE',
-          message: `❌ Vous êtes ABSENT - Vous êtes à ${Math.round(distance)}m du magasin. Vous devez être à moins de ${storeConfig.rayonTolerance}m pour pointer.`,
+          message: `❌ Vous êtes ABSENT - Vous êtes à ${Math.round(distance)}m du magasin le plus proche (${closestStore.nom}). Vous devez être à moins de ${closestStore.rayonTolerance}m d'un des magasins autorisés pour pointer.`,
           distance: Math.round(distance),
-          rayonTolerance: storeConfig.rayonTolerance,
+          rayonTolerance: closestStore.rayonTolerance,
+          closestStore: closestStore.nom,
           validee: false,
           status: 'ABSENT'
         });
@@ -133,16 +155,17 @@ router.post('/mark-arrival',
         }
       });
 
-      console.log(`✅ Pointage VALIDE - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m - ${validation}`);
+      console.log(`✅ Pointage VALIDE - ${req.user.prenom} ${req.user.nom} - Magasin: ${validStoreNom} - Distance: ${Math.round(distance)}m - ${validation}`);
 
       res.json({
         success: true,
         message: validation === 'RETARD'
-          ? `⚠️ Présence enregistrée avec retard à ${new Date().toLocaleTimeString('fr-FR')}`
-          : `✅ Présence enregistrée à ${new Date().toLocaleTimeString('fr-FR')}`,
+          ? `⚠️ Présence enregistrée avec retard à ${new Date().toLocaleTimeString('fr-FR')} (${validStoreNom})`
+          : `✅ Présence enregistrée à ${new Date().toLocaleTimeString('fr-FR')} (${validStoreNom})`,
         attendance,
         distance: Math.round(distance),
         rayonTolerance: storeConfig.rayonTolerance,
+        storeName: validStoreNom,
         validee: true,
         validation,
         status: 'PRESENT'
