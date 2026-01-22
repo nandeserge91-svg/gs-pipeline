@@ -33,14 +33,30 @@ export default function AttendanceButton() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['my-attendance-today'] });
       
-      if (data.validee) {
-        toast.success(data.message, { duration: 5000, icon: '✅' });
+      // Toujours succès si la requête aboutit (utilisateur dans la zone)
+      if (data.validation === 'RETARD') {
+        toast.success(data.message, { duration: 5000, icon: '⚠️' });
       } else {
-        toast.error(data.message, { duration: 5000, icon: '❌' });
+        toast.success(data.message, { duration: 5000, icon: '✅' });
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Erreur lors du pointage');
+      const errorData = error.response?.data;
+      
+      // ❌ NOUVEAU : Message clair pour "HORS ZONE"
+      if (errorData?.error === 'HORS_ZONE') {
+        toast.error(errorData.message || `❌ ABSENT - Vous êtes hors zone (${errorData.distance}m du magasin)`, { 
+          duration: 8000, 
+          icon: '🚫',
+          style: {
+            background: '#FEE2E2',
+            color: '#991B1B',
+            fontWeight: 'bold',
+          }
+        });
+      } else {
+        toast.error(errorData?.message || 'Erreur lors du pointage', { duration: 5000 });
+      }
     }
   });
 
@@ -130,17 +146,18 @@ export default function AttendanceButton() {
   const getStatusBadge = () => {
     if (!attendance) {
       return (
-        <span className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-          ⚪ Absent
+        <span className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-full flex items-center gap-1 font-bold">
+          <X size={14} />
+          ABSENT
         </span>
       );
     }
 
     if (!attendance.validee) {
       return (
-        <span className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-full flex items-center gap-1">
-          <X size={12} />
-          Hors zone
+        <span className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-full flex items-center gap-1 font-bold">
+          <X size={14} />
+          ABSENT (Hors zone)
         </span>
       );
     }
@@ -233,6 +250,19 @@ export default function AttendanceButton() {
           <div className="flex items-start gap-2">
             <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs sm:text-sm text-red-700">{locationError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Message d'information pour les absents */}
+      {!attendance && (
+        <div className="mb-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm text-blue-800">
+              <p className="font-bold mb-1">📍 Vous devez être au magasin</p>
+              <p>Pour pointer, vous devez être à moins de 50m du magasin. Si vous êtes trop loin, votre pointage sera <span className="font-bold text-red-600">REFUSÉ</span> et vous resterez <span className="font-bold text-red-600">ABSENT</span>.</p>
+            </div>
           </div>
         </div>
       )}

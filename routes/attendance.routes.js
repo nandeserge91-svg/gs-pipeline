@@ -78,23 +78,36 @@ router.post('/mark-arrival',
       // Vérifier si dans la zone
       const validee = distance <= storeConfig.rayonTolerance;
       
-      // Déterminer la validation
+      // ❌ NOUVEAU : REJETER si hors zone
+      if (!validee) {
+        console.log(`❌ Pointage REFUSÉ - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m (max ${storeConfig.rayonTolerance}m)`);
+        
+        return res.status(400).json({
+          success: false,
+          error: 'HORS_ZONE',
+          message: `❌ Vous êtes ABSENT - Vous êtes à ${Math.round(distance)}m du magasin. Vous devez être à moins de ${storeConfig.rayonTolerance}m pour pointer.`,
+          distance: Math.round(distance),
+          rayonTolerance: storeConfig.rayonTolerance,
+          validee: false,
+          status: 'ABSENT'
+        });
+      }
+      
+      // Déterminer la validation (uniquement si dans la zone)
       let validation = 'VALIDE';
       const now = new Date();
       const heureOuverture = new Date();
       const [heureO, minuteO] = storeConfig.heureOuverture.split(':');
       heureOuverture.setHours(parseInt(heureO), parseInt(minuteO), 0, 0);
       
-      if (!validee) {
-        validation = 'HORS_ZONE';
-      } else if (now > heureOuverture) {
+      if (now > heureOuverture) {
         const retardMinutes = Math.floor((now - heureOuverture) / (1000 * 60));
         if (retardMinutes > storeConfig.toleranceRetard) {
           validation = 'RETARD';
         }
       }
 
-      // Enregistrer la présence
+      // Enregistrer la présence (uniquement si dans la zone)
       const attendance = await prisma.attendance.create({
         data: {
           userId,
@@ -120,18 +133,19 @@ router.post('/mark-arrival',
         }
       });
 
-      console.log(`✅ Pointage ${validee ? 'VALIDE' : 'HORS ZONE'} - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m`);
+      console.log(`✅ Pointage VALIDE - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m - ${validation}`);
 
       res.json({
         success: true,
-        message: validee 
-          ? `✅ Présence enregistrée à ${new Date().toLocaleTimeString('fr-FR')}` 
-          : `❌ Vous êtes à ${Math.round(distance)}m du magasin (max ${storeConfig.rayonTolerance}m)`,
+        message: validation === 'RETARD'
+          ? `⚠️ Présence enregistrée avec retard à ${new Date().toLocaleTimeString('fr-FR')}`
+          : `✅ Présence enregistrée à ${new Date().toLocaleTimeString('fr-FR')}`,
         attendance,
         distance: Math.round(distance),
         rayonTolerance: storeConfig.rayonTolerance,
-        validee,
-        validation
+        validee: true,
+        validation,
+        status: 'PRESENT'
       });
 
     } catch (error) {
