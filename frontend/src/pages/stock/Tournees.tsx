@@ -623,41 +623,40 @@ export default function Tournees() {
       ) : viewMode === 'compact' ? (
         /* MODE COMPACT - Tableau */
         <div className="card overflow-x-auto">
-          <div className="min-w-[1000px]">
-            <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: '1100px' }}>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tournée</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livreur</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Remis</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livrés</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Restants</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Durée</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '25%' }}>Tournée</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Livreur</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Remis</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Livrés</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Restants</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Durée</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Statut</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredTournees.map((tournee: any) => (
                 <tr key={tournee.id} className={`hover:bg-gray-50 ${tournee.stats.alerteCritique ? 'bg-red-50' : tournee.stats.alerteRetard ? 'bg-orange-50' : ''}`}>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3" style={{ maxWidth: '280px' }}>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-gray-900">{tournee.nom}</p>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-medium text-gray-900 truncate" style={{ maxWidth: '180px' }} title={tournee.nom}>{tournee.nom}</p>
                         {getDeliveryTypeBadge(tournee)}
                       </div>
                       {tournee.zone && (
-                        <p className="text-xs text-gray-500">Zone: {tournee.zone}</p>
+                        <p className="text-xs text-gray-500 truncate" title={tournee.zone}>Zone: {tournee.zone}</p>
                       )}
                       {tournee.stats.dateRemise && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 truncate">
                           📅 Remise: {formatDate(tournee.stats.dateRemise)}
                         </p>
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3">
-                    <p className="text-sm text-gray-900">
+                  <td className="px-3 py-3" style={{ maxWidth: '150px' }}>
+                    <p className="text-sm text-gray-900 truncate" title={`${tournee.deliverer.prenom} ${tournee.deliverer.nom}`}>
                       {tournee.deliverer.prenom} {tournee.deliverer.nom}
                     </p>
                   </td>
@@ -704,7 +703,7 @@ export default function Tournees() {
                           setSelectedTournee(tournee);
                           setModalType('detail');
                         }}
-                        className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
+                        className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors whitespace-nowrap"
                         title="Voir détails"
                       >
                         Détails
@@ -715,7 +714,6 @@ export default function Tournees() {
               ))}
             </tbody>
           </table>
-          </div>
         </div>
       ) : (
         /* MODE DÉTAILLÉ - Cartes */
@@ -1179,49 +1177,51 @@ export default function Tournees() {
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-700 mb-3">📋 Commandes ({tourneeDetail?.tournee?.orders?.length || 0})</h3>
                   <div className="border border-gray-200 rounded-lg overflow-x-auto">
-                    <table className="w-full text-sm min-w-[600px]">
-                      <thead className="bg-gray-50 sticky top-0">
+                    <table className="w-full text-sm" style={{ minWidth: '800px' }}>
+                      <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-3 py-2 text-left">Client</th>
-                          <th className="px-3 py-2 text-left">Produit</th>
-                          <th className="px-3 py-2 text-center">Qté</th>
-                          <th className="px-3 py-2 text-right">Montant</th>
-                          <th className="px-3 py-2 text-left">Note</th>
-                          <th className="px-3 py-2 text-center">Statut</th>
+                          <th className="px-3 py-2 text-left" style={{ width: '20%' }}>Client</th>
+                          <th className="px-3 py-2 text-left" style={{ width: '20%' }}>Produit</th>
+                          <th className="px-3 py-2 text-center" style={{ width: '8%' }}>Qté</th>
+                          <th className="px-3 py-2 text-right" style={{ width: '12%' }}>Montant</th>
+                          <th className="px-3 py-2 text-left" style={{ width: '25%' }}>Note</th>
+                          <th className="px-3 py-2 text-center" style={{ width: '15%' }}>Statut</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {tourneeDetail?.tournee?.orders?.map((order: any) => (
                           <tr key={order.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2" style={{ maxWidth: '150px' }}>
                               <div>
-                                <p className="font-medium">{order.clientNom}</p>
-                                <p className="text-xs text-gray-500">{order.clientVille}</p>
+                                <p className="font-medium truncate">{order.clientNom}</p>
+                                <p className="text-xs text-gray-500 truncate">{order.clientVille}</p>
                               </div>
                             </td>
-                            <td className="px-3 py-2">{order.produitNom}</td>
+                            <td className="px-3 py-2" style={{ maxWidth: '150px' }}>
+                              <div className="truncate" title={order.produitNom}>{order.produitNom}</div>
+                            </td>
                             <td className="px-3 py-2 text-center">
                               <span className="font-semibold text-blue-600">×{order.quantite}</span>
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-2 text-right whitespace-nowrap">
                               <span className="font-medium">{formatCurrency(order.montant)}</span>
                             </td>
-                            <td className="px-3 py-2 text-xs max-w-xs">
+                            <td className="px-3 py-2 text-xs" style={{ maxWidth: '200px' }}>
                               {order.noteGestionnaire ? (
                                 <div className="space-y-1">
                                   <div className="bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                                    <span className="text-xs text-purple-900 font-medium">
+                                    <span className="text-xs text-purple-900 font-medium truncate block" title={order.noteGestionnaire}>
                                       📝 {order.noteGestionnaire}
                                     </span>
                                   </div>
                                   {order.noteAppelant && (
-                                    <span className="text-gray-600 line-clamp-1" title={order.noteAppelant}>
+                                    <span className="text-gray-600 truncate block" title={order.noteAppelant}>
                                       💬 {order.noteAppelant}
                                     </span>
                                   )}
                                 </div>
                               ) : order.noteAppelant ? (
-                                <span className="text-gray-600 line-clamp-1" title={order.noteAppelant}>
+                                <span className="text-gray-600 truncate block" title={order.noteAppelant}>
                                   💬 {order.noteAppelant}
                                 </span>
                               ) : (
@@ -1229,7 +1229,7 @@ export default function Tournees() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-center">
-                              <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
+                              <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${getStatusColor(order.status)}`}>
                                 {getStatusLabel(order.status)}
                               </span>
                             </td>
