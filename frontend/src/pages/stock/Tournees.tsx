@@ -431,53 +431,53 @@ export default function Tournees() {
       )}
 
       {/* Filtres et recherche */}
-      <div className="card">
+      <div className="card relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Recherche */}
           <div className="relative md:col-span-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Rechercher (tournée, livreur, zone...)"
-              className="input pl-10 w-full"
+              className="input pl-10 w-full relative"
             />
           </div>
 
           {/* Date de début */}
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
             <input
               type="date"
               value={dateDebut}
               onChange={(e) => setDateDebut(e.target.value)}
-              className="input pl-10 w-full"
+              className="input pl-10 w-full relative bg-white"
               placeholder="Date de début"
             />
-            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600">Du</label>
+            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600 z-10">Du</label>
           </div>
 
           {/* Date de fin */}
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
             <input
               type="date"
               value={dateFin}
               onChange={(e) => setDateFin(e.target.value)}
-              className="input pl-10 w-full"
+              className="input pl-10 w-full relative bg-white"
               placeholder="Date de fin"
             />
-            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600">Au</label>
+            <label className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-600 z-10">Au</label>
           </div>
 
           {/* Filtre par statut */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="input pl-10 w-full"
+              className="input pl-10 w-full relative bg-white appearance-none"
             >
               <option value="all">Tous les statuts</option>
               <option value="pending">⏳ En attente remise</option>
@@ -488,11 +488,11 @@ export default function Tournees() {
 
           {/* Filtre par type de livraison */}
           <div className="relative md:col-span-2">
-            <Truck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Truck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
             <select
               value={deliveryTypeFilter}
               onChange={(e) => setDeliveryTypeFilter(e.target.value as any)}
-              className="input pl-10 w-full"
+              className="input pl-10 w-full relative bg-white appearance-none"
             >
               <option value="all">🌍 Tous les types</option>
               <option value="LOCAL">🏠 Livraisons locales</option>
@@ -503,11 +503,11 @@ export default function Tournees() {
           {/* Filtre par livreur */}
           {deliverers.length > 0 && (
             <div className="relative md:col-span-2">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
               <select
                 value={delivererFilter}
                 onChange={(e) => setDelivererFilter(e.target.value)}
-                className="input pl-10 w-full"
+                className="input pl-10 w-full relative bg-white appearance-none"
               >
                 <option value="">Tous les livreurs</option>
                 {deliverers.map((d: any) => (
