@@ -1,0 +1,15 @@
+{
+  "crons": [
+    {
+      "schedule": "0 23 * * *",
+      "command": "node scripts/generate-daily-absences.js",
+      "name": "Génération quotidienne des absences"
+    },
+    {
+      "schedule": "0 2 * * *",
+      "command": "node scripts/cleanup-old-attendance.js",
+      "name": "Nettoyage des données anciennes (60j)"
+    }
+  ]
+}
+
