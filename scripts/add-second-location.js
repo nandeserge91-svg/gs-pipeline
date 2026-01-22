@@ -23,7 +23,7 @@ const LOCATION_2 = {
   adresse: 'Abidjan, Côte d\'Ivoire (Site 2)',
   latitude: 5.354706,   // 5°21'16.9"N
   longitude: -3.872607, // 3°52'21.4"W
-  rayonTolerance: 50,   // 50 mètres
+  rayonTolerance: 75,   // 75 mètres
   heureOuverture: '08:00',
   heureFermeture: '18:00',
   toleranceRetard: 15   // 15 minutes
