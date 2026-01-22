@@ -45,15 +45,21 @@ export default function AttendanceButton() {
       
       // ❌ NOUVEAU : Message clair pour "HORS ZONE"
       if (errorData?.error === 'HORS_ZONE') {
-        toast.error(errorData.message || `❌ ABSENT - Vous êtes hors zone (${errorData.distance}m du magasin)`, { 
-          duration: 8000, 
+        const message = `❌ POINTAGE REFUSÉ\n\nVous êtes à ${errorData.distance}m du magasin (max ${errorData.rayonTolerance}m).\n\n🚶‍♂️ Rapprochez-vous du magasin et réessayez !`;
+        
+        toast.error(message, { 
+          duration: 10000, 
           icon: '🚫',
           style: {
             background: '#FEE2E2',
             color: '#991B1B',
             fontWeight: 'bold',
+            whiteSpace: 'pre-line'
           }
         });
+        
+        // ✅ IMPORTANT : Ne pas invalider les queries, car aucun pointage n'a été enregistré
+        // L'utilisateur peut réessayer immédiatement
       } else {
         toast.error(errorData?.message || 'Erreur lors du pointage', { duration: 5000 });
       }
@@ -261,7 +267,10 @@ export default function AttendanceButton() {
             <AlertCircle size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-xs sm:text-sm text-blue-800">
               <p className="font-bold mb-1">📍 Vous devez être au magasin</p>
-              <p>Pour pointer, vous devez être à moins de 50m du magasin. Si vous êtes trop loin, votre pointage sera <span className="font-bold text-red-600">REFUSÉ</span> et vous resterez <span className="font-bold text-red-600">ABSENT</span>.</p>
+              <p className="mb-2">Pour pointer, vous devez être à <span className="font-bold">moins de 50m</span> du magasin.</p>
+              <p className="text-xs bg-white px-2 py-1 rounded border border-blue-300">
+                💡 <span className="font-bold">Astuce :</span> Si votre pointage est refusé (hors zone), <span className="font-bold text-green-600">rapprochez-vous et réessayez</span> !
+              </p>
             </div>
           </div>
         </div>
