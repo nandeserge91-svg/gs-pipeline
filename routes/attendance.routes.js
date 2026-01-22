@@ -536,5 +536,41 @@ router.put('/store-config',
   }
 );
 
+// 🗑️ Supprimer les anciennes données (> 60 jours) - Admin uniquement
+router.delete('/cleanup',
+  authenticate,
+  authorize('ADMIN'),
+  async (req, res) => {
+    try {
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      sixtyDaysAgo.setHours(0, 0, 0, 0);
+
+      console.log(`🗑️ Nettoyage des données avant le ${sixtyDaysAgo.toLocaleDateString('fr-FR')}...`);
+
+      const result = await prisma.attendance.deleteMany({
+        where: {
+          date: {
+            lt: sixtyDaysAgo
+          }
+        }
+      });
+
+      console.log(`✅ ${result.count} enregistrements supprimés`);
+
+      res.json({
+        success: true,
+        message: `${result.count} enregistrement(s) ancien(s) supprimé(s)`,
+        deletedCount: result.count,
+        deletedBefore: sixtyDaysAgo.toISOString()
+      });
+
+    } catch (error) {
+      console.error('Erreur nettoyage:', error);
+      res.status(500).json({ error: 'Erreur lors du nettoyage' });
+    }
+  }
+);
+
 export default router;
 

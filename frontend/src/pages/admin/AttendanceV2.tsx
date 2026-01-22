@@ -27,14 +27,53 @@ export default function AttendanceV2() {
   // État
   const todayDate = useMemo(() => getTodayDate(), []);
   const [dateFilter, setDateFilter] = useState(todayDate);
+  const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month' | 'custom'>('today');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Calculer les dates selon la période
+  const getDateRange = useMemo(() => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (periodFilter) {
+      case 'today':
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'week':
+        start.setDate(today.getDate() - 7);
+        break;
+      case 'month':
+        start.setDate(today.getDate() - 30);
+        break;
+      case 'custom':
+        if (startDate && endDate) {
+          start = new Date(startDate);
+          end = new Date(endDate);
+        }
+        break;
+    }
+
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0]
+    };
+  }, [periodFilter, startDate, endDate]);
 
   // Chargement des données
   const { data: attendanceData, isLoading, isError } = useQuery({
-    queryKey: ['attendance-v2', dateFilter],
+    queryKey: ['attendance-v2', periodFilter, getDateRange.startDate, getDateRange.endDate],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (dateFilter) params.append('date', dateFilter);
+      if (periodFilter === 'today') {
+        params.append('date', dateFilter);
+      } else {
+        params.append('startDate', getDateRange.startDate);
+        params.append('endDate', getDateRange.endDate);
+      }
       const { data } = await api.get(`/attendance/history?${params.toString()}`);
       return data;
     },
@@ -229,32 +268,90 @@ export default function AttendanceV2() {
       </div>
 
       {/* Filtres */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+      <div className="bg-white rounded-lg shadow p-4 space-y-4">
+        {/* Filtre par période */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Période</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setPeriodFilter('today')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                periodFilter === 'today'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Aujourd'hui
+            </button>
+            <button
+              onClick={() => setPeriodFilter('week')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                periodFilter === 'week'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              7 derniers jours
+            </button>
+            <button
+              onClick={() => setPeriodFilter('month')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                periodFilter === 'month'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              30 derniers jours
+            </button>
+            <button
+              onClick={() => setPeriodFilter('custom')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                periodFilter === 'custom'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Personnalisé
+            </button>
           </div>
+        </div>
 
-          {/* Recherche */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Rechercher</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        {/* Dates personnalisées */}
+        {periodFilter === 'custom' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date début</label>
               <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Nom de l'employé..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Recherche */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Rechercher un employé</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Nom de l'employé..."
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
       </div>
