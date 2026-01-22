@@ -572,5 +572,112 @@ router.delete('/cleanup',
   }
 );
 
+// 📋 Générer les absences pour les employés qui n'ont pas pointé - Admin uniquement
+router.post('/generate-absences',
+  authenticate,
+  authorize('ADMIN', 'GESTIONNAIRE'),
+  async (req, res) => {
+    try {
+      const { date } = req.body;
+      
+      // Date cible (par défaut : aujourd'hui)
+      const targetDate = date ? new Date(date) : new Date();
+      targetDate.setHours(0, 0, 0, 0);
+      
+      const targetDateEnd = new Date(targetDate);
+      targetDateEnd.setHours(23, 59, 59, 999);
+
+      console.log(`📋 Génération des absences pour le ${targetDate.toLocaleDateString('fr-FR')}...`);
+
+      // Rôles concernés
+      const ROLES_WITH_ATTENDANCE = ['APPELANT', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'];
+
+      // 1. Récupérer tous les employés concernés
+      const employees = await prisma.user.findMany({
+        where: {
+          role: { in: ROLES_WITH_ATTENDANCE }
+        },
+        select: { id: true, nom: true, prenom: true, role: true }
+      });
+
+      // 2. Vérifier qui a déjà pointé
+      const existingAttendances = await prisma.attendance.findMany({
+        where: {
+          date: {
+            gte: targetDate,
+            lte: targetDateEnd
+          }
+        },
+        select: { userId: true }
+      });
+
+      const employeesWithAttendance = new Set(existingAttendances.map(a => a.userId));
+
+      // 3. Identifier les absents
+      const absentEmployees = employees.filter(emp => !employeesWithAttendance.has(emp.id));
+
+      if (absentEmployees.length === 0) {
+        return res.json({
+          success: true,
+          message: 'Tous les employés ont pointé',
+          created: 0,
+          absences: []
+        });
+      }
+
+      // 4. Créer les absences
+      const absencesCreated = [];
+
+      for (const employee of absentEmployees) {
+        try {
+          const absence = await prisma.attendance.create({
+            data: {
+              userId: employee.id,
+              date: targetDate,
+              heureArrivee: targetDate,
+              latitudeArrivee: 0,
+              longitudeArrivee: 0,
+              distanceArrivee: 0,
+              validee: false,
+              validation: 'ABSENT',
+              note: `Absence générée automatiquement (pas de pointage) par ${req.user.prenom} ${req.user.nom}`,
+              ipAddress: req.ip || 'system',
+              deviceInfo: req.headers['user-agent'] || 'auto-generated'
+            },
+            include: {
+              user: {
+                select: { id: true, nom: true, prenom: true, role: true }
+              }
+            }
+          });
+
+          absencesCreated.push(absence);
+          console.log(`   ❌ ${employee.prenom} ${employee.nom} → ABSENT`);
+        } catch (error) {
+          // Ignorer si déjà existant (unique constraint)
+          if (error.code !== 'P2002') {
+            console.error(`Erreur pour ${employee.prenom} ${employee.nom}:`, error.message);
+          }
+        }
+      }
+
+      console.log(`✅ ${absencesCreated.length} absence(s) générée(s)`);
+
+      res.json({
+        success: true,
+        message: `${absencesCreated.length} absence(s) générée(s) pour le ${targetDate.toLocaleDateString('fr-FR')}`,
+        created: absencesCreated.length,
+        absences: absencesCreated,
+        totalEmployees: employees.length,
+        presents: employeesWithAttendance.size
+      });
+
+    } catch (error) {
+      console.error('Erreur génération absences:', error);
+      res.status(500).json({ error: 'Erreur lors de la génération des absences' });
+    }
+  }
+);
+
 export default router;
 

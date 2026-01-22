@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Calendar, Users, CheckCircle, XCircle, Clock, AlertTriangle, Download, Search } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Calendar, Users, CheckCircle, XCircle, Clock, AlertTriangle, Download, Search, UserX, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 // Types
 interface AttendanceRecord {
@@ -31,6 +32,8 @@ export default function AttendanceV2() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const queryClient = useQueryClient();
 
   // Calculer les dates selon la période
   const getDateRange = useMemo(() => {
@@ -78,6 +81,28 @@ export default function AttendanceV2() {
       return data;
     },
     retry: 1,
+  });
+
+  // Mutation pour générer les absences
+  const generateAbsencesMutation = useMutation({
+    mutationFn: async (targetDate?: string) => {
+      const { data } = await api.post('/attendance/generate-absences', {
+        date: targetDate || dateFilter
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['attendance-v2'] });
+      toast.success(`✅ ${data.created} absence(s) générée(s)`, {
+        duration: 4000,
+        icon: '📋'
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la génération des absences', {
+        duration: 5000
+      });
+    }
   });
 
   const attendances: AttendanceRecord[] = attendanceData?.attendances || [];
@@ -215,13 +240,30 @@ export default function AttendanceV2() {
             )}
           </p>
         </div>
-        <button
-          onClick={exportToCSV}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Download size={18} />
-          Export CSV
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => generateAbsencesMutation.mutate()}
+            disabled={generateAbsencesMutation.isPending}
+            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Générer automatiquement les absences pour les employés qui n'ont pas pointé"
+          >
+            {generateAbsencesMutation.isPending ? (
+              <RefreshCw size={18} className="animate-spin" />
+            ) : (
+              <UserX size={18} />
+            )}
+            <span className="hidden sm:inline">Générer absences</span>
+            <span className="sm:hidden">Absents</span>
+          </button>
+          <button
+            onClick={exportToCSV}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Download size={18} />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* Statistiques */}
