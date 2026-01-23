@@ -702,5 +702,78 @@ router.post('/generate-absences',
   }
 );
 
+// 🔧 ENDPOINT TEMPORAIRE : Configuration automatique des localisations
+// À utiliser UNE FOIS puis supprimer
+router.post('/setup-locations',
+  authenticate,
+  authorize('ADMIN'),
+  async (req, res) => {
+    try {
+      console.log('🔧 Début de la configuration des localisations...');
+
+      // 1. Supprimer les anciennes localisations
+      const deleted = await prisma.storeConfig.deleteMany({});
+      console.log(`   🗑️  ${deleted.count} ancienne(s) localisation(s) supprimée(s)`);
+
+      // 2. Créer les 2 localisations d'Abidjan
+      const location1 = await prisma.storeConfig.create({
+        data: {
+          nom: 'Magasin Principal Abidjan',
+          adresse: 'Abidjan, Côte d\'Ivoire',
+          latitude: 5.353021,
+          longitude: -3.870182,
+          rayonTolerance: 75,
+          heureOuverture: '08:00',
+          heureFermeture: '18:00',
+          toleranceRetard: 15
+        }
+      });
+
+      const location2 = await prisma.storeConfig.create({
+        data: {
+          nom: 'Magasin Secondaire Abidjan',
+          adresse: 'Abidjan, Côte d\'Ivoire (Site 2)',
+          latitude: 5.354687,
+          longitude: -3.872683,
+          rayonTolerance: 75,
+          heureOuverture: '08:00',
+          heureFermeture: '18:00',
+          toleranceRetard: 15
+        }
+      });
+
+      console.log('✅ Localisations configurées avec succès !');
+
+      res.json({
+        success: true,
+        message: '✅ Localisations configurées avec succès !',
+        locations: [
+          {
+            id: location1.id,
+            nom: location1.nom,
+            latitude: location1.latitude,
+            longitude: location1.longitude,
+            rayonTolerance: location1.rayonTolerance
+          },
+          {
+            id: location2.id,
+            nom: location2.nom,
+            latitude: location2.latitude,
+            longitude: location2.longitude,
+            rayonTolerance: location2.rayonTolerance
+          }
+        ]
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur configuration localisations:', error);
+      res.status(500).json({ 
+        error: 'Erreur lors de la configuration des localisations',
+        details: error.message
+      });
+    }
+  }
+);
+
 export default router;
 
