@@ -32,6 +32,7 @@ export default function AttendanceV2() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'retard' | 'parti'>('all');
   
   const queryClient = useQueryClient();
 
@@ -110,11 +111,33 @@ export default function AttendanceV2() {
   // Filtrage
   const filteredAttendances = useMemo(() => {
     return attendances.filter(att => {
-      if (!searchTerm) return true;
-      const fullName = `${att.user.prenom} ${att.user.nom}`.toLowerCase();
-      return fullName.includes(searchTerm.toLowerCase());
+      // Filtre par nom
+      if (searchTerm) {
+        const fullName = `${att.user.prenom} ${att.user.nom}`.toLowerCase();
+        if (!fullName.includes(searchTerm.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filtre par statut
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'present' && (!att.validee || att.validation === 'RETARD')) {
+          return false;
+        }
+        if (statusFilter === 'absent' && att.validee) {
+          return false;
+        }
+        if (statusFilter === 'retard' && att.validation !== 'RETARD') {
+          return false;
+        }
+        if (statusFilter === 'parti' && !att.heureDepart) {
+          return false;
+        }
+      }
+
+      return true;
     });
-  }, [attendances, searchTerm]);
+  }, [attendances, searchTerm, statusFilter]);
 
   // Statistiques
   const stats = useMemo(() => ({
@@ -394,6 +417,63 @@ export default function AttendanceV2() {
               placeholder="Nom de l'employé..."
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+        </div>
+
+        {/* Filtre par statut */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filtrer par statut</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                statusFilter === 'all'
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📊 Tous
+            </button>
+            <button
+              onClick={() => setStatusFilter('present')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                statusFilter === 'present'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-50 text-green-700 hover:bg-green-100'
+              }`}
+            >
+              ✅ Présents
+            </button>
+            <button
+              onClick={() => setStatusFilter('absent')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                statusFilter === 'absent'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+              }`}
+            >
+              ❌ Absents
+            </button>
+            <button
+              onClick={() => setStatusFilter('retard')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                statusFilter === 'retard'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+              }`}
+            >
+              ⚠️ Retards
+            </button>
+            <button
+              onClick={() => setStatusFilter('parti')}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                statusFilter === 'parti'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              👋 Partis
+            </button>
           </div>
         </div>
       </div>
