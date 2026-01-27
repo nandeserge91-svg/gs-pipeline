@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tantml/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Search, Edit2, MapPin, MessageSquare, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { deliveryApi, usersApi, ordersApi } from '@/lib/api';
