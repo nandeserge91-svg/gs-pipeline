@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Search, Edit2, MapPin, MessageSquare } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tantml/react-query';
+import { Check, Search, Edit2, MapPin, MessageSquare, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { deliveryApi, usersApi, ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/utils/statusHelpers';
@@ -23,6 +23,9 @@ export default function ValidatedOrders() {
 
   // Vérifier si l'utilisateur peut modifier la quantité (Admin ou Gestionnaire)
   const canEditQuantite = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
+  
+  // Vérifier si l'utilisateur peut supprimer (Admin uniquement)
+  const canDelete = user?.role === 'ADMIN';
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['validated-orders', searchVille],
@@ -76,6 +79,18 @@ export default function ValidatedOrders() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Erreur lors de la modification');
+    },
+  });
+
+  const deleteOrdersMutation = useMutation({
+    mutationFn: (orderIds: number[]) => ordersApi.deleteMultiple(orderIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['validated-orders'] });
+      setSelectedOrders([]);
+      toast.success('✅ Commandes supprimées avec succès');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la suppression');
     },
   });
 
@@ -139,6 +154,16 @@ export default function ValidatedOrders() {
     });
   };
 
+  const handleDeleteOrders = () => {
+    if (selectedOrders.length === 0) return;
+    
+    const confirmMessage = `⚠️ ATTENTION ⚠️\n\nVoulez-vous vraiment supprimer ${selectedOrders.length} commande(s) ?\n\nCette action est IRRÉVERSIBLE !`;
+    
+    if (window.confirm(confirmMessage)) {
+      deleteOrdersMutation.mutate(selectedOrders);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -147,13 +172,26 @@ export default function ValidatedOrders() {
           <p className="text-gray-600 mt-1">En attente d'assignation aux livreurs</p>
         </div>
         {selectedOrders.length > 0 && (
-          <button
-            onClick={() => setShowAssignModal(true)}
-            className="btn btn-primary flex items-center gap-2"
-          >
-            <Check size={20} />
-            Assigner {selectedOrders.length} commande(s)
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAssignModal(true)}
+              className="btn btn-primary flex items-center gap-2"
+            >
+              <Check size={20} />
+              Assigner {selectedOrders.length} commande(s)
+            </button>
+            {canDelete && (
+              <button
+                onClick={handleDeleteOrders}
+                disabled={deleteOrdersMutation.isPending}
+                className="btn bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                title="Supprimer les commandes sélectionnées (Admin uniquement)"
+              >
+                <Trash2 size={20} />
+                {deleteOrdersMutation.isPending ? 'Suppression...' : `Supprimer ${selectedOrders.length}`}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
