@@ -20,6 +20,7 @@ import smsRoutes from './routes/sms.routes.js';
 import smsSettingsRoutes from './routes/sms-settings.routes.js';
 import smsTemplatesRoutes from './routes/sms-templates.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
+import { scheduleAttendanceJobs } from './jobs/attendanceJobs.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 
 const app = express();
@@ -58,6 +59,9 @@ app.use('/api/sms', smsRoutes); // 📱 Routes SMS
 app.use('/api/sms-settings', smsSettingsRoutes); // ⚙️ Routes paramètres SMS
 app.use('/api/sms-templates', smsTemplatesRoutes); // 📝 Routes templates SMS
 app.use('/api/attendance', attendanceRoutes); // 📍 Routes pointage géolocalisé
+
+// 📋 Jobs automatiques (présence/absence)
+scheduleAttendanceJobs();
 
 // Route de test
 app.get('/', (req, res) => {

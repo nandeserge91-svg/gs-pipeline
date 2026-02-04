@@ -329,9 +329,14 @@ router.get('/history',
       }
       // ✅ Filtre par plage de dates
       else if (startDate && endDate) {
+        const rangeStart = new Date(startDate);
+        rangeStart.setHours(0, 0, 0, 0);
+        const rangeEnd = new Date(endDate);
+        rangeEnd.setHours(23, 59, 59, 999);
+
         where.date = {
-          gte: new Date(startDate),
-          lte: new Date(endDate)
+          gte: rangeStart,
+          lte: rangeEnd
         };
       }
       // ✅ PAR DÉFAUT : Afficher uniquement AUJOURD'HUI
