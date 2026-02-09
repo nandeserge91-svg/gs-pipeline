@@ -13,6 +13,7 @@ import Users from '../admin/Users';
 import Attendance from './Attendance';
 import RDV from '../appelant/RDV';
 import Tournees from '../stock/Tournees';
+import LiveraisonEnCours from '../stock/LiveraisonEnCours';
 
 export default function GestionnaireDashboard() {
   return (
@@ -26,6 +27,7 @@ export default function GestionnaireDashboard() {
       <Route path="express-agence" element={<ExpressAgence />} />
       <Route path="tournees" element={<Tournees />} />
       <Route path="deliveries" element={<Deliveries />} />
+      <Route path="livraisons-en-cours" element={<LiveraisonEnCours />} />
       <Route path="users" element={<Users />} />
       <Route path="attendance" element={<Attendance />} />
       <Route path="database" element={<ClientDatabase />} />

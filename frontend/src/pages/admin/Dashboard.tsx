@@ -11,6 +11,7 @@ import AppelantOrders from '../appelant/Orders';
 import Tournees from '../stock/Tournees';
 import Products from '../stock/Products';
 import Movements from '../stock/Movements';
+import LiveraisonEnCours from '../stock/LiveraisonEnCours';
 import ExpeditionsExpress from './ExpeditionsExpress';
 import Deliveries from '../gestionnaire/Deliveries';
 import ValidatedOrders from '../gestionnaire/ValidatedOrders';
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
       <Route path="deliveries" element={<Deliveries />} />
       <Route path="products" element={<Products />} />
       <Route path="movements" element={<Movements />} />
+      <Route path="livraisons-en-cours" element={<LiveraisonEnCours />} />
       <Route path="database" element={<ClientDatabase />} />
       <Route path="supervision" element={<CallerSupervision />} />
       <Route path="stats" element={<Stats />} />
