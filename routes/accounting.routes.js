@@ -40,7 +40,8 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           {
             deliveryType: 'LOCAL',
             status: 'LIVREE',
-            deliveredAt: {
+            // Comptabilité locale basée sur la date d'assignation
+            deliveryDate: {
               gte: startDate,
               lte: endDate
             }
@@ -134,7 +135,9 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
       ));
 
       const commandesJour = commandes.filter(c => {
-        const date = c.deliveredAt || c.expedieAt || c.arriveAt;
+        const date = c.deliveryType === 'LOCAL'
+          ? c.deliveryDate
+          : (c.deliveredAt || c.expedieAt || c.arriveAt);
         return date >= jourDebut && date <= jourFin;
       });
 
@@ -218,7 +221,8 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
           client: c.clientNom,
           produit: c.product ? c.product.nom : c.produitNom,
           montant: c.montant,
-          date: c.deliveredAt,
+          // Date comptable locale = date d'assignation
+          date: c.deliveryDate,
           livreur: c.deliverer ? `${c.deliverer.prenom} ${c.deliverer.nom}` : 'N/A'
         })),
         expeditions: expeditions.map(c => ({
