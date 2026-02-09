@@ -15,8 +15,8 @@ import {
   Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../services/api';
-import { useAuthStore } from '../../stores/authStore';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 
 type DateFilter = 'today' | 'week' | 'month' | 'all';
 
