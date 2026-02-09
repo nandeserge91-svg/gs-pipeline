@@ -44,6 +44,9 @@ export default function Attendance() {
         if (dateFilter) params.append('date', dateFilter);
         if (userFilter) params.append('userId', userFilter);
         // ✅ FIX : Le backend ne gère pas 'status', on filtre côté client
+        // Charger un volume plus large pour éviter la pagination par défaut (30)
+        params.append('page', '1');
+        params.append('limit', '5000');
         
         const { data } = await api.get(`/attendance/history?${params.toString()}`);
         return data;
