@@ -142,3 +142,17 @@ verifierDonneesCommandes()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

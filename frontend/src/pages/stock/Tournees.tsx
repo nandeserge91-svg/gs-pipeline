@@ -4,6 +4,7 @@ import { Package, CheckCircle, Truck, Calendar, Search, Filter, User, Clock, Ale
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
+import { useAuthStore } from '@/store/authStore';
 
 const RAISONS_RETOUR = {
   CLIENT_ABSENT: 'Client absent / Injoignable',
@@ -15,6 +16,7 @@ const RAISONS_RETOUR = {
 };
 
 export default function Tournees() {
+  const { user } = useAuthStore();
   const today = new Date().toISOString().split('T')[0];
   const defaultStartDate = '2025-12-01'; // 1er décembre 2025
   const [dateDebut, setDateDebut] = useState(defaultStartDate);
@@ -198,6 +200,25 @@ export default function Tournees() {
       toast.error(error.response?.data?.error || 'Erreur lors de la confirmation');
     },
   });
+
+  const returnToValidatedMutation = useMutation({
+    mutationFn: async ({ orderId }: any) => {
+      const { data } = await api.post(`/orders/${orderId}/return-to-validated`);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['stock-tournees'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-tournee-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['validated-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['validated-orders-count'] });
+      toast.success(data.message || 'Commande retournée dans "Commandes validées".');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors du retour de la commande');
+    },
+  });
+
+  const canReturnToValidated = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   const handleConfirmRemise = () => {
     if (!selectedTournee || !colisRemis) return;
@@ -1177,7 +1198,7 @@ export default function Tournees() {
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-700 mb-3">📋 Commandes ({tourneeDetail?.tournee?.orders?.length || 0})</h3>
                   <div className="border border-gray-200 rounded-lg overflow-x-auto">
-                    <table className="w-full text-sm" style={{ minWidth: '800px' }}>
+                    <table className="w-full text-sm" style={{ minWidth: '900px' }}>
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left" style={{ width: '20%' }}>Client</th>
@@ -1185,7 +1206,8 @@ export default function Tournees() {
                           <th className="px-3 py-2 text-center" style={{ width: '8%' }}>Qté</th>
                           <th className="px-3 py-2 text-right" style={{ width: '12%' }}>Montant</th>
                           <th className="px-3 py-2 text-left" style={{ width: '25%' }}>Note</th>
-                          <th className="px-3 py-2 text-center" style={{ width: '15%' }}>Statut</th>
+                          <th className="px-3 py-2 text-center" style={{ width: '12%' }}>Statut</th>
+                          <th className="px-3 py-2 text-center" style={{ width: '10%' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -1232,6 +1254,24 @@ export default function Tournees() {
                               <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${getStatusColor(order.status)}`}>
                                 {getStatusLabel(order.status)}
                               </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {canReturnToValidated && order.status === 'ASSIGNEE' && order.deliveryType === 'LOCAL' ? (
+                                <button
+                                  onClick={() => {
+                                    const confirm = window.confirm('Retourner cette commande dans "Commandes validées" pour réassignation ?');
+                                    if (!confirm) return;
+                                    returnToValidatedMutation.mutate({ orderId: order.id });
+                                  }}
+                                  disabled={returnToValidatedMutation.isPending}
+                                  className="px-2 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 transition-colors disabled:opacity-60"
+                                  title="Retourner dans Commandes validées"
+                                >
+                                  Retourner
+                                </button>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
                             </td>
                           </tr>
                         ))}

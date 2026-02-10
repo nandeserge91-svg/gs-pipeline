@@ -1,0 +1,1316 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║      📍 GUIDE D'IMPLÉMENTATION - SYSTÈME DE GÉOLOCALISATION                 ║
+║                    Pour un AUTRE Projet Cursor                              ║
+║                                                                              ║
+║                          Version 2.0 - 30 Janvier 2026                      ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              🎯 OBJECTIF
+═══════════════════════════════════════════════════════════════════════════════
+
+Ce guide vous permet d'implémenter un système de pointage par géolocalisation
+dans votre nouveau projet Cursor en moins de 20 minutes.
+
+✅ Pointage arrivée/départ avec GPS
+✅ Validation automatique de la distance (rayon configurable)
+✅ Détection de retard avec tolérance
+✅ Refus automatique si hors zone + possibilité de réessayer
+✅ Historique complet et statistiques
+✅ Design moderne et responsive
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                          📋 PRÉREQUIS DE VOTRE PROJET
+═══════════════════════════════════════════════════════════════════════════════
+
+Backend :
+  ✓ Node.js 18+ + Express + Prisma ORM + PostgreSQL
+  ✓ Système d'authentification JWT fonctionnel
+  ✓ Middleware d'authentification (authenticate, authorize)
+
+Frontend :
+  ✓ React 18+ + TypeScript + Vite
+  ✓ TanStack Query (React Query)
+  ✓ Tailwind CSS
+  ✓ axios ou fetch pour les requêtes API
+
+Si votre projet respecte ces prérequis, suivez les étapes ci-dessous !
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                      🚀 MÉTHODE RAPIDE AVEC CURSOR AI
+═══════════════════════════════════════════════════════════════════════════════
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ OPTION 1 : Demander à Cursor de Tout Implémenter (5 MINUTES) - RECOMMANDÉ    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Ouvrez votre nouveau projet dans Cursor
+
+2. Ouvrez le Chat Cursor (Ctrl+L ou Cmd+L)
+
+3. Ajoutez ces fichiers au contexte (bouton "+") :
+   - Votre prisma/schema.prisma
+   - Votre server.js
+   - Un exemple de vos routes (ex: routes/auth.routes.js)
+   - Un exemple de vos composants React (ex: pages/Dashboard.tsx)
+
+4. COPIEZ-COLLEZ CE PROMPT DANS CURSOR :
+
+───────────────────────────────────────────────────────────────────────────────
+
+Je veux implémenter un système de pointage par géolocalisation GPS.
+
+**CONTEXTE :**
+Mon projet utilise :
+- Backend : Node.js + Express + Prisma + PostgreSQL
+- Frontend : React + TypeScript + TanStack Query + Tailwind CSS
+- Mes rôles utilisateurs : [REMPLACEZ PAR VOS RÔLES, ex: ADMIN, MANAGER, EMPLOYEE]
+
+**FONCTIONNALITÉS REQUISES :**
+✅ Pointage arrivée avec GPS (refus si hors zone + possibilité de réessayer)
+✅ Pointage départ avec GPS
+✅ Validation automatique : rayon 50m
+✅ Détection de retard (tolérance 15 min)
+✅ Un seul pointage par jour et par utilisateur
+✅ Historique des présences (Admin/Manager)
+✅ Affichage du statut en temps réel (PRÉSENT/ABSENT/RETARD/PARTI)
+
+**ÉTAPES À SUIVRE :**
+
+1. **BACKEND - Schéma Prisma**
+   Ajoute ces 2 modèles dans mon fichier prisma/schema.prisma :
+
+   a) Modèle Attendance (Pointages) :
+      - id, userId (relation avec User), date (unique par user)
+      - heureArrivee, heureDepart
+      - latitudeArrivee, longitudeArrivee, distanceArrivee
+      - latitudeDepart, longitudeDepart, distanceDepart
+      - validee (boolean), validation (VALIDE/HORS_ZONE/RETARD)
+      - note, ipAddress, deviceInfo
+      - createdAt, updatedAt
+      - Contrainte : @@unique([userId, date]) pour un seul pointage/jour
+
+   b) Modèle StoreConfig (Configuration magasin/bureau) :
+      - id, nom, adresse
+      - latitude, longitude (coordonnées GPS)
+      - rayonTolerance (50m par défaut)
+      - heureOuverture (08:00), heureFermeture (18:00)
+      - toleranceRetard (15 minutes)
+      - createdAt, updatedAt
+
+   c) Ajoute la relation dans le modèle User :
+      attendances Attendance[]
+
+2. **BACKEND - Migration**
+   Génère la migration Prisma :
+   npx prisma migrate dev --name add_attendance_system
+
+3. **BACKEND - Routes API**
+   Crée le fichier routes/attendance.routes.js avec :
+
+   a) Fonction calculateDistance() : Formule Haversine pour calculer 
+      la distance entre 2 coordonnées GPS en mètres
+
+   b) POST /mark-arrival :
+      - Vérifie si déjà pointé aujourd'hui
+      - Récupère la config du magasin (storeConfig)
+      - Calcule la distance entre GPS utilisateur et GPS magasin
+      - ❌ Si distance > rayonTolerance : REJETER avec message 
+         "Vous êtes à Xm du magasin (max 50m). Rapprochez-vous et réessayez"
+      - ✅ Si distance ≤ rayonTolerance : ACCEPTER et enregistrer
+      - Détecte si retard (compare heureArrivee avec heureOuverture + toleranceRetard)
+      - Enregistre dans DB avec validation (VALIDE ou RETARD)
+
+   c) POST /mark-departure :
+      - Vérifie qu'un pointage d'arrivée existe
+      - Vérifie qu'aucun départ n'est déjà enregistré
+      - Calcule la distance
+      - Met à jour l'attendance avec heureDepart et coordonnées
+
+   d) GET /my-attendance-today :
+      - Retourne le pointage du jour de l'utilisateur connecté
+
+   e) GET /history :
+      - Liste des pointages avec filtres (userId, date, startDate, endDate, validee)
+      - Par défaut : afficher AUJOURD'HUI uniquement
+      - Pagination (page, limit)
+      - Accès : Admin/Manager uniquement
+
+   f) GET /store-config :
+      - Retourne la configuration du magasin
+
+   g) PUT /store-config :
+      - Met à jour la config (Admin uniquement)
+
+   Adapte les rôles dans authorize() à mes rôles : [VOS_RÔLES]
+
+4. **BACKEND - Intégration server.js**
+   Importe et monte les routes :
+   import attendanceRoutes from './routes/attendance.routes.js';
+   app.use('/api/attendance', attendanceRoutes);
+
+5. **FRONTEND - Composant React**
+   Crée frontend/src/components/attendance/AttendanceButton.tsx :
+
+   a) useQuery pour récupérer my-attendance-today (rafraîchir chaque minute)
+   
+   b) Mutation markArrival :
+      - Demande géolocalisation (navigator.geolocation.getCurrentPosition)
+      - Envoie latitude/longitude à /mark-arrival
+      - Si erreur HORS_ZONE : toast.error avec message détaillé + possibilité de réessayer
+      - Si succès : toast.success
+   
+   c) Mutation markDeparture :
+      - Même logique pour le départ
+   
+   d) Affichage :
+      - Badge de statut : ABSENT (rouge), PRÉSENT (vert), RETARD (orange), PARTI (bleu)
+      - Si pas de pointage : bouton "Marquer ma présence"
+      - Si pointage sans départ : bouton "Marquer mon départ"
+      - Affiche heure arrivée, heure départ, distance du magasin
+      - Message d'info pour les absents : "Vous devez être à moins de 50m"
+      - Message d'astuce : "Si refusé, rapprochez-vous et réessayez !"
+   
+   e) Gestion des erreurs GPS :
+      - PERMISSION_DENIED : "Autorisez la géolocalisation"
+      - POSITION_UNAVAILABLE : "Vérifiez votre GPS"
+      - TIMEOUT : "Délai dépassé, réessayez"
+   
+   Design moderne avec Tailwind : gradients, animations, responsive
+
+6. **FRONTEND - Intégration Dashboard**
+   Intègre le composant dans mon dashboard principal :
+   import AttendanceButton from '@/components/attendance/AttendanceButton';
+   
+   Dans le JSX :
+   <AttendanceButton />
+
+7. **CONFIGURATION - Script Setup**
+   Crée scripts/setup-store-location.js :
+   
+   Script qui configure la base de données avec :
+   - Coordonnées GPS : [À COMPLÉTER]
+   - Rayon : 50m
+   - Horaires : 08:00-18:00
+   - Tolérance retard : 15 min
+   
+   Utilise prisma.storeConfig.upsert() pour créer/mettre à jour
+
+8. **DOCUMENTATION**
+   Indique-moi :
+   - Les fichiers créés/modifiés
+   - Comment obtenir mes coordonnées GPS (Google Maps)
+   - Comment exécuter le script de configuration
+   - Comment tester (hors zone, dans la zone, réessai)
+
+**MES COORDONNÉES GPS :**
+Latitude : [À COMPLÉTER - ex: 5.353021]
+Longitude : [À COMPLÉTER - ex: -3.870182]
+
+Si je ne connais pas mes coordonnées, indique-moi comment les obtenir.
+
+**ADAPTATIONS IMPORTANTES :**
+- Respecte mon architecture de dossiers existante
+- Adapte les imports selon mes chemins
+- Utilise mes rôles utilisateurs
+- Garde le même style de code que mes fichiers existants
+
+Implémente tout ça étape par étape et donne-moi les fichiers à créer/modifier !
+
+───────────────────────────────────────────────────────────────────────────────
+
+5. Cursor va analyser votre projet et créer tous les fichiers nécessaires !
+
+6. Suivez les instructions de Cursor et validez les fichiers créés.
+
+7. Exécutez les commandes que Cursor vous donne :
+   - npx prisma migrate dev --name add_attendance_system
+   - node scripts/setup-store-location.js
+
+8. Testez votre système !
+
+
+═══════════════════════════════════════════════════════════════════════════════
+              🛠️ MÉTHODE MANUELLE (Si vous préférez coder vous-même)
+═══════════════════════════════════════════════════════════════════════════════
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 1 : BACKEND - SCHÉMA PRISMA (2 minutes)                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Ajoutez dans prisma/schema.prisma :
+
+────────────────────────────────────────────────────────────────────────────────
+// Système de pointage
+model Attendance {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id])
+
+  date            DateTime  @default(now()) @db.Date
+  heureArrivee    DateTime  @default(now())
+  heureDepart     DateTime?
+
+  // Géolocalisation arrivée
+  latitudeArrivee   Float
+  longitudeArrivee  Float
+  distanceArrivee   Float    // Distance en mètres
+
+  // Géolocalisation départ
+  latitudeDepart    Float?
+  longitudeDepart   Float?
+  distanceDepart    Float?
+
+  // Validation
+  validee         Boolean   @default(false)
+  validation      String?   // "VALIDE", "HORS_ZONE", "RETARD"
+
+  // Métadonnées
+  note            String?
+  ipAddress       String?
+  deviceInfo      String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, date])  // Un seul pointage par jour
+  @@index([userId])
+  @@index([date])
+  @@index([validee])
+  @@map("attendances")
+}
+
+// Configuration du magasin/bureau
+model StoreConfig {
+  id              Int       @id @default(autoincrement())
+  nom             String    @default("Magasin Principal")
+  adresse         String?
+
+  // Coordonnées GPS
+  latitude        Float     // Ex: 5.353021
+  longitude       Float     // Ex: -3.870182
+  
+  // Rayon de tolérance (en mètres)
+  rayonTolerance  Int       @default(50)
+
+  // Horaires de travail
+  heureOuverture  String    @default("08:00")
+  heureFermeture  String    @default("18:00")
+
+  // Tolérance de retard (en minutes)
+  toleranceRetard Int       @default(15)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("store_config")
+}
+────────────────────────────────────────────────────────────────────────────────
+
+N'oubliez pas d'ajouter dans le modèle User :
+  attendances     Attendance[]
+
+Puis exécutez :
+  npx prisma migrate dev --name add_attendance_system
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 2 : BACKEND - ROUTES API (5 minutes)                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Créez routes/attendance.routes.js :
+
+────────────────────────────────────────────────────────────────────────────────
+import express from 'express';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { body, validationResult } from 'express-validator';
+import prisma from '../config/prisma.js'; // ADAPTEZ le chemin
+
+const router = express.Router();
+
+// Formule de Haversine pour calculer la distance entre deux coordonnées GPS
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Rayon de la Terre en mètres
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance en mètres
+}
+
+// 📍 Marquer l'arrivée
+router.post('/mark-arrival',
+  authenticate,
+  authorize('ADMIN', 'MANAGER', 'EMPLOYEE'), // ⚠️ ADAPTEZ VOS RÔLES ICI
+  [
+    body('latitude').isFloat().withMessage('Latitude requise'),
+    body('longitude').isFloat().withMessage('Longitude requise'),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { latitude, longitude } = req.body;
+      const userId = req.user.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Vérifier si déjà pointé aujourd'hui
+      const existingAttendance = await prisma.attendance.findUnique({
+        where: {
+          userId_date: {
+            userId,
+            date: today
+          }
+        }
+      });
+
+      if (existingAttendance) {
+        return res.status(400).json({ 
+          error: 'Vous avez déjà marqué votre présence aujourd\'hui',
+          attendance: existingAttendance
+        });
+      }
+
+      // Récupérer la config du magasin
+      const storeConfig = await prisma.storeConfig.findFirst();
+      
+      if (!storeConfig) {
+        return res.status(500).json({ 
+          error: 'Configuration du magasin non trouvée. Veuillez contacter l\'administrateur.' 
+        });
+      }
+
+      // Calculer la distance
+      const distance = calculateDistance(
+        latitude, 
+        longitude, 
+        storeConfig.latitude, 
+        storeConfig.longitude
+      );
+
+      // Vérifier si dans la zone
+      const validee = distance <= storeConfig.rayonTolerance;
+      
+      // ❌ REJETER si hors zone
+      if (!validee) {
+        console.log(`❌ Pointage REFUSÉ - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m (max ${storeConfig.rayonTolerance}m)`);
+        
+        return res.status(400).json({
+          success: false,
+          error: 'HORS_ZONE',
+          message: `❌ Vous êtes ABSENT - Vous êtes à ${Math.round(distance)}m du magasin. Vous devez être à moins de ${storeConfig.rayonTolerance}m pour pointer.`,
+          distance: Math.round(distance),
+          rayonTolerance: storeConfig.rayonTolerance,
+          validee: false,
+          status: 'ABSENT'
+        });
+      }
+      
+      // Déterminer la validation (uniquement si dans la zone)
+      let validation = 'VALIDE';
+      const now = new Date();
+      const heureOuverture = new Date();
+      const [heureO, minuteO] = storeConfig.heureOuverture.split(':');
+      heureOuverture.setHours(parseInt(heureO), parseInt(minuteO), 0, 0);
+      
+      if (now > heureOuverture) {
+        const retardMinutes = Math.floor((now - heureOuverture) / (1000 * 60));
+        if (retardMinutes > storeConfig.toleranceRetard) {
+          validation = 'RETARD';
+        }
+      }
+
+      // Enregistrer la présence (uniquement si dans la zone)
+      const attendance = await prisma.attendance.create({
+        data: {
+          userId,
+          date: today,
+          heureArrivee: new Date(),
+          latitudeArrivee: latitude,
+          longitudeArrivee: longitude,
+          distanceArrivee: distance,
+          validee,
+          validation,
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+          deviceInfo: req.headers['user-agent'] || 'unknown'
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      console.log(`✅ Pointage VALIDE - ${req.user.prenom} ${req.user.nom} - Distance: ${Math.round(distance)}m - ${validation}`);
+
+      res.json({
+        success: true,
+        message: validation === 'RETARD'
+          ? `⚠️ Présence enregistrée avec retard à ${new Date().toLocaleTimeString('fr-FR')}`
+          : `✅ Présence enregistrée à ${new Date().toLocaleTimeString('fr-FR')}`,
+        attendance,
+        distance: Math.round(distance),
+        rayonTolerance: storeConfig.rayonTolerance,
+        validee: true,
+        validation,
+        status: 'PRESENT'
+      });
+
+    } catch (error) {
+      console.error('Erreur pointage arrivée:', error);
+      res.status(500).json({ error: 'Erreur lors du pointage' });
+    }
+  }
+);
+
+// 📍 Marquer le départ
+router.post('/mark-departure',
+  authenticate,
+  authorize('ADMIN', 'MANAGER', 'EMPLOYEE'), // ⚠️ ADAPTEZ VOS RÔLES ICI
+  [
+    body('latitude').isFloat().withMessage('Latitude requise'),
+    body('longitude').isFloat().withMessage('Longitude requise'),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { latitude, longitude } = req.body;
+      const userId = req.user.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Trouver le pointage d'aujourd'hui
+      const attendance = await prisma.attendance.findUnique({
+        where: {
+          userId_date: {
+            userId,
+            date: today
+          }
+        }
+      });
+
+      if (!attendance) {
+        return res.status(400).json({ 
+          error: 'Aucun pointage d\'arrivée trouvé pour aujourd\'hui' 
+        });
+      }
+
+      if (attendance.heureDepart) {
+        return res.status(400).json({ 
+          error: 'Vous avez déjà marqué votre départ aujourd\'hui' 
+        });
+      }
+
+      // Récupérer la config
+      const storeConfig = await prisma.storeConfig.findFirst();
+      
+      // Calculer la distance
+      const distance = calculateDistance(
+        latitude, 
+        longitude, 
+        storeConfig.latitude, 
+        storeConfig.longitude
+      );
+
+      // Mettre à jour
+      const updatedAttendance = await prisma.attendance.update({
+        where: { id: attendance.id },
+        data: {
+          heureDepart: new Date(),
+          latitudeDepart: latitude,
+          longitudeDepart: longitude,
+          distanceDepart: distance
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      console.log(`👋 Départ enregistré - ${req.user.prenom} ${req.user.nom} - ${new Date().toLocaleTimeString('fr-FR')}`);
+
+      res.json({
+        success: true,
+        message: `✅ Départ enregistré à ${new Date().toLocaleTimeString('fr-FR')}`,
+        attendance: updatedAttendance
+      });
+
+    } catch (error) {
+      console.error('Erreur pointage départ:', error);
+      res.status(500).json({ error: 'Erreur lors du départ' });
+    }
+  }
+);
+
+// 📊 Obtenir ma présence du jour
+router.get('/my-attendance-today', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await prisma.attendance.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: today
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    res.json({ attendance });
+
+  } catch (error) {
+    console.error('Erreur récupération présence:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération' });
+  }
+});
+
+// 📊 Historique des présences (Admin/Manager)
+router.get('/history', 
+  authenticate,
+  authorize('ADMIN', 'MANAGER'), // ⚠️ ADAPTEZ VOS RÔLES ICI
+  async (req, res) => {
+    try {
+      const { userId, date, startDate, endDate, validee, page = 1, limit = 30 } = req.query;
+      
+      const where = {};
+      
+      if (userId) {
+        where.userId = parseInt(userId);
+      }
+      
+      // Filtre par date unique
+      if (date) {
+        const selectedDate = new Date(date);
+        selectedDate.setHours(0, 0, 0, 0);
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        where.date = {
+          gte: selectedDate,
+          lt: nextDay
+        };
+      }
+      // Filtre par plage de dates
+      else if (startDate && endDate) {
+        where.date = {
+          gte: new Date(startDate),
+          lte: new Date(endDate)
+        };
+      }
+      // PAR DÉFAUT : Afficher uniquement AUJOURD'HUI
+      else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        where.date = {
+          gte: today,
+          lt: tomorrow
+        };
+      }
+
+      if (validee !== undefined) {
+        where.validee = validee === 'true';
+      }
+
+      const attendances = await prisma.attendance.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              role: true
+            }
+          }
+        },
+        orderBy: [
+          { date: 'desc' },
+          { heureArrivee: 'desc' }
+        ],
+        skip: (parseInt(page) - 1) * parseInt(limit),
+        take: parseInt(limit)
+      });
+
+      const total = await prisma.attendance.count({ where });
+
+      res.json({
+        attendances,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+
+    } catch (error) {
+      console.error('Erreur historique:', error);
+      res.status(500).json({ error: 'Erreur lors de la récupération' });
+    }
+  }
+);
+
+// 🔧 Récupérer la configuration du magasin
+router.get('/store-config', authenticate, async (req, res) => {
+  try {
+    const storeConfig = await prisma.storeConfig.findFirst();
+    
+    if (!storeConfig) {
+      return res.status(404).json({ 
+        error: 'Configuration non trouvée' 
+      });
+    }
+
+    res.json({ config: storeConfig });
+
+  } catch (error) {
+    console.error('Erreur récupération config:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération' });
+  }
+});
+
+// 🔧 Mettre à jour la configuration (Admin uniquement)
+router.put('/store-config',
+  authenticate,
+  authorize('ADMIN'), // ⚠️ ADAPTEZ SI BESOIN
+  [
+    body('latitude').optional().isFloat(),
+    body('longitude').optional().isFloat(),
+    body('rayonTolerance').optional().isInt({ min: 10, max: 500 }),
+    body('heureOuverture').optional().matches(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    body('heureFermeture').optional().matches(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    body('toleranceRetard').optional().isInt({ min: 0, max: 60 }),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const storeConfig = await prisma.storeConfig.upsert({
+        where: { id: 1 },
+        update: req.body,
+        create: {
+          ...req.body,
+          nom: req.body.nom || 'Magasin Principal'
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Configuration mise à jour',
+        config: storeConfig
+      });
+
+    } catch (error) {
+      console.error('Erreur mise à jour config:', error);
+      res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    }
+  }
+);
+
+export default router;
+────────────────────────────────────────────────────────────────────────────────
+
+Puis dans server.js, ajoutez :
+  import attendanceRoutes from './routes/attendance.routes.js';
+  app.use('/api/attendance', attendanceRoutes);
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 3 : FRONTEND - COMPOSANT REACT (5 minutes)                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Créez frontend/src/components/attendance/AttendanceButton.tsx :
+
+Voir la suite dans la section "CODE COMPLET" ci-dessous...
+(Le composant fait ~300 lignes, voir le fichier complet dans le pack)
+
+Fonctionnalités clés :
+✅ Géolocalisation HTML5
+✅ 2 mutations : mark-arrival et mark-departure
+✅ Gestion des erreurs GPS
+✅ Badges de statut (PRÉSENT/ABSENT/RETARD/PARTI)
+✅ Messages clairs pour l'utilisateur
+✅ Possibilité de réessayer après refus
+✅ Design moderne responsive
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 4 : CONFIGURATION - SCRIPT SETUP (2 minutes)                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Créez scripts/setup-store-location.js :
+
+────────────────────────────────────────────────────────────────────────────────
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function setupStoreLocation() {
+  console.log('🚀 Configuration du magasin...');
+
+  // ⚠️ REMPLACEZ PAR VOS COORDONNÉES GPS
+  const latitude = 5.353021;   // Votre latitude
+  const longitude = -3.870182;  // Votre longitude
+
+  try {
+    const storeConfig = await prisma.storeConfig.upsert({
+      where: { id: 1 },
+      update: {
+        nom: 'Magasin Principal',
+        adresse: 'Votre adresse',
+        latitude: latitude,
+        longitude: longitude,
+        rayonTolerance: 50,          // 50 mètres
+        heureOuverture: '08:00',
+        heureFermeture: '18:00',
+        toleranceRetard: 15,         // 15 minutes
+      },
+      create: {
+        nom: 'Magasin Principal',
+        adresse: 'Votre adresse',
+        latitude: latitude,
+        longitude: longitude,
+        rayonTolerance: 50,
+        heureOuverture: '08:00',
+        heureFermeture: '18:00',
+        toleranceRetard: 15,
+      },
+    });
+
+    console.log('✅ Configuration réussie:');
+    console.log(`   📍 Latitude: ${storeConfig.latitude}`);
+    console.log(`   📍 Longitude: ${storeConfig.longitude}`);
+    console.log(`   📏 Rayon: ${storeConfig.rayonTolerance}m`);
+    console.log(`   🕐 Ouverture: ${storeConfig.heureOuverture}`);
+    console.log(`   🕐 Fermeture: ${storeConfig.heureFermeture}`);
+
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+setupStoreLocation();
+────────────────────────────────────────────────────────────────────────────────
+
+Exécutez :
+  node scripts/setup-store-location.js
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                     📍 COMMENT OBTENIR VOS COORDONNÉES GPS ?
+═══════════════════════════════════════════════════════════════════════════════
+
+Méthode 1 : Google Maps (Recommandé)
+─────────────────────────────────────
+1. Ouvrir https://www.google.com/maps
+2. Rechercher votre adresse
+3. Clic-droit sur l'emplacement exact de votre bureau/magasin
+4. Cliquer sur les coordonnées qui apparaissent en haut
+5. Copier (format: 5.353021, -3.870182)
+
+Méthode 2 : GPS du téléphone
+─────────────────────────────
+1. Aller à votre bureau/magasin
+2. Ouvrir Google Maps sur votre téléphone
+3. Appuyer sur votre position (point bleu)
+4. Noter les coordonnées affichées
+
+Méthode 3 : Applications dédiées
+─────────────────────────────────
+- GPS Status & Toolbox (Android)
+- GPS Coordinates (iOS)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              ✅ TESTS ET VALIDATION
+═══════════════════════════════════════════════════════════════════════════════
+
+1. TEST HORS ZONE (REFUS)
+──────────────────────────
+   Objectif : Vérifier que le système refuse si l'utilisateur est trop loin
+
+   a) Ouvrir Chrome DevTools (F12)
+   b) Onglet "Console" → "..." (3 points) → "More tools" → "Sensors"
+   c) Section "Location" → Custom location
+   d) Entrer des coordonnées éloignées (ex: latitude + 0.01)
+   e) Cliquer sur "Marquer ma présence"
+   f) ✅ Devrait afficher : "Vous êtes à Xm du magasin. Rapprochez-vous et réessayez"
+   g) Le statut reste "ABSENT"
+   h) ✅ Le bouton "Marquer ma présence" reste disponible (réessai possible)
+
+2. TEST DANS LA ZONE (ACCEPTATION)
+───────────────────────────────────
+   Objectif : Vérifier que le système accepte si l'utilisateur est proche
+
+   a) Dans Sensors → Custom location
+   b) Entrer vos vraies coordonnées GPS
+   c) Cliquer sur "Marquer ma présence"
+   d) ✅ Devrait afficher : "Présence enregistrée à HH:MM"
+   e) Le statut passe à "PRÉSENT" (vert)
+   f) Le bouton change en "Marquer mon départ"
+
+3. TEST RÉESSAI APRÈS REFUS
+────────────────────────────
+   Objectif : Vérifier qu'on peut réessayer après un refus
+
+   a) Test 1 : Coordonnées loin → Refus
+   b) Changer les coordonnées dans Sensors (se rapprocher)
+   c) Cliquer à nouveau sur "Marquer ma présence"
+   d) ✅ Cette fois ça devrait accepter
+
+4. TEST DÉPART
+───────────────
+   Objectif : Vérifier l'enregistrement du départ
+
+   a) Après avoir pointé l'arrivée
+   b) Cliquer sur "Marquer mon départ"
+   c) ✅ Devrait afficher : "Départ enregistré à HH:MM"
+   d) Le statut passe à "PARTI" (bleu)
+   e) Plus aucun bouton d'action
+
+5. TEST DOUBLE POINTAGE (ERREUR ATTENDUE)
+──────────────────────────────────────────
+   Objectif : Vérifier qu'on ne peut pointer qu'une fois par jour
+
+   a) Après avoir pointé
+   b) Rafraîchir la page
+   c) ✅ Le bouton "Marquer ma présence" ne devrait plus apparaître
+   d) Le statut et les heures sont affichés
+
+6. TEST SUR MOBILE (RÉEL)
+──────────────────────────
+   Objectif : Vérifier le GPS réel du téléphone
+
+   a) Se rendre physiquement à votre bureau/magasin
+   b) Ouvrir l'app sur mobile
+   c) Cliquer sur "Marquer ma présence"
+   d) Autoriser la géolocalisation si demandé
+   e) ✅ Devrait accepter si vous êtes à moins de 50m
+
+7. TEST HORS DU BUREAU (RÉEL)
+──────────────────────────────
+   Objectif : Vérifier le refus avec GPS réel
+
+   a) Se placer à plus de 50m du bureau
+   b) Ouvrir l'app sur mobile
+   c) Cliquer sur "Marquer ma présence"
+   d) ✅ Devrait refuser avec message de distance
+   e) Se rapprocher et réessayer
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           🔧 RÉSOLUTION DE PROBLÈMES
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLÈME 1 : "Configuration du magasin non trouvée"
+────────────────────────────────────────────────────
+Cause : Le script setup n'a pas été exécuté
+Solution :
+  node scripts/setup-store-location.js
+
+PROBLÈME 2 : "Géolocalisation non autorisée"
+─────────────────────────────────────────────
+Cause : Permissions du navigateur refusées
+Solution :
+  - Chrome : Paramètres → Confidentialité → Paramètres du site → Localisation
+  - Firefox : about:permissions
+  - Autoriser votre site web
+
+PROBLÈME 3 : Pointage toujours refusé (même au bureau)
+───────────────────────────────────────────────────────
+Causes possibles :
+  a) Coordonnées GPS incorrectes dans la DB
+     → Vérifier avec Google Maps
+     → Réexécuter le script setup avec les bonnes coordonnées
+  
+  b) Rayon trop petit (50m)
+     → Augmenter à 100m :
+       UPDATE store_config SET "rayonTolerance" = 100 WHERE id = 1;
+  
+  c) GPS du téléphone imprécis
+     → Activer "Haute précision" dans les paramètres
+     → Redémarrer le téléphone
+     → Essayer dehors (meilleure réception)
+
+PROBLÈME 4 : "Position unavailable"
+────────────────────────────────────
+Cause : GPS désactivé ou signal faible
+Solution :
+  - Activer le GPS/localisation dans les paramètres
+  - Se placer près d'une fenêtre (meilleur signal)
+  - Attendre quelques secondes pour la triangulation
+
+PROBLÈME 5 : Erreur 500 lors du pointage
+─────────────────────────────────────────
+Cause : Erreur backend (Prisma, DB, etc.)
+Solution :
+  - Vérifier les logs du serveur
+  - Vérifier que la migration est appliquée :
+    npx prisma migrate status
+  - Vérifier que la relation User.attendances existe dans le schéma
+
+PROBLÈME 6 : "User agent not found" / Erreur d'import
+──────────────────────────────────────────────────────
+Cause : Chemins d'imports incorrects
+Solution :
+  - Vérifier les chemins dans routes/attendance.routes.js :
+    import prisma from '../config/prisma.js'; // Adapter à votre projet
+    import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+  - Vérifier les chemins dans AttendanceButton.tsx :
+    import { api } from '@/lib/api'; // Adapter à votre projet
+
+PROBLÈME 7 : Erreur CORS
+─────────────────────────
+Cause : Frontend et backend sur des domaines différents
+Solution :
+  Dans server.js, vérifier :
+  app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'https://votre-domaine.com'],
+    credentials: true
+  }));
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                         📊 PERSONNALISATION AVANCÉE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CHANGER LE RAYON DE TOLÉRANCE
+─────────────────────────────────
+Dans la base de données :
+  UPDATE store_config SET "rayonTolerance" = 100 WHERE id = 1;
+
+Ou via l'API (Admin uniquement) :
+  PUT /api/attendance/store-config
+  Body: { "rayonTolerance": 100 }
+
+2. MODIFIER LES HORAIRES
+─────────────────────────
+  UPDATE store_config SET 
+    "heureOuverture" = '07:30',
+    "heureFermeture" = '19:00',
+    "toleranceRetard" = 20
+  WHERE id = 1;
+
+3. ADAPTER LES RÔLES
+────────────────────
+Dans routes/attendance.routes.js, remplacez :
+  authorize('ADMIN', 'MANAGER', 'EMPLOYEE')
+par vos propres rôles :
+  authorize('DIRECTEUR', 'CHEF_EQUIPE', 'EMPLOYE')
+
+4. CHANGER LES COULEURS (DESIGN)
+─────────────────────────────────
+Dans AttendanceButton.tsx, modifiez les classes Tailwind :
+  - ABSENT : bg-red-100 text-red-700 → Changer "red" par votre couleur
+  - PRÉSENT : bg-green-100 text-green-700
+  - RETARD : bg-orange-100 text-orange-700
+  - PARTI : bg-blue-100 text-blue-700
+
+5. TRADUIRE EN ANGLAIS
+───────────────────────
+Remplacer tous les messages français par des messages anglais dans :
+  - routes/attendance.routes.js
+  - AttendanceButton.tsx
+
+6. MULTI-SITES (PLUSIEURS MAGASINS)
+────────────────────────────────────
+Modifier le schéma pour supporter plusieurs sites :
+  a) Ajouter un champ siteId dans StoreConfig
+  b) Ajouter un champ siteId dans User
+  c) Filtrer par site lors du calcul de distance
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                     📦 CHECKLIST FINALE DE DÉPLOIEMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+BACKEND
+ ☐ Schéma Prisma ajouté (Attendance + StoreConfig)
+ ☐ Relation User.attendances ajoutée
+ ☐ Migration exécutée : npx prisma migrate deploy
+ ☐ Fichier routes/attendance.routes.js créé
+ ☐ Routes intégrées dans server.js
+ ☐ Rôles adaptés à votre système
+ ☐ Chemins d'imports corrects
+
+CONFIGURATION
+ ☐ Script setup-store-location.js créé
+ ☐ Coordonnées GPS vérifiées sur Google Maps
+ ☐ Configuration exécutée : node scripts/setup-store-location.js
+ ☐ Vérification dans la DB : SELECT * FROM store_config;
+
+FRONTEND
+ ☐ Composant AttendanceButton.tsx créé
+ ☐ Imports adaptés à votre architecture
+ ☐ Composant intégré dans le dashboard
+ ☐ API endpoint correct (VITE_API_URL)
+ ☐ Design adapté à votre charte
+
+TESTS
+ ☐ Test hors zone (refus) ✓
+ ☐ Test dans la zone (acceptation) ✓
+ ☐ Test réessai après refus ✓
+ ☐ Test départ ✓
+ ☐ Test double pointage (erreur attendue) ✓
+ ☐ Test sur mobile réel ✓
+ ☐ Test permissions géolocalisation ✓
+
+PRODUCTION
+ ☐ Variables d'environnement configurées
+ ☐ CORS configuré pour votre domaine
+ ☐ Migrations déployées en production
+ ☐ Configuration du magasin créée en prod
+ ☐ Tests réels sur le site de production
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            🎓 FONCTIONNALITÉS AVANCÉES
+═══════════════════════════════════════════════════════════════════════════════
+
+Une fois le système de base fonctionnel, vous pouvez ajouter :
+
+1. PAGE HISTORIQUE ADMIN
+────────────────────────
+Créez une page complète pour afficher l'historique :
+  - Tableau des présences avec filtres
+  - Statistiques (taux de présence, retards, etc.)
+  - Export CSV/PDF
+  - Graphiques (Chart.js, Recharts)
+
+2. NOTIFICATIONS PUSH
+──────────────────────
+Rappels automatiques :
+  - 8h05 : "N'oubliez pas de pointer !"
+  - 18h00 : "Pensez à marquer votre départ"
+
+3. SYSTÈME DE CONGÉS
+─────────────────────
+Intégration avec un calendrier :
+  - Demande de congés
+  - Validation par le manager
+  - Exclusion des jours de congé du taux de présence
+
+4. RAPPORTS AUTOMATIQUES
+─────────────────────────
+Envoi hebdomadaire/mensuel :
+  - Rapport de présence par email
+  - Statistiques d'équipe
+  - Liste des retards
+
+5. GÉOFENCING AVANCÉ
+─────────────────────
+Plusieurs zones :
+  - Zone bureau principal (rayon 50m)
+  - Zone parking (rayon 100m)
+  - Validation automatique selon la zone
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              🚀 PERFORMANCE & SÉCURITÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+OPTIMISATIONS
+─────────────
+1. Cache les coordonnées GPS du magasin (évite requête DB à chaque pointage)
+2. Index sur userId + date pour recherches rapides
+3. Pagination sur l'historique (évite de charger tous les pointages)
+4. Compression des réponses API (gzip)
+
+SÉCURITÉ
+────────
+1. ✅ Authentification JWT requise (déjà en place)
+2. ✅ Autorisation par rôle (déjà en place)
+3. ✅ Validation des données (express-validator)
+4. ✅ Protection contre les doubles pointages (contrainte unique)
+5. ✅ Logs d'audit (ipAddress, deviceInfo, timestamps)
+6. ⚠️ Rate limiting recommandé (éviter le spam de pointages)
+   Ajoutez express-rate-limit :
+   import rateLimit from 'express-rate-limit';
+   const attendanceLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 minutes
+     max: 5 // 5 tentatives max
+   });
+   router.post('/mark-arrival', attendanceLimiter, authenticate, ...);
+
+MONITORING
+──────────
+1. Logs console (déjà en place)
+2. Tracking des erreurs (Sentry recommandé)
+3. Métriques de performance (temps de réponse)
+4. Alertes si config manquante
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                                💡 ASTUCES CURSOR
+═══════════════════════════════════════════════════════════════════════════════
+
+1. GÉNÉRATION DE TESTS
+───────────────────────
+Prompt :
+"Crée des tests Jest pour la fonction calculateDistance() avec des cas :
+ - Paris → Londres : ~340km
+ - Même point : 0m
+ - Coordonnées opposées : distance max"
+
+2. GÉNÉRATION DE DOCUMENTATION
+───────────────────────────────
+Prompt :
+"Génère une documentation Swagger/OpenAPI pour toutes les routes 
+/api/attendance avec exemples de requêtes/réponses"
+
+3. GÉNÉRATION DE COMPOSANTS
+────────────────────────────
+Prompt :
+"Crée une page admin AttendanceHistory.tsx avec :
+ - Tableau paginé des présences
+ - Filtres : date, utilisateur, statut
+ - Bouton export CSV
+ - Graphique des présences sur 30 jours (Recharts)"
+
+4. REFACTORING
+──────────────
+Prompt :
+"Refactor calculateDistance() pour le rendre plus performant
+et ajoute des commentaires explicatifs sur la formule de Haversine"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            📚 RESSOURCES UTILES
+═══════════════════════════════════════════════════════════════════════════════
+
+Documentation
+─────────────
+- Prisma : https://www.prisma.io/docs
+- React Query : https://tanstack.com/query/latest
+- Geolocation API : https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
+- Haversine Formula : https://en.wikipedia.org/wiki/Haversine_formula
+
+Outils
+──────
+- Google Maps : https://www.google.com/maps (coordonnées GPS)
+- Chrome DevTools Sensors : Simuler la géolocalisation
+- Prisma Studio : Interface graphique pour la DB (npx prisma studio)
+
+Tutoriels
+─────────
+- Implémenter la géolocalisation HTML5 : MDN Web Docs
+- Calcul de distance GPS : Movable Type Scripts
+- React Query Best Practices : TanStack Docs
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              🎉 FÉLICITATIONS !
+═══════════════════════════════════════════════════════════════════════════════
+
+Vous avez maintenant toutes les clés pour implémenter un système de 
+géolocalisation complet dans votre projet !
+
+Votre système permet :
+✅ Pointage arrivée/départ avec GPS
+✅ Validation automatique (rayon configurable)
+✅ Refus si hors zone + réessai possible
+✅ Détection de retard
+✅ Historique complet
+✅ Interface moderne et intuitive
+
+N'hésitez pas à :
+📧 Partager ce guide avec votre équipe
+🔧 Adapter le système à vos besoins
+🚀 Ajouter des fonctionnalités avancées
+📊 Créer des rapports personnalisés
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              📞 SUPPORT
+═══════════════════════════════════════════════════════════════════════════════
+
+Questions / Problèmes ?
+  → Relire la section "Résolution de problèmes"
+  → Vérifier la checklist de déploiement
+  → Consulter les logs serveur (console)
+  → Tester en mode debug (Chrome DevTools)
+
+Besoin d'aide avec Cursor ?
+  → Utilisez les prompts fournis dans ce guide
+  → Ajoutez les fichiers pertinents au contexte
+  → Demandez à Cursor de "debug ce problème"
+
+Améliorations futures :
+  → Notifications push
+  → Multi-sites
+  → Rapports avancés
+  → Intégration système de paie
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                    Dernière mise à jour : 30 janvier 2026
+                    Version : 2.0
+                    Auteur : Assistant Cursor AI
+                    Testé sur : GS Pipeline (Production)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                        🚀 BON DÉVELOPPEMENT ! 🚀
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+

@@ -47,14 +47,17 @@ const LiveraisonEnCours = () => {
   const [expandedDeliverer, setExpandedDeliverer] = useState<number | null>(null);
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [showHistory, setShowHistory] = useState(false);
 
   const canSync = user?.role === 'ADMIN';
 
   // Query pour récupérer les données
   const { data, isLoading, refetch } = useQuery<StockAnalysisData>({
-    queryKey: ['stock-analysis-local'],
+    queryKey: ['stock-analysis-local', showHistory],
     queryFn: async () => {
-      const { data } = await api.get('/stock-analysis/local-reserve');
+      const { data } = await api.get('/stock-analysis/local-reserve', {
+        params: { includeHistory: showHistory }
+      });
       return data;
     }
   });
@@ -243,6 +246,22 @@ const LiveraisonEnCours = () => {
               {filter.label}
             </button>
           ))}
+        </div>
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showHistory}
+              onChange={(e) => setShowHistory(e.target.checked)}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              📜 Inclure l'historique (commandes LIVREE)
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            Afficher aussi les commandes déjà livrées pour voir l'historique complet
+          </p>
         </div>
       </div>
 

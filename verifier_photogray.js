@@ -270,3 +270,17 @@ verifierPhotoGray()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

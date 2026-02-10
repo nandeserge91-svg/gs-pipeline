@@ -261,3 +261,17 @@ Si PhotoGray n'apparaît pas correctement :
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

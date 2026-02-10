@@ -705,6 +705,62 @@ router.post('/:id/renvoyer-appel', authorize('ADMIN', 'GESTIONNAIRE'), async (re
   }
 });
 
+// POST /api/orders/:id/return-to-validated - Retourner une commande assignée vers "Commandes validées"
+// Accessible uniquement par ADMIN et GESTIONNAIRE
+router.post('/:id/return-to-validated', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        deliverer: { select: { id: true, prenom: true, nom: true } }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+
+    // Autoriser uniquement les commandes ASSIGNEE (locales) pour réassignation
+    if (order.status !== 'ASSIGNEE' || order.deliveryType !== 'LOCAL') {
+      return res.status(400).json({ 
+        error: 'Seules les commandes ASSIGNEES (locales) peuvent être renvoyées vers "Commandes validées".' 
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: 'VALIDEE',
+        delivererId: null,
+        deliveryDate: null,
+        deliveryListId: null,
+        validatedAt: order.validatedAt || new Date(),
+      }
+    });
+
+    const delivererLabel = order.deliverer ? `${order.deliverer.prenom} ${order.deliverer.nom}` : 'inconnu';
+    await prisma.statusHistory.create({
+      data: {
+        orderId: parseInt(id),
+        oldStatus: order.status,
+        newStatus: 'VALIDEE',
+        changedBy: req.user.id,
+        comment: `Commande renvoyée vers "Commandes validées" pour réassignation (ancien livreur: ${delivererLabel}).`
+      }
+    });
+
+    res.json({ 
+      order: updatedOrder, 
+      message: 'Commande retournée dans "Commandes validées".' 
+    });
+  } catch (error) {
+    console.error('Erreur retour commande vers validées:', error);
+    res.status(500).json({ error: 'Erreur lors du retour de la commande.' });
+  }
+});
+
 // POST /api/orders/:id/attente-paiement - Marquer une commande en attente de paiement
 // Accessible par APPELANT, ADMIN et GESTIONNAIRE
 router.post('/:id/attente-paiement', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), async (req, res) => {
