@@ -80,7 +80,8 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
       const annulees = list.orders.filter(o => o.status === 'ANNULEE_LIVRAISON').length;
       const enAttente = list.orders.filter(o => o.status === 'ASSIGNEE').length;
       const retournes = list.orders.filter(o => o.status === 'RETOURNE').length;
-      const colisRemis = list.tourneeStock?.colisRemis || totalOrders;
+      const colisRemisBrut = list.tourneeStock?.colisRemis || totalOrders;
+      const colisRemis = Math.min(colisRemisBrut, totalOrders);
       
       // Calcul de la durée des colis chez le livreur
       let joursChezLivreur = 0;
@@ -218,7 +219,8 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
       joursChezLivreur = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     }
     
-    const colisRemis = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
+    const colisRemisBrut = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
+    const colisRemis = Math.min(colisRemisBrut, deliveryList.orders.length);
     const colisLivres = deliveryList.orders.filter(o => o.status === 'LIVREE').length;
     const colisRetournes = deliveryList.orders.filter(o => o.status === 'RETOURNE').length;
     const colisRestants = dateRetour
