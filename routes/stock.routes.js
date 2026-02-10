@@ -79,6 +79,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
       const refusees = list.orders.filter(o => o.status === 'REFUSEE').length;
       const annulees = list.orders.filter(o => o.status === 'ANNULEE_LIVRAISON').length;
       const enAttente = list.orders.filter(o => o.status === 'ASSIGNEE').length;
+      const retournes = list.orders.filter(o => o.status === 'RETOURNE').length;
       const colisRemis = list.tourneeStock?.colisRemis || totalOrders;
       
       // Calcul de la durée des colis chez le livreur
@@ -92,7 +93,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
       // Colis restants (non livrés et non retournés)
       const colisRestants = list.tourneeStock?.colisRetourConfirme 
         ? 0 
-        : (colisRemis - livrees);
+        : Math.max(0, colisRemis - livrees - retournes);
       
       // Alertes
       const alerteRetard = joursChezLivreur > 2 && colisRestants > 0; // Plus de 2 jours
@@ -219,7 +220,8 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
     
     const colisRemis = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
     const colisLivres = deliveryList.orders.filter(o => o.status === 'LIVREE').length;
-    const colisRestants = dateRetour ? 0 : (colisRemis - colisLivres);
+    const colisRetournes = deliveryList.orders.filter(o => o.status === 'RETOURNE').length;
+    const colisRestants = dateRetour ? 0 : Math.max(0, colisRemis - colisLivres - colisRetournes);
     
     res.json({ 
       tournee: deliveryList,
