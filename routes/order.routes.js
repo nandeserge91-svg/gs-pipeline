@@ -8,6 +8,64 @@ import { cleanPhoneNumber } from '../utils/phone.util.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+// ⏰ Basculer automatiquement les RDV échus vers "À appeler"
+async function autoReturnExpiredRdvToCallList(userId) {
+  const now = new Date();
+
+  const expiredRdvOrders = await prisma.order.findMany({
+    where: {
+      rdvProgramme: true,
+      rdvDate: { lte: now },
+      status: { in: ['NOUVELLE', 'A_APPELER'] }
+    },
+    select: {
+      id: true,
+      status: true,
+      noteAppelant: true,
+      rdvNote: true,
+      rdvDate: true
+    }
+  });
+
+  if (expiredRdvOrders.length === 0) return 0;
+
+  await prisma.$transaction(async (tx) => {
+    for (const order of expiredRdvOrders) {
+      const dateLabel = order.rdvDate ? new Date(order.rdvDate).toLocaleString('fr-FR') : 'N/A';
+      const autoComment = `[RDV AUTO] Échéance atteinte (${dateLabel}) - renvoyée en haut de "À appeler"${order.rdvNote ? ` | Note RDV: ${order.rdvNote}` : ''}`;
+      const mergedNote = order.noteAppelant
+        ? `${order.noteAppelant}\n${autoComment}`
+        : autoComment;
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'A_APPELER',
+          rdvProgramme: false,
+          rdvDate: null,
+          rdvNote: null,
+          rdvRappele: false,
+          rdvProgrammePar: null,
+          renvoyeAAppelerAt: new Date(),
+          noteAppelant: mergedNote
+        }
+      });
+
+      await tx.statusHistory.create({
+        data: {
+          orderId: order.id,
+          oldStatus: order.status,
+          newStatus: 'A_APPELER',
+          changedBy: userId,
+          comment: '⏰ RDV arrivé à échéance: retour automatique dans "À appeler" (position prioritaire).'
+        }
+      });
+    }
+  });
+
+  return expiredRdvOrders.length;
+}
+
 // 💰 Fonction pour calculer le prix total selon la quantité et les prix variantes
 function calculatePriceByQuantity(product, quantity) {
   const qty = parseInt(quantity) || 1;
@@ -35,6 +93,9 @@ router.get('/', async (req, res) => {
   try {
     const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, search, page = 1, limit = 1000 } = req.query;
     const user = req.user;
+
+    // Avant de charger les commandes, renvoyer automatiquement les RDV échus.
+    await autoReturnExpiredRdvToCallList(user.id);
 
     const where = {};
     const andConditions = [];

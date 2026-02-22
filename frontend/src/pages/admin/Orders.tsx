@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
-import { ordersApi, productsApi } from '@/lib/api';
+import { ordersApi, productsApi, usersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,7 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
+  const [callerFilter, setCallerFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
@@ -35,13 +36,19 @@ export default function Orders() {
     queryFn: () => productsApi.getAll(),
   });
 
+  const { data: callersData } = useQuery({
+    queryKey: ['users', 'APPELANT'],
+    queryFn: () => usersApi.getAll({ role: 'APPELANT' }),
+  });
+
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['admin-orders', page, statusFilter, productFilter, startDate, endDate, searchTerm],
+    queryKey: ['admin-orders', page, statusFilter, productFilter, callerFilter, startDate, endDate, searchTerm],
     queryFn: () => ordersApi.getAll({ 
       page, 
       limit: 20, 
       status: statusFilter || undefined,
       produit: productFilter || undefined,
+      callerId: callerFilter || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       search: searchTerm || undefined, // ✅ AJOUTÉ : Recherche côté serveur
@@ -139,13 +146,14 @@ export default function Orders() {
   const resetFilters = () => {
     setStatusFilter('');
     setProductFilter('');
+    setCallerFilter('');
     setStartDate('');
     setEndDate('');
     setSearchTerm('');
     setPage(1);
   };
 
-  const hasActiveFilters = statusFilter || productFilter || startDate || endDate || searchTerm;
+  const hasActiveFilters = statusFilter || productFilter || callerFilter || startDate || endDate || searchTerm;
 
   // ✅ MODIFICATION : Plus de filtrage côté client, tout se fait côté serveur
   const filteredOrders = data?.orders || [];
@@ -213,9 +221,9 @@ export default function Orders() {
             >
               <Filter size={20} />
               Filtres avancés
-              {(statusFilter || productFilter || startDate || endDate) && (
+              {(statusFilter || productFilter || callerFilter || startDate || endDate) && (
                 <span className="bg-white text-primary-600 rounded-full px-2 py-0.5 text-xs font-bold">
-                  {[statusFilter, productFilter, startDate, endDate].filter(Boolean).length}
+                  {[statusFilter, productFilter, callerFilter, startDate, endDate].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -223,7 +231,7 @@ export default function Orders() {
 
           {/* Ligne 2 : Filtres avancés (affichés si showFilters est true) */}
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t border-gray-200">
               {/* Filtre par statut */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -271,6 +279,28 @@ export default function Orders() {
                 </select>
               </div>
 
+              {/* Filtre par appelant */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Appelant
+                </label>
+                <select
+                  value={callerFilter}
+                  onChange={(e) => {
+                    setCallerFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="input"
+                >
+                  <option value="">Tous les appelants</option>
+                  {callersData?.users?.map((caller: any) => (
+                    <option key={caller.id} value={caller.id}>
+                      {caller.prenom} {caller.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Filtre par date de début */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -311,7 +341,7 @@ export default function Orders() {
           {hasActiveFilters && (
             <div className="flex items-center justify-between pt-2 border-t border-gray-200">
               <div className="text-sm text-gray-600">
-                {[statusFilter, productFilter, startDate, endDate, searchTerm].filter(Boolean).length} filtre(s) actif(s)
+                {[statusFilter, productFilter, callerFilter, startDate, endDate, searchTerm].filter(Boolean).length} filtre(s) actif(s)
               </div>
               <button
                 onClick={resetFilters}
