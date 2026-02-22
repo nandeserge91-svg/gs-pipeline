@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Calendar, 
@@ -31,6 +31,7 @@ export default function RDV() {
   const [note, setNote] = useState('');
   const [modifRdvDate, setModifRdvDate] = useState('');
   const [modifRdvNote, setModifRdvNote] = useState('');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
 
   const { data: rdvData, isLoading } = useQuery({
     queryKey: ['rdv', filterRappele, searchTerm],
@@ -108,6 +109,30 @@ export default function RDV() {
     },
   });
 
+  const annulerSelectionMutation = useMutation({
+    mutationFn: async (orderIds: number[]) => {
+      const results = await Promise.allSettled(orderIds.map((orderId) => rdvApi.annuler(orderId)));
+      const successCount = results.filter((result) => result.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      return { successCount, failedCount };
+    },
+    onSuccess: ({ successCount, failedCount }) => {
+      queryClient.invalidateQueries({ queryKey: ['rdv'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setSelectedOrderIds([]);
+
+      if (failedCount > 0) {
+        toast.error(`Suppression partielle: ${successCount} supprimé(s), ${failedCount} échec(s).`);
+        return;
+      }
+
+      toast.success(`✅ ${successCount} contact(s) supprimé(s) du RDV.`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la suppression multiple');
+    },
+  });
+
   const handleTraiter = (order: any) => {
     setSelectedOrder(order);
     setNote('');
@@ -154,6 +179,40 @@ export default function RDV() {
     }
   };
 
+  const orders = rdvData?.orders || [];
+
+  useEffect(() => {
+    const visibleIds = new Set(orders.map((order: any) => order.id));
+    setSelectedOrderIds((prevIds) => prevIds.filter((id) => visibleIds.has(id)));
+  }, [orders]);
+
+  const selectedCount = selectedOrderIds.length;
+  const allSelected = useMemo(
+    () => orders.length > 0 && selectedCount === orders.length,
+    [orders.length, selectedCount]
+  );
+
+  const toggleOrderSelection = (orderId: number) => {
+    setSelectedOrderIds((prevIds) =>
+      prevIds.includes(orderId) ? prevIds.filter((id) => id !== orderId) : [...prevIds, orderId]
+    );
+  };
+
+  const toggleAllSelection = () => {
+    if (allSelected) {
+      setSelectedOrderIds([]);
+      return;
+    }
+    setSelectedOrderIds(orders.map((order: any) => order.id));
+  };
+
+  const handleDeleteSelection = () => {
+    if (selectedOrderIds.length === 0) return;
+    if (window.confirm(`Supprimer ${selectedOrderIds.length} contact(s) RDV sélectionné(s) ?`)) {
+      annulerSelectionMutation.mutate(selectedOrderIds);
+    }
+  };
+
   const getUrgenceClass = (rdvDate: string, rappele: boolean) => {
     if (rappele) return 'border-green-300 bg-green-50';
     
@@ -179,7 +238,6 @@ export default function RDV() {
   };
 
   const stats = rdvData?.stats || {};
-  const orders = rdvData?.orders || [];
 
   return (
     <div className="space-y-6">
@@ -272,6 +330,30 @@ export default function RDV() {
             </select>
           </div>
         </div>
+
+        {orders.length > 0 && (
+          <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-t border-gray-200 pt-4">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 font-medium cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAllSelection}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              Tout sélectionner
+            </label>
+
+            <button
+              onClick={handleDeleteSelection}
+              disabled={selectedCount === 0 || annulerSelectionMutation.isPending}
+              className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {annulerSelectionMutation.isPending
+                ? 'Suppression...'
+                : `Supprimer la sélection (${selectedCount})`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Liste des RDV */}
@@ -293,6 +375,12 @@ export default function RDV() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.includes(order.id)}
+                      onChange={() => toggleOrderSelection(order.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
                     {getUrgenceBadge(order.rdvDate, order.rdvRappele)}
                   </div>
                   <h3 className="font-bold text-lg text-gray-900">{order.clientNom}</h3>
