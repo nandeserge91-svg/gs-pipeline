@@ -243,7 +243,15 @@ export default function Orders() {
   };
 
   const orders = useMemo<Order[]>(() => {
-    return (ordersData?.orders || []) as Order[];
+    const rawOrders = (ordersData?.orders || []) as Order[];
+
+    // Garde-fou métier: la page "À appeler" ne doit montrer
+    // que les commandes réellement à traiter côté appelant.
+    return rawOrders.filter((order) => {
+      const isToCall = order.status === 'NOUVELLE' || order.status === 'A_APPELER';
+      const hasRdv = (order as any).rdvProgramme;
+      return isToCall && !hasRdv;
+    });
   }, [ordersData?.orders]);
 
   const pagination = ordersData?.pagination;
