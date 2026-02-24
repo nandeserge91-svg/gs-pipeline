@@ -43,7 +43,7 @@ export default function Orders() {
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
-    queryFn: () => ordersApi.getAll({ limit: 1000, lightweight: true }), // Version légère: pas de jointures inutiles pour cet écran
+    queryFn: () => ordersApi.getAll({ limit: 300, lightweight: true, toCallOnly: true }), // Mode ciblé "À appeler" pour éviter de charger des commandes inutiles
     staleTime: 60000, // 🚀 OPTIMISATION : Considérer les données fraîches pendant 1 minute
     gcTime: 300000, // 🚀 OPTIMISATION : Garder en cache 5 minutes (anciennement cacheTime)
     refetchInterval: 60000, // 🚀 OPTIMISATION : Refetch toutes les 60s au lieu de 30s
@@ -321,7 +321,7 @@ export default function Orders() {
       const matchesStatus = !statusFilter || order.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
-    .sort((a, b) => {
+    .sort((a: Order, b: Order) => {
       // 🔥 Tri intelligent multi-niveaux :
       // 1. NOUVELLES commandes (créées APRÈS la priorisation) → EN HAUT
       // 2. Commandes PRIORITAIRES (remontées manuellement)

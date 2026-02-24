@@ -89,7 +89,21 @@ router.use(authenticate);
 // GET /api/orders - Liste des commandes (avec filtres selon rôle)
 router.get('/', async (req, res) => {
   try {
-    const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, search, page = 1, limit = 1000, lightweight = 'false' } = req.query;
+    const {
+      status,
+      ville,
+      produit,
+      startDate,
+      endDate,
+      callerId,
+      delivererId,
+      deliveryType,
+      search,
+      page = 1,
+      limit = 1000,
+      lightweight = 'false',
+      toCallOnly = 'false'
+    } = req.query;
     const user = req.user;
 
     // Avant de charger les commandes, renvoyer automatiquement les RDV échus.
@@ -100,16 +114,28 @@ router.get('/', async (req, res) => {
 
     // Filtres selon le rôle
     if (user.role === 'APPELANT') {
-      // L'appelant voit :
-      // 1. UNIQUEMENT les commandes NOUVELLE et A_APPELER (en attente d'appel)
-      // 2. TOUTES les EXPÉDITIONS et EXPRESS (pour gestion)
-      andConditions.push({
-        OR: [
-        { status: { in: ['NOUVELLE', 'A_APPELER'] } },
-        { deliveryType: 'EXPEDITION' },
-        { deliveryType: 'EXPRESS' }
-        ]
-      });
+      const shouldUseToCallOnly = toCallOnly === 'true';
+
+      if (shouldUseToCallOnly) {
+        // Mode optimisé pour la page "À appeler" : uniquement les commandes à traiter.
+        andConditions.push({
+          status: { in: ['NOUVELLE', 'A_APPELER'] }
+        });
+        andConditions.push({
+          rdvProgramme: false
+        });
+      } else {
+        // Mode complet APPELANT (autres écrans) :
+        // 1. Commandes NOUVELLE et A_APPELER
+        // 2. TOUTES les EXPÉDITIONS et EXPRESS
+        andConditions.push({
+          OR: [
+            { status: { in: ['NOUVELLE', 'A_APPELER'] } },
+            { deliveryType: 'EXPEDITION' },
+            { deliveryType: 'EXPRESS' }
+          ]
+        });
+      }
     } else if (user.role === 'LIVREUR') {
       // Le livreur voit uniquement ses commandes assignées
       where.delivererId = user.id;
