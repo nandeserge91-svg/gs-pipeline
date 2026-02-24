@@ -207,6 +207,61 @@ router.get('/', async (req, res) => {
     const shouldUseLightweightQuery = lightweight === 'true';
     const isToCallOnlyMode = toCallOnly === 'true';
 
+    if (isToCallOnlyMode) {
+      const CANDIDATE_WINDOW = 1000;
+      const recentOrders = await prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: CANDIDATE_WINDOW,
+        ...(shouldUseLightweightQuery
+          ? {}
+          : {
+              include: {
+                caller: {
+                  select: { id: true, nom: true, prenom: true }
+                },
+                deliverer: {
+                  select: { id: true, nom: true, prenom: true }
+                }
+              }
+            })
+      });
+
+      // Comportement historique: tri intelligent sur un lot récent.
+      const sortedOrders = recentOrders.sort((a, b) => {
+        const aCreatedAt = new Date(a.createdAt).getTime();
+        const bCreatedAt = new Date(b.createdAt).getTime();
+        const aRenvoyeAt = a.renvoyeAAppelerAt ? new Date(a.renvoyeAAppelerAt).getTime() : null;
+        const bRenvoyeAt = b.renvoyeAAppelerAt ? new Date(b.renvoyeAAppelerAt).getTime() : null;
+
+        if (aRenvoyeAt && !bRenvoyeAt) {
+          if (bCreatedAt > aRenvoyeAt) return 1;
+          return -1;
+        }
+        if (!aRenvoyeAt && bRenvoyeAt) {
+          if (aCreatedAt > bRenvoyeAt) return -1;
+          return 1;
+        }
+        if (aRenvoyeAt && bRenvoyeAt) {
+          return bRenvoyeAt - aRenvoyeAt;
+        }
+        return bCreatedAt - aCreatedAt;
+      });
+
+      const total = sortedOrders.length;
+      const paginatedOrders = sortedOrders.slice(skip, skip + parsedLimit);
+
+      return res.json({
+        orders: paginatedOrders,
+        pagination: {
+          total,
+          page: parsedPage,
+          limit: parsedLimit,
+          totalPages: Math.ceil(total / parsedLimit)
+        }
+      });
+    }
+
     // ✅ Tri intelligent pour "À appeler" :
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
@@ -221,7 +276,7 @@ router.get('/', async (req, res) => {
           : [{ createdAt: 'desc' }])  // Tri par défaut
       ],
       skip,
-      take: parseInt(limit)
+      take: parsedLimit
     };
 
     if (!shouldUseLightweightQuery) {
@@ -244,9 +299,9 @@ router.get('/', async (req, res) => {
       orders,
       pagination: {
         total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit))
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil(total / parsedLimit)
       }
     });
   } catch (error) {
