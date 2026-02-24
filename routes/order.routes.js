@@ -213,7 +213,7 @@ router.get('/', async (req, res) => {
       orderBy: [
         ...(isToCallOnlyMode
           ? [
-              { renvoyeAAppelerAt: 'desc' },
+              { renvoyeAAppelerAt: { sort: 'desc', nulls: 'last' } },
               { createdAt: 'desc' }
             ]
           : [{ createdAt: 'desc' }])  // Tri par défaut
