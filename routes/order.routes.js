@@ -10,6 +10,7 @@ import prisma from '../config/prisma.js';
 
 // ⏰ Basculer automatiquement les RDV échus vers "À appeler"
 async function autoReturnExpiredRdvToCallList(userId) {
+  const BATCH_SIZE = 200;
   const now = new Date();
 
   const expiredRdvOrders = await prisma.order.findMany({
@@ -20,48 +21,45 @@ async function autoReturnExpiredRdvToCallList(userId) {
     },
     select: {
       id: true,
-      status: true,
-      noteAppelant: true,
-      rdvNote: true,
-      rdvDate: true
-    }
+      status: true
+    },
+    orderBy: {
+      rdvDate: 'asc'
+    },
+    take: BATCH_SIZE
   });
 
   if (expiredRdvOrders.length === 0) return 0;
 
-  await prisma.$transaction(async (tx) => {
-    for (const order of expiredRdvOrders) {
-      const dateLabel = order.rdvDate ? new Date(order.rdvDate).toLocaleString('fr-FR') : 'N/A';
-      const autoComment = `[RDV AUTO] Échéance atteinte (${dateLabel}) - renvoyée en haut de "À appeler"${order.rdvNote ? ` | Note RDV: ${order.rdvNote}` : ''}`;
-      const mergedNote = order.noteAppelant
-        ? `${order.noteAppelant}\n${autoComment}`
-        : autoComment;
+  const expiredIds = expiredRdvOrders.map((order) => order.id);
 
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'A_APPELER',
-          rdvProgramme: false,
-          rdvDate: null,
-          rdvNote: null,
-          rdvRappele: false,
-          rdvProgrammePar: null,
-          renvoyeAAppelerAt: new Date(),
-          noteAppelant: mergedNote
-        }
-      });
-
-      await tx.statusHistory.create({
-        data: {
-          orderId: order.id,
-          oldStatus: order.status,
-          newStatus: 'A_APPELER',
-          changedBy: userId,
-          comment: '⏰ RDV arrivé à échéance: retour automatique dans "À appeler" (position prioritaire).'
-        }
-      });
-    }
-  });
+  await prisma.$transaction([
+    prisma.order.updateMany({
+      where: {
+        id: { in: expiredIds },
+        rdvProgramme: true,
+        status: { in: ['NOUVELLE', 'A_APPELER'] }
+      },
+      data: {
+        status: 'A_APPELER',
+        rdvProgramme: false,
+        rdvDate: null,
+        rdvNote: null,
+        rdvRappele: false,
+        rdvProgrammePar: null,
+        renvoyeAAppelerAt: now
+      }
+    }),
+    prisma.statusHistory.createMany({
+      data: expiredRdvOrders.map((order) => ({
+        orderId: order.id,
+        oldStatus: order.status,
+        newStatus: 'A_APPELER',
+        changedBy: userId,
+        comment: '⏰ RDV arrivé à échéance: retour automatique dans "À appeler" (position prioritaire).'
+      }))
+    })
+  ]);
 
   return expiredRdvOrders.length;
 }
@@ -91,7 +89,7 @@ router.use(authenticate);
 // GET /api/orders - Liste des commandes (avec filtres selon rôle)
 router.get('/', async (req, res) => {
   try {
-    const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, search, page = 1, limit = 1000 } = req.query;
+    const { status, ville, produit, startDate, endDate, callerId, delivererId, deliveryType, search, page = 1, limit = 1000, lightweight = 'false' } = req.query;
     const user = req.user;
 
     // Avant de charger les commandes, renvoyer automatiquement les RDV échus.
@@ -165,23 +163,29 @@ router.get('/', async (req, res) => {
     // ✅ Tri intelligent pour "À appeler" :
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where,
-        include: {
-          caller: {
-            select: { id: true, nom: true, prenom: true }
-          },
-          deliverer: {
-            select: { id: true, nom: true, prenom: true }
-          }
+    const shouldUseLightweightQuery = user.role === 'APPELANT' && lightweight === 'true';
+    const orderQuery = {
+      where,
+      orderBy: [
+        { createdAt: 'desc' }  // Tri par défaut
+      ],
+      skip,
+      take: parseInt(limit)
+    };
+
+    if (!shouldUseLightweightQuery) {
+      orderQuery.include = {
+        caller: {
+          select: { id: true, nom: true, prenom: true }
         },
-        orderBy: [
-          { createdAt: 'desc' }  // Tri par défaut
-        ],
-        skip,
-        take: parseInt(limit)
-      }),
+        deliverer: {
+          select: { id: true, nom: true, prenom: true }
+        }
+      };
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany(orderQuery),
       prisma.order.count({ where })
     ]);
 

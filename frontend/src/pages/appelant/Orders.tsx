@@ -43,7 +43,7 @@ export default function Orders() {
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appelant-orders'],
-    queryFn: () => ordersApi.getAll({ limit: 1000 }), // Limite augmentée pour voir TOUTES les commandes à traiter
+    queryFn: () => ordersApi.getAll({ limit: 1000, lightweight: true }), // Version légère: pas de jointures inutiles pour cet écran
     staleTime: 60000, // 🚀 OPTIMISATION : Considérer les données fraîches pendant 1 minute
     gcTime: 300000, // 🚀 OPTIMISATION : Garder en cache 5 minutes (anciennement cacheTime)
     refetchInterval: 60000, // 🚀 OPTIMISATION : Refetch toutes les 60s au lieu de 30s
