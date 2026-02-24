@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,8 +10,8 @@ import ExpressModal from '@/components/modals/ExpressModal';
 import CreateOrderModal from '@/components/modals/CreateOrderModal';
 import { useAuthStore } from '@/store/authStore';
 
-// 🚀 CONSTANTE DE PAGINATION
-const ITEMS_PER_PAGE = 200; // Afficher 200 commandes par page
+// 🚀 PAGINATION SERVEUR
+const ITEMS_PER_PAGE = 100; // Charge 100 commandes par requête serveur
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,8 +42,16 @@ export default function Orders() {
   const canPrioritize = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
 
   const { data: ordersData, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['appelant-orders'],
-    queryFn: () => ordersApi.getAll({ limit: 300, lightweight: true, toCallOnly: true }), // Mode ciblé "À appeler" pour éviter de charger des commandes inutiles
+    queryKey: ['appelant-orders', currentPage, searchTerm, statusFilter],
+    queryFn: () =>
+      ordersApi.getAll({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        lightweight: true,
+        toCallOnly: true,
+        search: searchTerm || undefined,
+        status: statusFilter || undefined
+      }),
     staleTime: 60000, // 🚀 OPTIMISATION : Considérer les données fraîches pendant 1 minute
     gcTime: 300000, // 🚀 OPTIMISATION : Garder en cache 5 minutes (anciennement cacheTime)
     refetchInterval: 60000, // 🚀 OPTIMISATION : Refetch toutes les 60s au lieu de 30s
@@ -234,11 +242,21 @@ export default function Orders() {
     );
   };
 
+  const orders = useMemo<Order[]>(() => {
+    return (ordersData?.orders || []) as Order[];
+  }, [ordersData?.orders]);
+
+  const pagination = ordersData?.pagination;
+  const totalOrders = pagination?.total || 0;
+  const totalPages = pagination?.totalPages || 1;
+  const startIndex = totalOrders === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + orders.length, totalOrders);
+
   const handleToggleAll = () => {
-    if (selectedOrderIds.length === filteredOrders?.length) {
+    if (selectedOrderIds.length === orders.length) {
       setSelectedOrderIds([]);
     } else {
-      setSelectedOrderIds(filteredOrders?.map((o: Order) => o.id) || []);
+      setSelectedOrderIds(orders.map((o: Order) => o.id));
     }
   };
 
@@ -294,75 +312,6 @@ export default function Orders() {
     }
   };
 
-  const filteredOrders = ordersData?.orders
-    ?.filter((order: Order) => {
-      // IMPORTANT : Afficher UNIQUEMENT les commandes NOUVELLE et A_APPELER
-      // SAUF celles avec RDV programmé (qui apparaissent dans la page RDV)
-      // Une fois validée, annulée ou marquée injoignable, la commande disparaît de cette liste
-      const isToCall = [
-        'NOUVELLE',      // Nouvelle commande reçue
-        'A_APPELER'      // Marquée pour appel
-      ].includes(order.status);
-      
-      // Exclure les commandes avec RDV programmé
-      const hasRdv = (order as any).rdvProgramme;
-      
-      if (!isToCall || hasRdv) return false; // Masquer toutes les autres commandes et les RDV
-      
-      // ✅ Recherche insensible à la casse sur tous les champs
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = !searchTerm || 
-        order.clientNom.toLowerCase().includes(searchLower) ||
-        order.clientTelephone.toLowerCase().includes(searchLower) ||
-        order.orderReference.toLowerCase().includes(searchLower) ||
-        order.clientVille?.toLowerCase().includes(searchLower) ||
-        order.produitNom?.toLowerCase().includes(searchLower);
-      
-      const matchesStatus = !statusFilter || order.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a: Order, b: Order) => {
-      // 🔥 Tri intelligent multi-niveaux :
-      // 1. NOUVELLES commandes (créées APRÈS la priorisation) → EN HAUT
-      // 2. Commandes PRIORITAIRES (remontées manuellement)
-      // 3. Anciennes commandes normales
-      const aCreatedAt = new Date(a.createdAt).getTime();
-      const bCreatedAt = new Date(b.createdAt).getTime();
-      const aRenvoyeAt = (a as any).renvoyeAAppelerAt ? new Date((a as any).renvoyeAAppelerAt).getTime() : null;
-      const bRenvoyeAt = (b as any).renvoyeAAppelerAt ? new Date((b as any).renvoyeAAppelerAt).getTime() : null;
-
-      // CAS 1 : A est prioritaire, B est normale
-      if (aRenvoyeAt && !bRenvoyeAt) {
-        // Si B (normale) est plus récente que la date de priorisation de A, B vient en premier
-        if (bCreatedAt > aRenvoyeAt) return 1;
-        // Sinon A (prioritaire) vient en premier
-        return -1;
-      }
-
-      // CAS 2 : B est prioritaire, A est normale
-      if (!aRenvoyeAt && bRenvoyeAt) {
-        // Si A (normale) est plus récente que la date de priorisation de B, A vient en premier
-        if (aCreatedAt > bRenvoyeAt) return -1;
-        // Sinon B (prioritaire) vient en premier
-        return 1;
-      }
-
-      // CAS 3 : Les deux sont prioritaires, trier par date de priorisation (plus récente en premier)
-      if (aRenvoyeAt && bRenvoyeAt) {
-        return bRenvoyeAt - aRenvoyeAt;
-      }
-
-      // CAS 4 : Aucune n'est prioritaire, trier par date de création (NOUVELLES en haut)
-      return bCreatedAt - aCreatedAt;
-    });
-
-  // 🚀 PAGINATION : Calcul des commandes paginées
-  const totalOrders = filteredOrders?.length || 0;
-  const totalPages = Math.ceil(totalOrders / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedOrders = filteredOrders?.slice(startIndex, endIndex) || [];
-
   // Réinitialiser la page à 1 quand les filtres changent
   useEffect(() => {
     setCurrentPage(1);
@@ -370,15 +319,15 @@ export default function Orders() {
 
   // Détecter les nouvelles commandes
   useEffect(() => {
-    if (filteredOrders && previousCount > 0 && filteredOrders.length > previousCount) {
-      toast.success(`🔔 ${filteredOrders.length - previousCount} nouvelle(s) commande(s) !`, {
+    if (totalOrders > 0 && previousCount > 0 && totalOrders > previousCount) {
+      toast.success(`🔔 ${totalOrders - previousCount} nouvelle(s) commande(s) !`, {
         duration: 5000,
       });
     }
-    if (filteredOrders) {
-      setPreviousCount(filteredOrders.length);
+    if (totalOrders >= 0) {
+      setPreviousCount(totalOrders);
     }
-  }, [filteredOrders?.length]);
+  }, [totalOrders, previousCount]);
 
   return (
     <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
@@ -393,9 +342,9 @@ export default function Orders() {
         
         {/* Compteur et actions */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {filteredOrders && (
+          {ordersData && (
             <div className="text-center sm:text-right flex-shrink-0">
-              <p className="text-lg sm:text-2xl font-bold text-primary-600">{filteredOrders.length}</p>
+              <p className="text-lg sm:text-2xl font-bold text-primary-600">{totalOrders}</p>
               <p className="text-[10px] sm:text-sm text-gray-600 whitespace-nowrap">commande(s)</p>
               {(canPrioritize || canDeleteOrders) && selectedOrderIds.length > 0 && (
                 <p className="text-[10px] sm:text-sm text-green-600 font-medium mt-0.5">
@@ -487,12 +436,12 @@ export default function Orders() {
         <div className="flex flex-col gap-3">
           {/* Checkbox + Recherche sur une ligne sur mobile */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {(canPrioritize || canDeleteOrders) && filteredOrders && filteredOrders.length > 0 && (
+            {(canPrioritize || canDeleteOrders) && orders.length > 0 && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 <input
                   type="checkbox"
                   id="select-all"
-                  checked={selectedOrderIds.length === filteredOrders.length}
+                  checked={orders.length > 0 && selectedOrderIds.length === orders.length}
                   onChange={handleToggleAll}
                   className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
                 />
@@ -532,7 +481,7 @@ export default function Orders() {
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
-      ) : filteredOrders && filteredOrders.length === 0 ? (
+      ) : orders.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-gray-500 text-lg">Aucune commande trouvée</p>
           <p className="text-gray-400 text-sm mt-2">Essayez de modifier vos filtres</p>
@@ -541,7 +490,7 @@ export default function Orders() {
         <>
           {/* Grid responsive - 1 colonne sur mobile, 2 sur tablette, 3 sur desktop */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {paginatedOrders?.map((order: Order) => (
+          {orders?.map((order: Order) => (
             <div 
               key={order.id} 
               className={`card p-3 sm:p-4 hover:shadow-xl transition-all duration-300 ${

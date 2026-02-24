@@ -190,10 +190,16 @@ router.get('/', async (req, res) => {
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
     const shouldUseLightweightQuery = user.role === 'APPELANT' && lightweight === 'true';
+    const isToCallOnlyMode = user.role === 'APPELANT' && toCallOnly === 'true';
     const orderQuery = {
       where,
       orderBy: [
-        { createdAt: 'desc' }  // Tri par défaut
+        ...(isToCallOnlyMode
+          ? [
+              { renvoyeAAppelerAt: 'desc' },
+              { createdAt: 'desc' }
+            ]
+          : [{ createdAt: 'desc' }])  // Tri par défaut
       ],
       skip,
       take: parseInt(limit)
@@ -215,43 +221,8 @@ router.get('/', async (req, res) => {
       prisma.order.count({ where })
     ]);
 
-    // 🔥 Tri intelligent multi-niveaux :
-    // 1. NOUVELLES commandes (créées APRÈS la priorisation) → EN HAUT
-    // 2. Commandes PRIORITAIRES (remontées manuellement)
-    // 3. Anciennes commandes normales
-    const sortedOrders = orders.sort((a, b) => {
-      const aCreatedAt = new Date(a.createdAt);
-      const bCreatedAt = new Date(b.createdAt);
-      const aRenvoyeAt = a.renvoyeAAppelerAt ? new Date(a.renvoyeAAppelerAt) : null;
-      const bRenvoyeAt = b.renvoyeAAppelerAt ? new Date(b.renvoyeAAppelerAt) : null;
-
-      // CAS 1 : A est prioritaire, B est normale
-      if (aRenvoyeAt && !bRenvoyeAt) {
-        // Si B (normale) est plus récente que la date de priorisation de A, B vient en premier
-        if (bCreatedAt > aRenvoyeAt) return 1;
-        // Sinon A (prioritaire) vient en premier
-        return -1;
-      }
-
-      // CAS 2 : B est prioritaire, A est normale
-      if (!aRenvoyeAt && bRenvoyeAt) {
-        // Si A (normale) est plus récente que la date de priorisation de B, A vient en premier
-        if (aCreatedAt > bRenvoyeAt) return -1;
-        // Sinon B (prioritaire) vient en premier
-        return 1;
-      }
-
-      // CAS 3 : Les deux sont prioritaires, trier par date de priorisation (plus récente en premier)
-      if (aRenvoyeAt && bRenvoyeAt) {
-        return bRenvoyeAt - aRenvoyeAt;
-      }
-
-      // CAS 4 : Aucune n'est prioritaire, trier par date de création (NOUVELLES en haut)
-      return bCreatedAt - aCreatedAt;
-    });
-
     res.json({
-      orders: sortedOrders,
+      orders,
       pagination: {
         total,
         page: parseInt(page),
