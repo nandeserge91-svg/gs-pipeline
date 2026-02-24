@@ -5,6 +5,8 @@ import { api } from '@/lib/api';
 import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import { useAuthStore } from '@/store/authStore';
 
+const ITEMS_PER_PAGE = 100;
+
 export default function ClientDatabase() {
   const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,15 +16,21 @@ export default function ClientDatabase() {
   const [endDate, setEndDate] = useState('');
   const [filterCaller, setFilterCaller] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Requête pour récupérer TOUTES les commandes (y compris NOUVELLE et A_APPELER)
+  useEffect(() => {
+    // Revenir à la page 1 dès qu'un filtre change.
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterVille, startDate, endDate, filterCaller]);
+
+  // Requête paginée côté serveur pour accéder à toute la base client.
   const { data: ordersData, isLoading } = useQuery({
-    queryKey: ['client-database', searchTerm, filterStatus, filterVille, startDate, endDate, filterCaller],
+    queryKey: ['client-database', currentPage, searchTerm, filterStatus, filterVille, startDate, endDate, filterCaller],
     queryFn: async () => {
       const { data } = await api.get('/orders', {
         params: {
-          page: 1,
-          limit: 1000,
+          page: currentPage,
+          limit: ITEMS_PER_PAGE,
           search: searchTerm || undefined,
           status: filterStatus !== 'ALL' ? filterStatus : undefined,
           ville: filterVille || undefined,
@@ -48,7 +56,7 @@ export default function ClientDatabase() {
 
   // Afficher TOUTES les commandes (y compris NOUVELLE et A_APPELER)
   // IMPORTANT : Pour le Gestionnaire de Stock, exclure uniquement VALIDEE (commandes non assignées)
-  const toutesLesCommandes = ordersData?.orders?.filter((order: any) => {
+  const commandesPage = ordersData?.orders?.filter((order: any) => {
     // Pour Gestionnaire de Stock : exclure uniquement les commandes VALIDÉE non assignées
     if (user?.role === 'GESTIONNAIRE_STOCK' && order.status === 'VALIDEE') {
       return false;
@@ -59,15 +67,15 @@ export default function ClientDatabase() {
 
   // Statistiques en temps réel
   const stats = {
-    total: toutesLesCommandes.length,
-    nouvelles: toutesLesCommandes.filter((o: any) => o.status === 'NOUVELLE').length,
-    aAppeler: toutesLesCommandes.filter((o: any) => o.status === 'A_APPELER').length,
-    validees: toutesLesCommandes.filter((o: any) => o.status === 'VALIDEE').length,
-    annulees: toutesLesCommandes.filter((o: any) => o.status === 'ANNULEE').length,
-    injoignables: toutesLesCommandes.filter((o: any) => o.status === 'INJOIGNABLE').length,
-    assignees: toutesLesCommandes.filter((o: any) => o.status === 'ASSIGNEE').length,
-    livrees: toutesLesCommandes.filter((o: any) => o.status === 'LIVREE').length,
-    montantTotal: toutesLesCommandes.reduce((sum: number, o: any) => {
+    total: ordersData?.pagination?.total || commandesPage.length,
+    nouvelles: commandesPage.filter((o: any) => o.status === 'NOUVELLE').length,
+    aAppeler: commandesPage.filter((o: any) => o.status === 'A_APPELER').length,
+    validees: commandesPage.filter((o: any) => o.status === 'VALIDEE').length,
+    annulees: commandesPage.filter((o: any) => o.status === 'ANNULEE').length,
+    injoignables: commandesPage.filter((o: any) => o.status === 'INJOIGNABLE').length,
+    assignees: commandesPage.filter((o: any) => o.status === 'ASSIGNEE').length,
+    livrees: commandesPage.filter((o: any) => o.status === 'LIVREE').length,
+    montantTotal: commandesPage.reduce((sum: number, o: any) => {
       if (['VALIDEE', 'ASSIGNEE', 'LIVREE'].includes(o.status)) {
         return sum + o.montant;
       }
@@ -76,7 +84,7 @@ export default function ClientDatabase() {
   };
 
   // Extraction des villes uniques
-  const villes = [...new Set(toutesLesCommandes.map((o: any) => o.clientVille))].filter(Boolean);
+  const villes = [...new Set((ordersData?.orders || []).map((o: any) => o.clientVille))].filter(Boolean);
 
   // Fonction d'export CSV
   const handleExportCSV = () => {
@@ -125,7 +133,7 @@ export default function ClientDatabase() {
       'Agence Retrait'
     ]);
     
-    toutesLesCommandes.forEach((order: any) => {
+    commandesPage.forEach((order: any) => {
       csvRows.push([
         formatDateTime(order.createdAt),
         order.orderReference || 'N/A',
@@ -173,7 +181,7 @@ export default function ClientDatabase() {
         </div>
         <button
           onClick={handleExportCSV}
-          disabled={toutesLesCommandes.length === 0}
+          disabled={commandesPage.length === 0}
           className="btn btn-secondary flex items-center gap-2"
         >
           <Download size={18} />
@@ -358,7 +366,7 @@ export default function ClientDatabase() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">
-            {toutesLesCommandes.length} commande(s)
+            {stats.total} commande(s) au total
           </h3>
           <div className="text-sm text-gray-500">
             Actualisation automatique toutes les 5 secondes
@@ -369,7 +377,7 @@ export default function ClientDatabase() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
-        ) : toutesLesCommandes.length === 0 ? (
+        ) : commandesPage.length === 0 ? (
           <div className="text-center py-12">
             <Package size={48} className="mx-auto text-gray-400 mb-4" />
             <p className="text-gray-500">Aucune commande trouvée</p>
@@ -391,7 +399,7 @@ export default function ClientDatabase() {
                 </tr>
               </thead>
               <tbody>
-                {toutesLesCommandes.map((order: any) => (
+                {commandesPage.map((order: any) => (
                   <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 text-sm text-gray-600">
                       {formatDateTime(order.createdAt)}
@@ -445,6 +453,31 @@ export default function ClientDatabase() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {ordersData?.pagination?.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Page {ordersData.pagination.page} sur {ordersData.pagination.totalPages}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="btn btn-secondary disabled:opacity-50"
+              >
+                Précédent
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(ordersData.pagination.totalPages, p + 1))}
+                disabled={currentPage >= ordersData.pagination.totalPages}
+                className="btn btn-secondary disabled:opacity-50"
+              >
+                Suivant
+              </button>
+            </div>
           </div>
         )}
       </div>
