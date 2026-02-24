@@ -112,9 +112,10 @@ router.get('/', async (req, res) => {
     const where = {};
     const andConditions = [];
 
+    const shouldUseToCallOnly = toCallOnly === 'true';
+
     // Filtres selon le rôle
     if (user.role === 'APPELANT') {
-      const shouldUseToCallOnly = toCallOnly === 'true';
 
       if (shouldUseToCallOnly) {
         // Mode optimisé pour la page "À appeler" : uniquement les commandes à traiter.
@@ -140,10 +141,26 @@ router.get('/', async (req, res) => {
       // Le livreur voit uniquement ses commandes assignées
       where.delivererId = user.id;
     } else if (user.role === 'GESTIONNAIRE' || user.role === 'GESTIONNAIRE_STOCK') {
-      // Le gestionnaire et gestionnaire de stock voient toutes les commandes
-      // (pas de restriction)
+      // Le gestionnaire et gestionnaire de stock voient toutes les commandes,
+      // sauf si mode "À appeler" demandé.
+      if (shouldUseToCallOnly) {
+        andConditions.push({
+          status: { in: ['NOUVELLE', 'A_APPELER'] }
+        });
+        andConditions.push({
+          rdvProgramme: false
+        });
+      }
     } else if (user.role === 'ADMIN') {
-      // L'admin voit tout (pas de restriction)
+      // L'admin voit tout, sauf si mode "À appeler" demandé.
+      if (shouldUseToCallOnly) {
+        andConditions.push({
+          status: { in: ['NOUVELLE', 'A_APPELER'] }
+        });
+        andConditions.push({
+          rdvProgramme: false
+        });
+      }
     }
 
     // ✅ NOUVEAU : Recherche globale (nom, téléphone, référence)
@@ -189,8 +206,8 @@ router.get('/', async (req, res) => {
     // ✅ Tri intelligent pour "À appeler" :
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
-    const shouldUseLightweightQuery = user.role === 'APPELANT' && lightweight === 'true';
-    const isToCallOnlyMode = user.role === 'APPELANT' && toCallOnly === 'true';
+    const shouldUseLightweightQuery = lightweight === 'true';
+    const isToCallOnlyMode = toCallOnly === 'true';
     const orderQuery = {
       where,
       orderBy: [
