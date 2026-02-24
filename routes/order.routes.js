@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { body, validationResult } from 'express-validator';
+import { Prisma } from '@prisma/client';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
@@ -201,13 +202,82 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+    const skip = (parsedPage - 1) * parsedLimit;
+    const shouldUseLightweightQuery = lightweight === 'true';
+    const isToCallOnlyMode = toCallOnly === 'true';
+
+    if (isToCallOnlyMode && shouldUseLightweightQuery) {
+      const conditions = [
+        Prisma.sql`"status" IN ('NOUVELLE', 'A_APPELER')`,
+        Prisma.sql`"rdvProgramme" = false`
+      ];
+
+      if (search) {
+        const searchValue = `%${search}%`;
+        conditions.push(
+          Prisma.sql`(
+            "clientNom" ILIKE ${searchValue}
+            OR "clientTelephone" LIKE ${searchValue}
+            OR "orderReference" ILIKE ${searchValue}
+          )`
+        );
+      }
+
+      if (status) conditions.push(Prisma.sql`"status" = ${status}`);
+      if (ville) conditions.push(Prisma.sql`"clientVille" ILIKE ${`%${ville}%`}`);
+      if (produit) conditions.push(Prisma.sql`"produitNom" ILIKE ${`%${produit}%`}`);
+      if (callerId) conditions.push(Prisma.sql`"callerId" = ${parseInt(callerId)}`);
+      if (delivererId) conditions.push(Prisma.sql`"delivererId" = ${parseInt(delivererId)}`);
+
+      const createdAtConditions = [];
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        createdAtConditions.push(Prisma.sql`"createdAt" >= ${start}`);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        createdAtConditions.push(Prisma.sql`"createdAt" <= ${end}`);
+      }
+      if (createdAtConditions.length > 0) {
+        conditions.push(Prisma.sql`(${Prisma.join(createdAtConditions, Prisma.sql` AND `)})`);
+      }
+
+      const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+      const [orders, totalRows] = await prisma.$transaction([
+        prisma.$queryRaw`
+          SELECT *
+          FROM "orders"
+          ${whereClause}
+          ORDER BY COALESCE("renvoyeAAppelerAt", "createdAt") DESC, "createdAt" DESC
+          OFFSET ${skip}
+          LIMIT ${parsedLimit}
+        `,
+        prisma.$queryRaw`
+          SELECT COUNT(*)::int AS total
+          FROM "orders"
+          ${whereClause}
+        `
+      ]);
+
+      const total = Number(totalRows?.[0]?.total || 0);
+      return res.json({
+        orders,
+        pagination: {
+          total,
+          page: parsedPage,
+          limit: parsedLimit,
+          totalPages: Math.ceil(total / parsedLimit)
+        }
+      });
+    }
 
     // ✅ Tri intelligent pour "À appeler" :
     // 1. Les commandes renvoyées (renvoyeAAppelerAt rempli) en HAUT
     // 2. Puis les autres commandes par date de création (plus récentes en premier)
-    const shouldUseLightweightQuery = lightweight === 'true';
-    const isToCallOnlyMode = toCallOnly === 'true';
     const orderQuery = {
       where,
       orderBy: [
