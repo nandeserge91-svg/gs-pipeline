@@ -1882,12 +1882,16 @@ router.post('/:id/prioritize', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
       });
     }
 
+    const newStatus = ['INJOIGNABLE', 'RETOURNE'].includes(order.status)
+      ? 'A_APPELER'
+      : order.status;
+
     // Mettre à jour renvoyeAAppelerAt pour faire remonter en haut
     const updatedOrder = await prisma.order.update({
       where: { id: parseInt(id) },
       data: {
         renvoyeAAppelerAt: new Date(), // Date actuelle pour tri en haut
-        status: 'A_APPELER' // Forcer le statut à A_APPELER si c'était NOUVELLE
+        status: newStatus
       }
     });
 
@@ -1896,7 +1900,7 @@ router.post('/:id/prioritize', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
       data: {
         orderId: parseInt(id),
         oldStatus: order.status,
-        newStatus: 'A_APPELER',
+        newStatus: newStatus,
         changedBy: req.user.id,
         comment: `📌 Commande priorisée par ${req.user.prenom} ${req.user.nom} - Remontée en haut de la liste`
       }
