@@ -11,7 +11,7 @@ import CreateOrderModal from '@/components/modals/CreateOrderModal';
 import { useAuthStore } from '@/store/authStore';
 
 // 🚀 PAGINATION SERVEUR
-const ITEMS_PER_PAGE = 100; // Charge 100 commandes par requête serveur
+const ITEMS_PER_PAGE = 150; // Charge 150 commandes par requête serveur
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
