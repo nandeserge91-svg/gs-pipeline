@@ -292,6 +292,8 @@ export default function Orders() {
         selectedOrderIds.map(orderId => ordersApi.prioritize(orderId))
       );
       
+      // Les commandes remontées passent en tête de liste: revenir page 1 pour les afficher tout de suite.
+      setCurrentPage(1);
       queryClient.invalidateQueries({ queryKey: ['appelant-orders'] });
       setSelectedOrderIds([]);
       toast.success(`✅ ${selectedOrderIds.length} commande(s) remontée(s) en haut`);
