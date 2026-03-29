@@ -699,7 +699,10 @@ function extractWhatsAppMessages(payload) {
       raw?.conversation ||
       payload?.Chat ||
       '';
-    const type = raw?.type || raw?.Type || (text ? 'text' : 'unknown');
+    const rawType = String(raw?.type || raw?.Type || (text ? 'text' : 'unknown'))
+      .trim()
+      .toLowerCase();
+    const type = ['chat', 'conversation', 'text'].includes(rawType) ? 'text' : rawType;
     const name = raw?.name || raw?.sender_name || raw?.profile?.name || payload?.name || payload?.sender_name || null;
     const messageId = raw?.id || raw?.ID || raw?.message_id || raw?.msgId || raw?.Hash || null;
     const chatId = raw?.chatId || raw?.chat_id || raw?.jid || raw?.WhatsappId || payload?.chatId || payload?.WhatsappId || null;
@@ -725,7 +728,11 @@ function extractWhatsAppMessages(payload) {
     messages.push({
       from: String(payload.from || payload.From || payload.phone).replace(/[^\d]/g, ''),
       name: payload.name ? String(payload.name) : null,
-      type: String(payload.type || payload.Type || 'text'),
+      type: ['chat', 'conversation', 'text'].includes(
+        String(payload.type || payload.Type || 'text').trim().toLowerCase()
+      )
+        ? 'text'
+        : String(payload.type || payload.Type || 'text').trim().toLowerCase(),
       text: String(payload.text || payload.message || payload.chat || payload.Chat),
       messageId: payload.id ? String(payload.id) : payload.ID ? String(payload.ID) : null,
       chatId: payload.chatId
