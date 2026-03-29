@@ -376,36 +376,48 @@ export default function WhatsAppInbox() {
                 <p className="text-sm font-semibold text-gray-900">
                   {selectedKnowledge.productCode} - {selectedKnowledge.productName}
                 </p>
+                <label className="text-xs font-medium text-gray-700">Arguments convaincants / benefices</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
                   placeholder="Arguments convaincants / benefices"
                   value={knowledgeForm.keyBenefits}
                   onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, keyBenefits: e.target.value }))}
                 />
+                <label className="text-xs font-medium text-gray-700">Conseils d'utilisation</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
                   placeholder="Conseils d'utilisation"
                   value={knowledgeForm.usageTips}
                   onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, usageTips: e.target.value }))}
                 />
+                <label className="text-xs font-medium text-gray-700">Objections / reponses (JSON)</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[100px] font-mono"
                   placeholder='Objections JSON: [{"keywords":["cher","prix"],"answer":"..."}]'
                   value={knowledgeForm.objectionHandling}
                   onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, objectionHandling: e.target.value }))}
                 />
+                <p className="text-[11px] text-gray-500">
+                  {'Exemple: [{"keywords":["cher","prix"],"answer":"Le prix reflete la qualite du produit."}]'}
+                </p>
+                <label className="text-xs font-medium text-gray-700">FAQ (JSON)</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[100px] font-mono"
                   placeholder='FAQ JSON: [{"keywords":["livraison"],"answer":"..."}]'
                   value={knowledgeForm.faq}
                   onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, faq: e.target.value }))}
                 />
+                <p className="text-[11px] text-gray-500">
+                  {'Exemple: [{"keywords":["livraison","delai"],"answer":"Livraison rapide selon ta ville."}]'}
+                </p>
+                <label className="text-xs font-medium text-gray-700">Script de closing intelligent</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
                   placeholder="Script de closing intelligent"
                   value={knowledgeForm.closingScript}
                   onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, closingScript: e.target.value }))}
                 />
+                <label className="text-xs font-medium text-gray-700">Message d'escalade si info manquante</label>
                 <textarea
                   className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
                   placeholder="Message d'escalade si info manquante"
