@@ -305,6 +305,26 @@ router.post('/conversations/:id/reply', async (req, res) => {
   }
 });
 
+// POST /api/whatsapp/conversations/reset-states - Reinitialiser tous les etats de conversation
+router.post('/conversations/reset-states', async (req, res) => {
+  try {
+    const result = await prisma.whatsAppConversation.updateMany({
+      data: {
+        state: {},
+        currentIntent: 'UNKNOWN'
+      }
+    });
+    return res.json({
+      success: true,
+      message: `${result.count} conversation(s) reinitialisee(s).`,
+      count: result.count
+    });
+  } catch (error) {
+    console.error('Erreur reset conversations:', error);
+    return res.status(500).json({ error: 'Erreur lors de la reinitialisation.' });
+  }
+});
+
 // GET /api/whatsapp/knowledge - Base connaissance WhatsApp
 router.get('/knowledge', async (req, res) => {
   try {
