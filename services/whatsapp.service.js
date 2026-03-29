@@ -12,15 +12,15 @@ const WHATSAPP_GRAPH_API_VERSION = process.env.WHATSAPP_GRAPH_API_VERSION || 'v2
 // 360Messenger
 const WHATSAPP_360_SEND_URL = process.env.WHATSAPP_360_SEND_URL || '';
 const WHATSAPP_360_API_KEY = process.env.WHATSAPP_360_API_KEY || '';
-const WHATSAPP_360_API_KEY_HEADER = process.env.WHATSAPP_360_API_KEY_HEADER || 'x-api-key';
-const WHATSAPP_360_API_KEY_PREFIX = process.env.WHATSAPP_360_API_KEY_PREFIX || '';
+const WHATSAPP_360_API_KEY_HEADER = process.env.WHATSAPP_360_API_KEY_HEADER || 'Authorization';
+const WHATSAPP_360_API_KEY_PREFIX = process.env.WHATSAPP_360_API_KEY_PREFIX || 'Bearer ';
 const WHATSAPP_360_API_KEY_QUERY_PARAM = process.env.WHATSAPP_360_API_KEY_QUERY_PARAM || '';
-const WHATSAPP_360_TO_FIELD = process.env.WHATSAPP_360_TO_FIELD || 'number';
-const WHATSAPP_360_MESSAGE_FIELD = process.env.WHATSAPP_360_MESSAGE_FIELD || 'message';
+const WHATSAPP_360_TO_FIELD = process.env.WHATSAPP_360_TO_FIELD || 'phonenumber';
+const WHATSAPP_360_MESSAGE_FIELD = process.env.WHATSAPP_360_MESSAGE_FIELD || 'text';
 const WHATSAPP_360_TYPE_FIELD = process.env.WHATSAPP_360_TYPE_FIELD || '';
 const WHATSAPP_360_TEXT_TYPE_VALUE = process.env.WHATSAPP_360_TEXT_TYPE_VALUE || 'text';
 const WHATSAPP_360_EXTRA_PAYLOAD = process.env.WHATSAPP_360_EXTRA_PAYLOAD || '';
-const WHATSAPP_360_REQUEST_FORMAT = (process.env.WHATSAPP_360_REQUEST_FORMAT || 'json').toLowerCase();
+const WHATSAPP_360_REQUEST_FORMAT = (process.env.WHATSAPP_360_REQUEST_FORMAT || 'form-data').toLowerCase();
 
 const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
@@ -157,9 +157,7 @@ export async function sendWhatsAppText(to, text) {
     throw new Error('WHATSAPP_360_SEND_URL manquant');
   }
 
-  const headers = {
-    'Content-Type': 'application/json'
-  };
+  const headers = {};
 
   if (WHATSAPP_360_API_KEY) {
     headers[WHATSAPP_360_API_KEY_HEADER] = `${WHATSAPP_360_API_KEY_PREFIX}${WHATSAPP_360_API_KEY}`;
@@ -203,6 +201,8 @@ export async function sendWhatsAppText(to, text) {
     });
     return;
   }
+
+  headers['Content-Type'] = 'application/json';
 
   await axios.post(
     WHATSAPP_360_SEND_URL,
