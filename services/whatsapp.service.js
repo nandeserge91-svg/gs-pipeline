@@ -95,25 +95,170 @@ function calculatePriceByQuantity(product, quantity) {
   return product.prixUnitaire * qty;
 }
 
+function normalizeComparable(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[_\-./]+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractLikelyProductQueries(text) {
+  const source = String(text || '').trim();
+  if (!source) return [];
+
+  const queries = new Set();
+  queries.add(source);
+
+  const orderPhraseMatch = source.match(
+    /(?:commande|commander|acheter|prendre|veux|veut)\s+([a-z0-9À-ÿ_\- ]{2,})(?:\s+(?:quantite|qte|ville|commune|adresse)\b|$)/i
+  );
+  if (orderPhraseMatch?.[1]) {
+    queries.add(orderPhraseMatch[1].trim());
+  }
+
+  const underscoreCodeMatches = source.match(/[a-z0-9]+(?:_[a-z0-9]+)+/gi) || [];
+  underscoreCodeMatches.forEach((match) => queries.add(match));
+
+  const normalized = normalizeComparable(source);
+  if (normalized) {
+    queries.add(normalized);
+  }
+
+  return Array.from(queries).filter((q) => q && q.length >= 2);
+}
+
+function levenshteinDistance(a, b) {
+  const s = a || '';
+  const t = b || '';
+  const rows = s.length + 1;
+  const cols = t.length + 1;
+  const matrix = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  for (let i = 0; i < rows; i += 1) matrix[i][0] = i;
+  for (let j = 0; j < cols; j += 1) matrix[0][j] = j;
+
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return matrix[rows - 1][cols - 1];
+}
+
+function scoreAlias(query, alias) {
+  if (!query || !alias) return 0;
+  if (query === alias) return 1;
+
+  if (alias.includes(query) || query.includes(alias)) {
+    const ratio = Math.min(query.length, alias.length) / Math.max(query.length, alias.length);
+    return 0.86 + ratio * 0.14;
+  }
+
+  const distance = levenshteinDistance(query, alias);
+  const maxLen = Math.max(query.length, alias.length);
+  if (maxLen === 0) return 0;
+  const similarity = 1 - distance / maxLen;
+
+  if (distance <= 2 && similarity >= 0.6) {
+    return 0.72 + similarity * 0.2;
+  }
+
+  const queryTokens = query.split(' ').filter(Boolean);
+  const aliasTokens = alias.split(' ').filter(Boolean);
+  const overlap = queryTokens.filter((token) => aliasTokens.includes(token)).length;
+  if (overlap > 0) {
+    return 0.55 + overlap / Math.max(queryTokens.length, aliasTokens.length) * 0.25;
+  }
+
+  return similarity * 0.45;
+}
+
 async function findProductFromText(text) {
   if (!text) return null;
 
-  const cleaned = text.trim();
-  const byCode = await prisma.product.findFirst({
-    where: {
-      actif: true,
-      code: { equals: cleaned, mode: 'insensitive' }
+  const queries = extractLikelyProductQueries(text);
+  if (queries.length === 0) return null;
+
+  for (const query of queries) {
+    const byCode = await prisma.product.findFirst({
+      where: {
+        actif: true,
+        code: { equals: query.trim(), mode: 'insensitive' }
+      }
+    });
+    if (byCode) return byCode;
+  }
+
+  for (const query of queries) {
+    const byNameContains = await prisma.product.findFirst({
+      where: {
+        actif: true,
+        nom: { contains: query.trim(), mode: 'insensitive' }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+    if (byNameContains) return byNameContains;
+  }
+
+  const activeProducts = await prisma.product.findMany({
+    where: { actif: true },
+    select: {
+      id: true,
+      code: true,
+      nom: true,
+      description: true,
+      prixUnitaire: true,
+      prix1: true,
+      prix2: true,
+      prix3: true,
+      stockActuel: true,
+      updatedAt: true
     }
   });
-  if (byCode) return byCode;
 
-  return prisma.product.findFirst({
-    where: {
-      actif: true,
-      nom: { contains: cleaned, mode: 'insensitive' }
-    },
-    orderBy: { updatedAt: 'desc' }
-  });
+  const normalizedQueries = queries.map(normalizeComparable).filter(Boolean);
+  let bestProduct = null;
+  let bestScore = 0;
+
+  for (const product of activeProducts) {
+    const aliases = [
+      product.code,
+      product.nom,
+      String(product.code || '').replace(/_/g, ' '),
+      String(product.nom || '').replace(/_/g, ' ')
+    ]
+      .map(normalizeComparable)
+      .filter(Boolean);
+
+    let productScore = 0;
+    for (const query of normalizedQueries) {
+      for (const alias of aliases) {
+        productScore = Math.max(productScore, scoreAlias(query, alias));
+      }
+    }
+
+    if (productScore > bestScore) {
+      bestScore = productScore;
+      bestProduct = product;
+    }
+  }
+
+  // Seuil empirique pour eviter les faux positifs trop faibles.
+  if (bestScore >= 0.74) {
+    return bestProduct;
+  }
+
+  return null;
 }
 
 async function listTopProducts(limit = 8) {
