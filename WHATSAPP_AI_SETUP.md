@@ -10,6 +10,8 @@ WHATSAPP_PROVIDER=360MESSENGER
 
 # 360Messenger - Envoi de messages
 WHATSAPP_360_SEND_URL=https://.../send...
+# Optionnel: endpoint reply (si provider exige reponse avec messageId)
+WHATSAPP_360_REPLY_URL=https://api.360messenger.com/v2/message/reply
 WHATSAPP_360_API_KEY=xxxxxxxx
 WHATSAPP_360_API_KEY_HEADER=x-api-key
 WHATSAPP_360_API_KEY_PREFIX=
@@ -20,6 +22,7 @@ WHATSAPP_360_TO_FIELD=number
 WHATSAPP_360_MESSAGE_FIELD=message
 WHATSAPP_360_TYPE_FIELD=type
 WHATSAPP_360_TEXT_TYPE_VALUE=text
+WHATSAPP_360_USE_REPLY_ENDPOINT=false
 
 # Optionnel: JSON d'arguments supplementaires pour 360
 WHATSAPP_360_EXTRA_PAYLOAD={"is_group":0}
@@ -45,6 +48,9 @@ WHATSAPP_MAX_MISSING_INFO_ATTEMPTS=2
 
 - `WHATSAPP_360_SEND_URL`  
   URL exacte de l'endpoint "send message" 360Messenger.
+
+- `WHATSAPP_360_REPLY_URL` / `WHATSAPP_360_USE_REPLY_ENDPOINT`  
+  Active le mode reponse contextuelle avec `messageId` (endpoint `/v2/message/reply`) si ton compte 360 l'exige.
 
 - `WHATSAPP_360_API_KEY`  
   API Key recuperee dans ton espace 360Messenger.

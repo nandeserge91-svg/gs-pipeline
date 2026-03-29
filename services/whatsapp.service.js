@@ -11,6 +11,7 @@ const WHATSAPP_GRAPH_API_VERSION = process.env.WHATSAPP_GRAPH_API_VERSION || 'v2
 
 // 360Messenger
 const WHATSAPP_360_SEND_URL = process.env.WHATSAPP_360_SEND_URL || '';
+const WHATSAPP_360_REPLY_URL = process.env.WHATSAPP_360_REPLY_URL || '';
 const WHATSAPP_360_API_KEY = process.env.WHATSAPP_360_API_KEY || '';
 const WHATSAPP_360_API_KEY_HEADER = process.env.WHATSAPP_360_API_KEY_HEADER || 'Authorization';
 const WHATSAPP_360_API_KEY_PREFIX = process.env.WHATSAPP_360_API_KEY_PREFIX || 'Bearer ';
@@ -21,6 +22,7 @@ const WHATSAPP_360_TYPE_FIELD = process.env.WHATSAPP_360_TYPE_FIELD || '';
 const WHATSAPP_360_TEXT_TYPE_VALUE = process.env.WHATSAPP_360_TEXT_TYPE_VALUE || 'text';
 const WHATSAPP_360_EXTRA_PAYLOAD = process.env.WHATSAPP_360_EXTRA_PAYLOAD || '';
 const WHATSAPP_360_REQUEST_FORMAT = (process.env.WHATSAPP_360_REQUEST_FORMAT || 'form-data').toLowerCase();
+const WHATSAPP_360_USE_REPLY_ENDPOINT = process.env.WHATSAPP_360_USE_REPLY_ENDPOINT === 'true';
 
 const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
@@ -357,7 +359,40 @@ async function listTopProducts(limit = 8) {
   });
 }
 
-export async function sendWhatsAppText(to, text) {
+function build360AuthHeadersAndParams() {
+  const headers = {};
+
+  if (WHATSAPP_360_API_KEY) {
+    let normalizedPrefix = WHATSAPP_360_API_KEY_PREFIX || '';
+    // Be tolerant with env values like "Bearer" without a trailing space.
+    if (
+      normalizedPrefix &&
+      !normalizedPrefix.endsWith(' ') &&
+      ['bearer', 'token'].includes(normalizedPrefix.trim().toLowerCase())
+    ) {
+      normalizedPrefix = `${normalizedPrefix.trim()} `;
+    }
+    headers[WHATSAPP_360_API_KEY_HEADER] = `${normalizedPrefix}${WHATSAPP_360_API_KEY}`;
+  }
+
+  const params = {};
+  if (WHATSAPP_360_API_KEY && WHATSAPP_360_API_KEY_QUERY_PARAM) {
+    params[WHATSAPP_360_API_KEY_QUERY_PARAM] = WHATSAPP_360_API_KEY;
+  }
+
+  return { headers, params };
+}
+
+function normalizeToChatId(value) {
+  const source = String(value || '').trim();
+  if (!source) return '';
+  if (source.includes('@')) return source;
+  const digits = source.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return `${digits}@c.us`;
+}
+
+export async function sendWhatsAppText(to, text, options = {}) {
   if (WHATSAPP_PROVIDER === 'META') {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
       throw new Error('WHATSAPP_ACCESS_TOKEN ou WHATSAPP_PHONE_NUMBER_ID manquant');
@@ -389,24 +424,33 @@ export async function sendWhatsAppText(to, text) {
     throw new Error('WHATSAPP_360_SEND_URL manquant');
   }
 
-  const headers = {};
+  const { headers, params } = build360AuthHeadersAndParams();
 
-  if (WHATSAPP_360_API_KEY) {
-    let normalizedPrefix = WHATSAPP_360_API_KEY_PREFIX || '';
-    // Be tolerant with env values like "Bearer" without a trailing space.
-    if (
-      normalizedPrefix &&
-      !normalizedPrefix.endsWith(' ') &&
-      ['bearer', 'token'].includes(normalizedPrefix.trim().toLowerCase())
-    ) {
-      normalizedPrefix = `${normalizedPrefix.trim()} `;
-    }
-    headers[WHATSAPP_360_API_KEY_HEADER] = `${normalizedPrefix}${WHATSAPP_360_API_KEY}`;
-  }
+  const incomingMessageId = String(options?.incomingMessageId || '').trim();
+  const incomingChatId = normalizeToChatId(options?.incomingChatId || to);
+  const shouldUseReplyEndpoint = Boolean(
+    WHATSAPP_360_USE_REPLY_ENDPOINT &&
+    WHATSAPP_360_REPLY_URL &&
+    incomingMessageId
+  );
 
-  const params = {};
-  if (WHATSAPP_360_API_KEY && WHATSAPP_360_API_KEY_QUERY_PARAM) {
-    params[WHATSAPP_360_API_KEY_QUERY_PARAM] = WHATSAPP_360_API_KEY;
+  if (shouldUseReplyEndpoint) {
+    headers['Content-Type'] = 'application/json';
+    await axios.post(
+      WHATSAPP_360_REPLY_URL,
+      {
+        chatId: incomingChatId,
+        messageId: incomingMessageId,
+        destinationChatId: incomingChatId,
+        content: text
+      },
+      {
+        headers,
+        params,
+        timeout: 15000
+      }
+    );
+    return;
   }
 
   let extraPayload = {};
@@ -600,7 +644,8 @@ function extractWhatsAppMessages(payload) {
           name: contact?.profile?.name || null,
           type: msg.type,
           text: msg?.text?.body || '',
-          messageId: msg.id
+          messageId: msg.id,
+          chatId: msg?.from ? `${String(msg.from).replace(/[^\d]/g, '')}@c.us` : null
         });
       }
     }
@@ -651,6 +696,7 @@ function extractWhatsAppMessages(payload) {
     const type = raw?.type || (text ? 'text' : 'unknown');
     const name = raw?.name || raw?.sender_name || raw?.profile?.name || payload?.name || payload?.sender_name || null;
     const messageId = raw?.id || raw?.message_id || raw?.msgId || null;
+    const chatId = raw?.chatId || raw?.chat_id || raw?.jid || payload?.chatId || null;
 
     if (from && text) {
       messages.push({
@@ -658,7 +704,8 @@ function extractWhatsAppMessages(payload) {
         name: name ? String(name) : null,
         type: String(type),
         text: String(text),
-        messageId: messageId ? String(messageId) : null
+        messageId: messageId ? String(messageId) : null,
+        chatId: chatId ? String(chatId) : normalizeToChatId(from)
       });
     }
   }
@@ -670,7 +717,8 @@ function extractWhatsAppMessages(payload) {
       name: payload.name ? String(payload.name) : null,
       type: 'text',
       text: String(payload.text || payload.message || payload.chat),
-      messageId: payload.id ? String(payload.id) : null
+      messageId: payload.id ? String(payload.id) : null,
+      chatId: payload.chatId ? String(payload.chatId) : normalizeToChatId(payload.from || payload.phone)
     });
   }
 
@@ -749,7 +797,11 @@ export async function processIncomingWhatsAppPayload(payload) {
     if (item.type !== 'text') {
       await sendWhatsAppText(
         item.from,
-        'Je traite uniquement les messages texte pour le moment. Ecris ton message et je te reponds.'
+        'Je traite uniquement les messages texte pour le moment. Ecris ton message et je te reponds.',
+        {
+          incomingMessageId: item.messageId,
+          incomingChatId: item.chatId || item.from
+        }
       );
       continue;
     }
@@ -771,7 +823,10 @@ export async function processIncomingWhatsAppPayload(payload) {
       }
     });
 
-    await saveMessage(conversation.id, 'CLIENT', item.text, { messageId: item.messageId });
+    await saveMessage(conversation.id, 'CLIENT', item.text, {
+      messageId: item.messageId,
+      chatId: item.chatId || null
+    });
 
     const state = conversation.state || {};
     const lowerText = item.text.toLowerCase();
@@ -782,7 +837,10 @@ export async function processIncomingWhatsAppPayload(payload) {
         data: { handedToHuman: true }
       });
       const reply = 'Un conseiller humain va prendre le relais tres vite. Merci pour ta patience.';
-      await sendWhatsAppText(item.from, reply);
+      await sendWhatsAppText(item.from, reply, {
+        incomingMessageId: item.messageId,
+        incomingChatId: item.chatId || item.from
+      });
       await saveMessage(conversation.id, 'BOT', reply, { handover: true });
       continue;
     }
@@ -795,10 +853,16 @@ export async function processIncomingWhatsAppPayload(payload) {
           data: { handedToHuman: false }
         });
         const reactivate = 'Bot reactive. Je peux te guider pour infos produit, SAV et commande.';
-        await sendWhatsAppText(item.from, reactivate);
+        await sendWhatsAppText(item.from, reactivate, {
+          incomingMessageId: item.messageId,
+          incomingChatId: item.chatId || item.from
+        });
         await saveMessage(conversation.id, 'BOT', reactivate, { reactivated: true });
       } else {
-        await sendWhatsAppText(item.from, reply);
+        await sendWhatsAppText(item.from, reply, {
+          incomingMessageId: item.messageId,
+          incomingChatId: item.chatId || item.from
+        });
         await saveMessage(conversation.id, 'BOT', reply, {});
       }
       continue;
@@ -864,7 +928,10 @@ export async function processIncomingWhatsAppPayload(payload) {
       const order = await createValidatedOrderFromConversation(conversation, state);
       if (order) {
         const reply = `Commande validee avec succes.\nReference: ${order.orderReference}\nProduit: ${order.produitNom}\nQuantite: ${order.quantite}\nMontant: ${Math.round(order.montant)} FCFA\nMerci pour ta confiance.`;
-        await sendWhatsAppText(item.from, reply);
+        await sendWhatsAppText(item.from, reply, {
+          incomingMessageId: item.messageId,
+          incomingChatId: item.chatId || item.from
+        });
         await saveMessage(conversation.id, 'BOT', reply, { orderId: order.id, autoValidated: true });
 
         await prisma.whatsAppConversation.update({
@@ -946,7 +1013,10 @@ export async function processIncomingWhatsAppPayload(payload) {
       state.missingInfoAttempts = 0;
     }
 
-    await sendWhatsAppText(item.from, reply);
+    await sendWhatsAppText(item.from, reply, {
+      incomingMessageId: item.messageId,
+      incomingChatId: item.chatId || item.from
+    });
     await saveMessage(conversation.id, 'BOT', reply, {
       intent: detectedIntent,
       productId: state.productId || null,
