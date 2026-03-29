@@ -6,6 +6,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 const WHATSAPP_PROVIDER = (process.env.WHATSAPP_PROVIDER || '360MESSENGER').toUpperCase();
 const WHATSAPP_WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET || '';
+const WHATSAPP_WEBHOOK_ENFORCE_SECRET = process.env.WHATSAPP_WEBHOOK_ENFORCE_SECRET === 'true';
 
 // Verification webhook (Meta only). Pour 360Messenger, retourne simplement OK.
 router.get('/webhook', (req, res) => {
@@ -31,7 +32,7 @@ router.get('/webhook', (req, res) => {
 
 // Reception des messages WhatsApp
 router.post('/webhook', async (req, res) => {
-  if (WHATSAPP_WEBHOOK_SECRET) {
+  if (WHATSAPP_WEBHOOK_ENFORCE_SECRET && WHATSAPP_WEBHOOK_SECRET) {
     const incomingSecret = req.headers['x-webhook-secret'];
     if (incomingSecret !== WHATSAPP_WEBHOOK_SECRET) {
       return res.status(401).json({ error: 'Webhook secret invalide' });
