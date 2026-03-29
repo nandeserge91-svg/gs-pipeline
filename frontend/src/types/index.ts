@@ -192,3 +192,35 @@ export interface Product {
   updatedAt: string;
 }
 
+export type WhatsAppIntent =
+  | 'UNKNOWN'
+  | 'PRODUCT_INFO'
+  | 'CUSTOMER_SERVICE'
+  | 'AFTER_SALES'
+  | 'ORDER';
+
+export type WhatsAppSender = 'CLIENT' | 'BOT' | 'AGENT';
+
+export interface WhatsAppMessage {
+  id: number;
+  conversationId: number;
+  sender: WhatsAppSender;
+  message: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface WhatsAppConversation {
+  id: number;
+  phoneNumber: string;
+  clientName?: string;
+  currentIntent: WhatsAppIntent;
+  state?: Record<string, unknown>;
+  handedToHuman: boolean;
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
+  messages?: WhatsAppMessage[];
+  _count?: { messages: number };
+}
+

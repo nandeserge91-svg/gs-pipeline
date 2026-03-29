@@ -449,6 +449,61 @@ model SmsTemplate {
   @@index([category])
 }
 
+// ========================================
+// NOUVEAU : WHATSAPP + AGENT IA
+// ========================================
+
+// Expéditeur du message dans une conversation WhatsApp
+enum WhatsAppSender {
+  CLIENT
+  BOT
+  AGENT
+}
+
+// Intention détectée dans une conversation WhatsApp
+enum WhatsAppIntent {
+  UNKNOWN
+  PRODUCT_INFO
+  CUSTOMER_SERVICE
+  AFTER_SALES
+  ORDER
+}
+
+// Conversation WhatsApp (1 conversation par numéro)
+model WhatsAppConversation {
+  id            Int             @id @default(autoincrement())
+  phoneNumber   String          @unique
+  clientName    String?
+  currentIntent WhatsAppIntent  @default(UNKNOWN)
+  state         Json?
+  handedToHuman Boolean         @default(false)
+  lastMessageAt DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  messages      WhatsAppMessage[]
+
+  @@map("whatsapp_conversations")
+  @@index([phoneNumber])
+  @@index([currentIntent])
+  @@index([lastMessageAt])
+}
+
+// Messages échangés avec le client WhatsApp
+model WhatsAppMessage {
+  id             Int                  @id @default(autoincrement())
+  conversationId Int
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         WhatsAppSender
+  message        String
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+
+  @@map("whatsapp_messages")
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
 // 📍 SYSTÈME DE POINTAGE GÉOLOCALISÉ
 
 // Table de pointage des présences

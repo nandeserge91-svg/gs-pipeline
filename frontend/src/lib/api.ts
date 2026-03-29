@@ -1,5 +1,13 @@
 import axios from 'axios';
-import type { AuthResponse, LoginCredentials, User, Order, DeliveryList } from '@/types';
+import type {
+  AuthResponse,
+  LoginCredentials,
+  User,
+  Order,
+  DeliveryList,
+  WhatsAppConversation,
+  WhatsAppMessage
+} from '@/types';
 
 const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_URL = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
@@ -357,5 +365,44 @@ export const rdvApi = {
     const { data } = await api.delete(`/rdv/${orderId}`);
     return data;
   },
+};
+
+export const whatsappApi = {
+  getStats: async () => {
+    const { data } = await api.get('/whatsapp/stats');
+    return data;
+  },
+  getConversations: async (params?: {
+    search?: string;
+    intent?: string;
+    handedToHuman?: 'true' | 'false';
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    conversations: WhatsAppConversation[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }> => {
+    const { data } = await api.get('/whatsapp/conversations', { params });
+    return data;
+  },
+  getMessages: async (
+    conversationId: number,
+    limit = 150
+  ): Promise<{ conversation: WhatsAppConversation; messages: WhatsAppMessage[] }> => {
+    const { data } = await api.get(`/whatsapp/conversations/${conversationId}/messages`, {
+      params: { limit }
+    });
+    return data;
+  },
+  setHandover: async (conversationId: number, handedToHuman: boolean) => {
+    const { data } = await api.put(`/whatsapp/conversations/${conversationId}/handover`, {
+      handedToHuman
+    });
+    return data;
+  },
+  sendManualReply: async (conversationId: number, message: string) => {
+    const { data } = await api.post(`/whatsapp/conversations/${conversationId}/reply`, { message });
+    return data;
+  }
 };
 

@@ -22,7 +22,8 @@ import {
   Bell,
   Calendar,
   Settings,
-  UserCheck
+  UserCheck,
+  MessageCircle
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -61,6 +62,7 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Package, label: 'Stats par Produit', path: '/admin/product-stats' },
           { icon: DollarSign, label: 'Comptabilité', path: '/admin/accounting' },
           { icon: Settings, label: 'Paramètres SMS', path: '/admin/sms-settings' },
+          { icon: MessageCircle, label: 'WhatsApp Inbox', path: '/admin/whatsapp' },
         ];
       case 'GESTIONNAIRE':
         return [

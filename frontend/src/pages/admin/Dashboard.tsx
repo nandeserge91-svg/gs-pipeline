@@ -19,6 +19,7 @@ import Accounting from './Accounting';
 import ExpressAgence from '../gestionnaire/ExpressAgence';
 import RDV from '../appelant/RDV';
 import SmsSettings from './SmsSettings';
+import WhatsAppInbox from './WhatsAppInbox';
 
 export default function AdminDashboard() {
   return (
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
       <Route path="product-stats" element={<ProductStats />} />
       <Route path="accounting" element={<Accounting />} />
       <Route path="sms-settings" element={<SmsSettings />} />
+      <Route path="whatsapp" element={<WhatsAppInbox />} />
     </Routes>
   );
 }
