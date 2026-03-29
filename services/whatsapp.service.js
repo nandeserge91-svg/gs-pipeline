@@ -612,6 +612,7 @@ function extractWhatsAppMessages(payload) {
 
   // 2) Format generique (360Messenger / autres providers webhook)
   const genericCandidates = [];
+  if (payload && typeof payload === 'object') genericCandidates.push(payload);
   if (Array.isArray(payload?.messages)) genericCandidates.push(...payload.messages);
   if (Array.isArray(payload?.data?.messages)) genericCandidates.push(...payload.data.messages);
   if (payload?.message && typeof payload.message === 'object') genericCandidates.push(payload.message);
@@ -639,6 +640,7 @@ function extractWhatsAppMessages(payload) {
     const text =
       raw?.text?.body ||
       raw?.text ||
+      raw?.chat ||
       raw?.body?.text ||
       raw?.message ||
       raw?.body ||
@@ -662,12 +664,12 @@ function extractWhatsAppMessages(payload) {
   }
 
   // 3) Format ultra simple
-  if (messages.length === 0 && (payload?.from || payload?.phone) && (payload?.text || payload?.message)) {
+  if (messages.length === 0 && (payload?.from || payload?.phone) && (payload?.text || payload?.message || payload?.chat)) {
     messages.push({
       from: String(payload.from || payload.phone).replace(/[^\d]/g, ''),
       name: payload.name ? String(payload.name) : null,
       type: 'text',
-      text: String(payload.text || payload.message),
+      text: String(payload.text || payload.message || payload.chat),
       messageId: payload.id ? String(payload.id) : null
     });
   }
