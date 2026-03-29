@@ -536,6 +536,7 @@ Objectif:
 - Si une info est inconnue, dis-le clairement sans inventer.
 - Rester oriente conversion commerciale sans etre aggressif.
 - Ne pas demander de paiement dans WhatsApp.
+- Repondre d'abord a la question exacte du client avant de demander autre chose.
 - Si le client veut commander, demander: produit, quantite, ville, nom complet.`;
 
   const userPrompt = `Message client: ${userMessage}
@@ -566,6 +567,14 @@ Reponds en maximum 5 lignes.`;
   );
 
   return response.data?.choices?.[0]?.message?.content?.trim() || null;
+}
+
+function isQuestionLike(text) {
+  const value = String(text || '').toLowerCase();
+  return (
+    value.includes('?')
+    || /(comment|pourquoi|combien|quand|quelle|quel|est ce|c est quoi|c'est quoi|ou|où)/i.test(value)
+  );
 }
 
 async function saveMessage(conversationId, sender, message, metadata = null) {
@@ -933,6 +942,16 @@ export async function processIncomingWhatsAppPayload(payload) {
       !knowledge?.usageTips &&
       !hasDescriptionInfo;
 
+    const recentMessages = await prisma.whatsAppMessage.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: 'desc' },
+      take: 6
+    });
+    const conversationContextText = recentMessages
+      .reverse()
+      .map((m) => `${m.sender}: ${m.message}`)
+      .join('\n');
+
     const quantity = parseQuantityFromText(item.text);
     if (quantity) state.quantity = quantity;
 
@@ -997,15 +1016,17 @@ export async function processIncomingWhatsAppPayload(payload) {
     let fallbackEscalationFlag = fallback.escaladeManqueInfo;
 
     // Priorise les reponses reglees/commerciales pour reduire la latence.
+    const hasDirectKnowledgeAnswer = Boolean(objectionAnswerPreview || faqAnswerPreview);
     const shouldSkipAI =
-      Boolean(state.awaitingField) ||
-      Boolean(product) ||
-      detectedIntent === 'ORDER';
+      hasDirectKnowledgeAnswer ||
+      (!isQuestionLike(item.text) && (Boolean(state.awaitingField) || detectedIntent === 'ORDER'));
 
     if (!shouldSkipAI) {
       try {
         const aiReply = await generateAIReply({
-          userMessage: item.text,
+          userMessage: conversationContextText
+            ? `Historique recent:\n${conversationContextText}\n\nNouveau message: ${item.text}`
+            : item.text,
           product,
           state,
           knowledge
