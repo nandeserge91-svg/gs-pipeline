@@ -529,15 +529,17 @@ async function generateAIReply({ userMessage, product, state, knowledge }) {
 - missingInfoEscalation: ${knowledge.missingInfoEscalation || 'N/A'}`
     : 'Connaissance produit: non renseignee';
 
-  const systemPrompt = `Tu es l'assistant WhatsApp de GS Pipeline.
+  const systemPrompt = `Tu es un agent commercial WhatsApp professionnel de GS Pipeline.
 Objectif:
-- Repondre en francais simple, poli, court.
-- Aider sur informations produit, SAV, et pre-commande.
-- Si une info est inconnue, dis-le clairement sans inventer.
-- Rester oriente conversion commerciale sans etre aggressif.
-- Ne pas demander de paiement dans WhatsApp.
-- Repondre d'abord a la question exacte du client avant de demander autre chose.
-- Si le client veut commander, demander: produit, quantite, ville, nom complet.`;
+- Saluer chaleureusement.
+- Identifier ce que le client veut.
+- Repondre court, clair, humain, vendeur.
+- Presenter brievement le produit puis prix et livraison.
+- Poser une seule question a la fois.
+- Faire avancer vers la confirmation de commande.
+- Recuperer au minimum: produit, ville/commune, nom complet (telephone vient de WhatsApp).
+- Si info inconnue, le dire clairement sans inventer.
+- Ne jamais demander de paiement dans WhatsApp.`;
 
   const userPrompt = `Message client: ${userMessage}
 
@@ -779,14 +781,14 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
 
   if (state.awaitingField === 'city') {
     return {
-      reply: 'Merci. Peux-tu me donner ta commune/quartier (optionnel) puis ton adresse exacte ?',
+      reply: 'Merci. Donne-moi maintenant ton nom complet pour finaliser la commande.',
       escaladeManqueInfo: false
     };
   }
 
-  if (state.awaitingField === 'address') {
+  if (state.awaitingField === 'name') {
     return {
-      reply: 'Parfait. Ecris "je confirme" pour valider la commande, ou "modifier" pour corriger une info.',
+      reply: 'Parfait. Quel est ton nom complet pour finaliser la commande ?',
       escaladeManqueInfo: false
     };
   }
@@ -808,21 +810,24 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
   }
 
   if (product) {
-    const benefits = knowledge?.keyBenefits ? `\nAtouts: ${knowledge.keyBenefits}` : '';
-    const usage = knowledge?.usageTips ? `\nUtilisation: ${knowledge.usageTips}` : '';
-    const closeLine =
-      knowledge?.closingScript ||
-      `Si tu veux commander, envoie: "Je commande ${product.code} quantite 1 ville Abidjan".`;
+    const benefitLine = knowledge?.keyBenefits
+      ? `Atouts: ${knowledge.keyBenefits}`
+      : 'Ce produit aide a ameliorer visuellement les marques cutanees avec une routine reguliere.';
+    const usageLine = knowledge?.usageTips
+      ? `Utilisation: ${knowledge.usageTips}`
+      : 'Utilisation: 1 a 2 fois par jour, matin et soir.';
+    const deliveryLine = 'Livraison: gratuite partout a Abidjan.';
+    const askLocation = state.city
+      ? 'Super. Donne-moi maintenant ton nom complet pour preparer la commande.'
+      : 'Souhaites-tu la livraison dans quelle ville/commune ?';
     return {
-      reply: `Le produit ${product.nom} est disponible. Prix de base: ${product.prixUnitaire} FCFA.${benefits}${usage}\n${closeLine}`,
+      reply: `Bonjour, merci pour ton message.\n${product.nom} est disponible a ${Math.round(product.prixUnitaire)} FCFA.\n${benefitLine}\n${usageLine}\n${deliveryLine}\n${askLocation}`,
       escaladeManqueInfo: isLikelyMissingInfoQuestion(text) && !knowledge?.keyBenefits && !knowledge?.usageTips
     };
   }
 
-  const products = await listTopProducts(6);
-  const lines = products.map((p) => `- ${p.code}: ${p.nom} (${p.prixUnitaire} FCFA)`);
   return {
-    reply: `Je peux t'aider tout de suite.\nVoici quelques produits:\n${lines.join('\n')}\nDis-moi le code ou le nom du produit qui t'interesse.`,
+    reply: 'Bonjour, je suis ton conseiller commercial. Dis-moi simplement le produit que tu veux (ex: SCARGEL), et je te donne prix, livraison et les etapes pour confirmer.',
     escaladeManqueInfo: false
   };
 }
@@ -964,13 +969,17 @@ export async function processIncomingWhatsAppPayload(payload) {
 
     if (state.awaitingField === 'city' && !state.city && item.text.length <= 40) {
       state.city = item.text.trim();
-      state.awaitingField = 'address';
-    } else if (state.awaitingField === 'address' && !state.address) {
-      state.address = item.text.trim();
+      if (!state.customerName) {
+        state.awaitingField = 'name';
+      } else {
+        state.awaitingField = 'confirm';
+      }
+    } else if (state.awaitingField === 'name' && !state.customerName && item.text.length <= 80) {
+      state.customerName = item.text.trim();
       state.awaitingField = 'confirm';
     }
 
-    const shouldConfirmOrder = isOrderConfirmation(item.text) && state.productId && state.city;
+    const shouldConfirmOrder = isOrderConfirmation(item.text) && state.productId && state.city && state.customerName;
     if (shouldConfirmOrder) {
       const order = await createValidatedOrderFromConversation(conversation, state);
       if (order) {
@@ -998,8 +1007,8 @@ export async function processIncomingWhatsAppPayload(payload) {
         state.awaitingField = 'product';
       } else if (!state.city) {
         state.awaitingField = 'city';
-      } else if (!state.address) {
-        state.awaitingField = 'address';
+      } else if (!state.customerName) {
+        state.awaitingField = 'name';
       } else {
         state.awaitingField = 'confirm';
       }
@@ -1039,7 +1048,7 @@ export async function processIncomingWhatsAppPayload(payload) {
 
     if (state.awaitingField === 'confirm' && state.productId && state.city) {
       const q = state.quantity || 1;
-      reply += `\n\nRecap: ${state.productName} x${q}, ville ${state.city}. Reponds "je confirme" pour valider.`;
+      reply += `\n\nRecap: ${state.productName} x${q}, ville ${state.city}, nom ${state.customerName || 'a confirmer'}. Reponds "je confirme" pour valider.`;
     }
 
     if (fallbackEscalationFlag || infoQuestionWithoutKnowledge) {
