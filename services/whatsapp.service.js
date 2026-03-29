@@ -529,25 +529,38 @@ async function generateAIReply({ userMessage, product, state, knowledge }) {
 - missingInfoEscalation: ${knowledge.missingInfoEscalation || 'N/A'}`
     : 'Connaissance produit: non renseignee';
 
-  const systemPrompt = `Tu es un agent commercial WhatsApp professionnel de GS Pipeline.
-Objectif:
-- Saluer chaleureusement.
-- Identifier ce que le client veut.
-- Repondre court, clair, humain, vendeur.
-- Presenter brievement le produit puis prix et livraison.
-- Poser une seule question a la fois.
-- Faire avancer vers la confirmation de commande.
-- Recuperer au minimum: produit, ville/commune, nom complet (telephone vient de WhatsApp).
-- Si info inconnue, le dire clairement sans inventer.
-- Ne jamais demander de paiement dans WhatsApp.`;
+  const stateDescription = [];
+  if (state.productId) stateDescription.push(`Produit choisi: ${state.productName || 'oui'}`);
+  if (state.city) stateDescription.push(`Ville: ${state.city}`);
+  if (state.customerName) stateDescription.push(`Nom: ${state.customerName}`);
+  if (state.awaitingField) stateDescription.push(`En attente de: ${state.awaitingField}`);
+  const stateText = stateDescription.length > 0 ? stateDescription.join(', ') : 'debut conversation';
 
-  const userPrompt = `Message client: ${userMessage}
+  const systemPrompt = `Tu es un conseiller commercial WhatsApp chaleureux et professionnel.
 
-Etat conversation: ${JSON.stringify(state || {})}
-${productContext}
+REGLE #1: Reponds TOUJOURS a la question exacte du client AVANT de parler de commande.
+REGLE #2: Ne repete JAMAIS une info deja partagee dans la conversation.
+REGLE #3: Maximum 3 lignes par message. Une seule question a la fois.
+REGLE #4: Phrases courtes en francais simple, ton humain, poli et vendeur.
+
+Etapes de vente (dans l'ordre naturel):
+1. Saluer et identifier le besoin
+2. Presenter brievement: produit, prix, livraison
+3. Demander ville/commune de livraison
+4. Demander nom complet
+5. Resumer et demander "je confirme"
+
+Si le client pose une question (utilisation, benefices, effets, composition...), reponds clairement PUIS relance doucement vers la commande.
+Ne jamais inventer d'information. Ne jamais demander de paiement.`;
+
+  const userPrompt = `${productContext}
 ${knowledgeContext}
 
-Reponds en maximum 5 lignes.`;
+Etat actuel: ${stateText}
+
+${userMessage}
+
+Reponds en 2-3 lignes maximum. Sois naturel et vendeur.`;
 
   const response = await axios.post(
     `${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`,
@@ -575,7 +588,7 @@ function isQuestionLike(text) {
   const value = String(text || '').toLowerCase();
   return (
     value.includes('?')
-    || /(comment|pourquoi|combien|quand|quelle|quel|est ce|c est quoi|c'est quoi|ou|où)/i.test(value)
+    || /(comment|pourquoi|combien|quand|quelle|quel|est.ce|c.est quoi|ou\b|où|aide|utilisation|sert a|a quoi|ingredient|composition|effet|benefice|avantage|danger|risque)/i.test(value)
   );
 }
 
@@ -774,62 +787,59 @@ function extractWhatsAppMessages(payload) {
 }
 
 async function buildRuleBasedReply({ text, product, state, knowledge }) {
+  const clientAsking = isQuestionLike(text);
   const objectionItems = parseKnowledgeItems(knowledge?.objectionHandling);
   const faqItems = parseKnowledgeItems(knowledge?.faq);
   const objectionAnswer = findKnowledgeAnswer(text, objectionItems);
   const faqAnswer = findKnowledgeAnswer(text, faqItems);
 
-  if (state.awaitingField === 'city') {
-    return {
-      reply: 'Merci. Donne-moi maintenant ton nom complet pour finaliser la commande.',
-      escaladeManqueInfo: false
-    };
-  }
-
-  if (state.awaitingField === 'name') {
-    return {
-      reply: 'Parfait. Quel est ton nom complet pour finaliser la commande ?',
-      escaladeManqueInfo: false
-    };
-  }
-
   if (objectionAnswer) {
     const closeLine = knowledge?.closingScript
-      || "Si tu veux, je peux preparer ta commande maintenant. Reponds simplement: je confirme.";
-    return {
-      reply: `${objectionAnswer}\n${closeLine}`,
-      escaladeManqueInfo: false
-    };
+      || "Ca t'interesse ? Dis simplement: je confirme.";
+    return { reply: `${objectionAnswer}\n${closeLine}`, escaladeManqueInfo: false };
   }
 
   if (faqAnswer) {
+    return { reply: faqAnswer, escaladeManqueInfo: false };
+  }
+
+  if (!clientAsking && state.productIntroduced) {
+    if (state.awaitingField === 'city') {
+      return { reply: 'Dans quelle ville ou commune souhaites-tu la livraison ?', escaladeManqueInfo: false };
+    }
+    if (state.awaitingField === 'name') {
+      return { reply: 'Quel est ton nom complet pour finaliser la commande ?', escaladeManqueInfo: false };
+    }
+    if (state.awaitingField === 'confirm' && state.customerName && state.city) {
+      const q = state.quantity || 1;
+      return {
+        reply: `Merci ${state.customerName} !\n\nRecap: ${state.productName} x${q}, livraison a ${state.city}.\nReponds "je confirme" pour valider ta commande.`,
+        escaladeManqueInfo: false
+      };
+    }
+  }
+
+  if (product && !state.productIntroduced) {
+    const lines = [`${product.nom} - ${Math.round(product.prixUnitaire)} FCFA`];
+    if (knowledge?.keyBenefits) lines.push(knowledge.keyBenefits);
+    lines.push('Livraison gratuite a Abidjan.');
+    lines.push('Dans quelle ville souhaites-tu la livraison ?');
     return {
-      reply: faqAnswer,
-      escaladeManqueInfo: false
+      reply: lines.join('\n'),
+      escaladeManqueInfo: false,
+      markProductIntroduced: true
     };
   }
 
-  if (product) {
-    const benefitLine = knowledge?.keyBenefits
-      ? `Atouts: ${knowledge.keyBenefits}`
-      : 'Ce produit aide a ameliorer visuellement les marques cutanees avec une routine reguliere.';
-    const usageLine = knowledge?.usageTips
-      ? `Utilisation: ${knowledge.usageTips}`
-      : 'Utilisation: 1 a 2 fois par jour, matin et soir.';
-    const deliveryLine = 'Livraison: gratuite partout a Abidjan.';
-    const askLocation = state.city
-      ? 'Super. Donne-moi maintenant ton nom complet pour preparer la commande.'
-      : 'Souhaites-tu la livraison dans quelle ville/commune ?';
-    return {
-      reply: `Bonjour, merci pour ton message.\n${product.nom} est disponible a ${Math.round(product.prixUnitaire)} FCFA.\n${benefitLine}\n${usageLine}\n${deliveryLine}\n${askLocation}`,
-      escaladeManqueInfo: isLikelyMissingInfoQuestion(text) && !knowledge?.keyBenefits && !knowledge?.usageTips
-    };
+  if (product && clientAsking) {
+    return { reply: null, escaladeManqueInfo: isLikelyMissingInfoQuestion(text) && !knowledge?.keyBenefits };
   }
 
-  return {
-    reply: 'Bonjour, je suis ton conseiller commercial. Dis-moi simplement le produit que tu veux (ex: SCARGEL), et je te donne prix, livraison et les etapes pour confirmer.',
-    escaladeManqueInfo: false
-  };
+  if (!product) {
+    return { reply: "Bonjour ! Je suis ton conseiller. Quel produit t'interesse ?", escaladeManqueInfo: false };
+  }
+
+  return { reply: null, escaladeManqueInfo: false };
 }
 
 export async function processIncomingWhatsAppPayload(payload) {
@@ -968,11 +978,15 @@ export async function processIncomingWhatsAppPayload(payload) {
     }
 
     if (state.awaitingField === 'city' && !state.city && item.text.length <= 40) {
-      state.city = item.text.trim();
-      if (!state.customerName) {
-        state.awaitingField = 'name';
-      } else {
-        state.awaitingField = 'confirm';
+      const cityCandidate = item.text.trim();
+      const notACity = /^(bonjour|bonsoir|salut|hello|hey|oui|non|merci|ok|d.accord|comment|pourquoi|combien|quel|quelle|aide|je veux|c.est|est.ce|utilisation|produit|prix|livraison|information|scargel)/i;
+      if (!notACity.test(cityCandidate) && !isQuestionLike(cityCandidate) && cityCandidate.length >= 2) {
+        state.city = cityCandidate;
+        if (!state.customerName) {
+          state.awaitingField = 'name';
+        } else {
+          state.awaitingField = 'confirm';
+        }
       }
     } else if (state.awaitingField === 'name' && !state.customerName && item.text.length <= 80) {
       state.customerName = item.text.trim();
@@ -1024,17 +1038,25 @@ export async function processIncomingWhatsAppPayload(payload) {
     let reply = fallback.reply;
     let fallbackEscalationFlag = fallback.escaladeManqueInfo;
 
-    // Priorise les reponses reglees/commerciales pour reduire la latence.
+    if (fallback.markProductIntroduced) {
+      state.productIntroduced = true;
+    }
+
     const hasDirectKnowledgeAnswer = Boolean(objectionAnswerPreview || faqAnswerPreview);
-    const shouldSkipAI =
-      hasDirectKnowledgeAnswer ||
-      (!isQuestionLike(item.text) && (Boolean(state.awaitingField) || detectedIntent === 'ORDER'));
+    const clientIsAsking = isQuestionLike(item.text);
+    const isProvidingOrderData = !clientIsAsking
+      && state.productIntroduced
+      && state.awaitingField
+      && ['city', 'name', 'confirm'].includes(state.awaitingField);
+    const shouldSkipAI = (hasDirectKnowledgeAnswer || isProvidingOrderData) && reply != null;
+
+    console.log(`[BOT ${item.from}] skipAI=${shouldSkipAI} asking=${clientIsAsking} field=${state.awaitingField} introduced=${!!state.productIntroduced} hasFallback=${!!reply}`);
 
     if (!shouldSkipAI) {
       try {
         const aiReply = await generateAIReply({
           userMessage: conversationContextText
-            ? `Historique recent:\n${conversationContextText}\n\nNouveau message: ${item.text}`
+            ? `Historique:\n${conversationContextText}\n\nDernier message client: ${item.text}`
             : item.text,
           product,
           state,
@@ -1046,9 +1068,15 @@ export async function processIncomingWhatsAppPayload(payload) {
       }
     }
 
-    if (state.awaitingField === 'confirm' && state.productId && state.city) {
+    if (!reply) {
+      reply = product
+        ? `${product.nom} - ${Math.round(product.prixUnitaire)} FCFA. Comment puis-je t'aider ?`
+        : "Bonjour ! Quel produit t'interesse ?";
+    }
+
+    if (state.awaitingField === 'confirm' && state.productId && state.city && !reply.includes('je confirme')) {
       const q = state.quantity || 1;
-      reply += `\n\nRecap: ${state.productName} x${q}, ville ${state.city}, nom ${state.customerName || 'a confirmer'}. Reponds "je confirme" pour valider.`;
+      reply += `\n\nRecap: ${state.productName} x${q}, livraison a ${state.city}, nom ${state.customerName || 'a confirmer'}. Reponds "je confirme" pour valider.`;
     }
 
     if (fallbackEscalationFlag || infoQuestionWithoutKnowledge) {
