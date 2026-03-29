@@ -160,7 +160,16 @@ export async function sendWhatsAppText(to, text) {
   const headers = {};
 
   if (WHATSAPP_360_API_KEY) {
-    headers[WHATSAPP_360_API_KEY_HEADER] = `${WHATSAPP_360_API_KEY_PREFIX}${WHATSAPP_360_API_KEY}`;
+    let normalizedPrefix = WHATSAPP_360_API_KEY_PREFIX || '';
+    // Be tolerant with env values like "Bearer" without a trailing space.
+    if (
+      normalizedPrefix &&
+      !normalizedPrefix.endsWith(' ') &&
+      ['bearer', 'token'].includes(normalizedPrefix.trim().toLowerCase())
+    ) {
+      normalizedPrefix = `${normalizedPrefix.trim()} `;
+    }
+    headers[WHATSAPP_360_API_KEY_HEADER] = `${normalizedPrefix}${WHATSAPP_360_API_KEY}`;
   }
 
   const params = {};
