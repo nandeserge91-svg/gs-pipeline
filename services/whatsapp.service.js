@@ -28,7 +28,10 @@ const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.3);
+const WHATSAPP_AI_TIMEOUT_MS = Math.max(2000, Number(process.env.WHATSAPP_AI_TIMEOUT_MS || 9000));
 const WHATSAPP_MAX_MISSING_INFO_ATTEMPTS = Number(process.env.WHATSAPP_MAX_MISSING_INFO_ATTEMPTS || 2);
+const KNOWLEDGE_CACHE_TTL_MS = Math.max(1000, Number(process.env.WHATSAPP_KNOWLEDGE_CACHE_TTL_MS || 60000));
+const knowledgeCache = new Map();
 
 function isOrderConfirmation(text) {
   const t = (text || '').toLowerCase();
@@ -136,9 +139,20 @@ function parseKnowledgeItems(raw) {
 
 async function getProductKnowledge(productId) {
   if (!productId) return null;
-  return prisma.whatsAppProductKnowledge.findUnique({
+  const now = Date.now();
+  const cached = knowledgeCache.get(productId);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const value = await prisma.whatsAppProductKnowledge.findUnique({
     where: { productId }
   });
+  knowledgeCache.set(productId, {
+    value,
+    expiresAt: now + KNOWLEDGE_CACHE_TTL_MS
+  });
+  return value;
 }
 
 function findKnowledgeAnswer(text, items) {
@@ -496,7 +510,7 @@ Reponds en maximum 5 lignes.`;
         Authorization: `Bearer ${AI_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      timeout: 20000
+      timeout: WHATSAPP_AI_TIMEOUT_MS
     }
   );
 
@@ -875,28 +889,34 @@ export async function processIncomingWhatsAppPayload(payload) {
       }
     }
 
-    let reply = null;
-    let fallbackEscalationFlag = false;
-    try {
-      reply = await generateAIReply({
-        userMessage: item.text,
-        product,
-        state,
-        knowledge
-      });
-    } catch (error) {
-      console.warn('WhatsApp AI indisponible, fallback regle:', error.message);
-    }
+    const fallback = await buildRuleBasedReply({
+      text: item.text,
+      product,
+      state,
+      knowledge
+    });
 
-    if (!reply) {
-      const fallback = await buildRuleBasedReply({
-        text: item.text,
-        product,
-        state,
-        knowledge
-      });
-      reply = fallback.reply;
-      fallbackEscalationFlag = fallback.escaladeManqueInfo;
+    let reply = fallback.reply;
+    let fallbackEscalationFlag = fallback.escaladeManqueInfo;
+
+    // Priorise les reponses reglees/commerciales pour reduire la latence.
+    const shouldSkipAI =
+      Boolean(state.awaitingField) ||
+      Boolean(product) ||
+      detectedIntent === 'ORDER';
+
+    if (!shouldSkipAI) {
+      try {
+        const aiReply = await generateAIReply({
+          userMessage: item.text,
+          product,
+          state,
+          knowledge
+        });
+        if (aiReply) reply = aiReply;
+      } catch (error) {
+        console.warn('WhatsApp AI indisponible, fallback regle:', error.message);
+      }
     }
 
     if (state.awaitingField === 'confirm' && state.productId && state.city) {

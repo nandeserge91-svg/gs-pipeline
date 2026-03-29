@@ -184,6 +184,19 @@ export default function WhatsAppInbox() {
   }, [selectedConversation?.id]);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      loadConversations().catch(() => undefined);
+      loadStats().catch(() => undefined);
+      if (selectedConversation?.id) {
+        loadMessages(selectedConversation.id).catch(() => undefined);
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation?.id, filters]);
+
+  useEffect(() => {
     if (!selectedKnowledge) return;
     setKnowledgeForm({
       keyBenefits: selectedKnowledge.knowledge?.keyBenefits || '',
