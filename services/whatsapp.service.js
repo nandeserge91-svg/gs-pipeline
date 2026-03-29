@@ -602,15 +602,35 @@ function extractWhatsAppMessages(payload) {
   if (Array.isArray(payload?.data?.messages)) genericCandidates.push(...payload.data.messages);
   if (payload?.message && typeof payload.message === 'object') genericCandidates.push(payload.message);
   if (payload?.data?.message && typeof payload.data.message === 'object') genericCandidates.push(payload.data.message);
+  if (payload?.data && typeof payload.data === 'object') genericCandidates.push(payload.data);
+  if (payload?.event && typeof payload.event === 'object') genericCandidates.push(payload.event);
+  if (payload?.event?.data && typeof payload.event.data === 'object') genericCandidates.push(payload.event.data);
 
   for (const raw of genericCandidates) {
-    const from = raw?.from || raw?.phone || raw?.number || raw?.sender || raw?.wa_id || payload?.from || payload?.phone;
+    const fromRaw =
+      raw?.from ||
+      raw?.phone ||
+      raw?.number ||
+      raw?.sender ||
+      raw?.wa_id ||
+      raw?.from_number ||
+      raw?.sender_number ||
+      raw?.chatId ||
+      raw?.sender?.id ||
+      payload?.from ||
+      payload?.phone;
+    const from = String(fromRaw || '')
+      .replace(/[^\d]/g, '')
+      .trim();
     const text =
       raw?.text?.body ||
       raw?.text ||
+      raw?.body?.text ||
       raw?.message ||
       raw?.body ||
+      raw?.caption ||
       raw?.content ||
+      raw?.conversation ||
       '';
     const type = raw?.type || (text ? 'text' : 'unknown');
     const name = raw?.name || raw?.sender_name || raw?.profile?.name || payload?.name || payload?.sender_name || null;
@@ -618,7 +638,7 @@ function extractWhatsAppMessages(payload) {
 
     if (from && text) {
       messages.push({
-        from: String(from),
+        from,
         name: name ? String(name) : null,
         type: String(type),
         text: String(text),
@@ -630,12 +650,21 @@ function extractWhatsAppMessages(payload) {
   // 3) Format ultra simple
   if (messages.length === 0 && (payload?.from || payload?.phone) && (payload?.text || payload?.message)) {
     messages.push({
-      from: String(payload.from || payload.phone),
+      from: String(payload.from || payload.phone).replace(/[^\d]/g, ''),
       name: payload.name ? String(payload.name) : null,
       type: 'text',
       text: String(payload.text || payload.message),
       messageId: payload.id ? String(payload.id) : null
     });
+  }
+
+  if (messages.length === 0) {
+    try {
+      const keys = Object.keys(payload || {});
+      console.warn('WhatsApp webhook: payload non reconnu, keys=', keys);
+    } catch (error) {
+      console.warn('WhatsApp webhook: payload non reconnu');
+    }
   }
 
   return messages;
