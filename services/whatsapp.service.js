@@ -17,9 +17,10 @@ const WHATSAPP_360_API_KEY_PREFIX = process.env.WHATSAPP_360_API_KEY_PREFIX || '
 const WHATSAPP_360_API_KEY_QUERY_PARAM = process.env.WHATSAPP_360_API_KEY_QUERY_PARAM || '';
 const WHATSAPP_360_TO_FIELD = process.env.WHATSAPP_360_TO_FIELD || 'number';
 const WHATSAPP_360_MESSAGE_FIELD = process.env.WHATSAPP_360_MESSAGE_FIELD || 'message';
-const WHATSAPP_360_TYPE_FIELD = process.env.WHATSAPP_360_TYPE_FIELD || 'type';
+const WHATSAPP_360_TYPE_FIELD = process.env.WHATSAPP_360_TYPE_FIELD || '';
 const WHATSAPP_360_TEXT_TYPE_VALUE = process.env.WHATSAPP_360_TEXT_TYPE_VALUE || 'text';
 const WHATSAPP_360_EXTRA_PAYLOAD = process.env.WHATSAPP_360_EXTRA_PAYLOAD || '';
+const WHATSAPP_360_REQUEST_FORMAT = (process.env.WHATSAPP_360_REQUEST_FORMAT || 'json').toLowerCase();
 
 const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
@@ -178,14 +179,34 @@ export async function sendWhatsAppText(to, text) {
     }
   }
 
+  const requestPayload = {
+    [WHATSAPP_360_TO_FIELD]: to,
+    [WHATSAPP_360_MESSAGE_FIELD]: text,
+    ...extraPayload
+  };
+
+  if (WHATSAPP_360_TYPE_FIELD) {
+    requestPayload[WHATSAPP_360_TYPE_FIELD] = WHATSAPP_360_TEXT_TYPE_VALUE;
+  }
+
+  // Certaines APIs (ex: 360Messenger v2/sendMessage) attendent multipart/form-data.
+  if (WHATSAPP_360_REQUEST_FORMAT === 'form-data') {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(requestPayload)) {
+      form.append(key, value == null ? '' : String(value));
+    }
+
+    await axios.post(WHATSAPP_360_SEND_URL, form, {
+      headers,
+      params,
+      timeout: 15000
+    });
+    return;
+  }
+
   await axios.post(
     WHATSAPP_360_SEND_URL,
-    {
-      [WHATSAPP_360_TO_FIELD]: to,
-      [WHATSAPP_360_MESSAGE_FIELD]: text,
-      [WHATSAPP_360_TYPE_FIELD]: WHATSAPP_360_TEXT_TYPE_VALUE,
-      ...extraPayload
-    },
+    requestPayload,
     {
       headers,
       params,
