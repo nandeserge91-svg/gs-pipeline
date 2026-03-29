@@ -669,15 +669,19 @@ function extractWhatsAppMessages(payload) {
   for (const raw of genericCandidates) {
     const fromRaw =
       raw?.from ||
+      raw?.From ||
       raw?.phone ||
       raw?.number ||
       raw?.sender ||
+      raw?.Sender ||
       raw?.wa_id ||
       raw?.from_number ||
       raw?.sender_number ||
       raw?.chatId ||
+      raw?.WhatsappId ||
       raw?.sender?.id ||
       payload?.from ||
+      payload?.From ||
       payload?.phone;
     const from = String(fromRaw || '')
       .replace(/[^\d]/g, '')
@@ -686,17 +690,19 @@ function extractWhatsAppMessages(payload) {
       raw?.text?.body ||
       raw?.text ||
       raw?.chat ||
+      raw?.Chat ||
       raw?.body?.text ||
       raw?.message ||
       raw?.body ||
       raw?.caption ||
       raw?.content ||
       raw?.conversation ||
+      payload?.Chat ||
       '';
-    const type = raw?.type || (text ? 'text' : 'unknown');
+    const type = raw?.type || raw?.Type || (text ? 'text' : 'unknown');
     const name = raw?.name || raw?.sender_name || raw?.profile?.name || payload?.name || payload?.sender_name || null;
-    const messageId = raw?.id || raw?.message_id || raw?.msgId || null;
-    const chatId = raw?.chatId || raw?.chat_id || raw?.jid || payload?.chatId || null;
+    const messageId = raw?.id || raw?.ID || raw?.message_id || raw?.msgId || raw?.Hash || null;
+    const chatId = raw?.chatId || raw?.chat_id || raw?.jid || raw?.WhatsappId || payload?.chatId || payload?.WhatsappId || null;
 
     if (from && text) {
       messages.push({
@@ -711,14 +717,22 @@ function extractWhatsAppMessages(payload) {
   }
 
   // 3) Format ultra simple
-  if (messages.length === 0 && (payload?.from || payload?.phone) && (payload?.text || payload?.message || payload?.chat)) {
+  if (
+    messages.length === 0 &&
+    (payload?.from || payload?.From || payload?.phone) &&
+    (payload?.text || payload?.message || payload?.chat || payload?.Chat)
+  ) {
     messages.push({
-      from: String(payload.from || payload.phone).replace(/[^\d]/g, ''),
+      from: String(payload.from || payload.From || payload.phone).replace(/[^\d]/g, ''),
       name: payload.name ? String(payload.name) : null,
-      type: 'text',
-      text: String(payload.text || payload.message || payload.chat),
-      messageId: payload.id ? String(payload.id) : null,
-      chatId: payload.chatId ? String(payload.chatId) : normalizeToChatId(payload.from || payload.phone)
+      type: String(payload.type || payload.Type || 'text'),
+      text: String(payload.text || payload.message || payload.chat || payload.Chat),
+      messageId: payload.id ? String(payload.id) : payload.ID ? String(payload.ID) : null,
+      chatId: payload.chatId
+        ? String(payload.chatId)
+        : payload.WhatsappId
+          ? String(payload.WhatsappId)
+          : normalizeToChatId(payload.from || payload.From || payload.phone)
     });
   }
 
