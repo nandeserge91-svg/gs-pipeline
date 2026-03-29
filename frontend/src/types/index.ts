@@ -224,3 +224,16 @@ export interface WhatsAppConversation {
   _count?: { messages: number };
 }
 
+export interface WhatsAppProductKnowledge {
+  id: number;
+  productId: number;
+  keyBenefits?: string;
+  usageTips?: string;
+  objectionHandling?: Array<{ keywords?: string[]; answer: string }>;
+  faq?: Array<{ keywords?: string[]; answer: string }>;
+  closingScript?: string;
+  missingInfoEscalation?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

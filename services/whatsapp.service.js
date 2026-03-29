@@ -28,6 +28,7 @@ const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.3);
+const WHATSAPP_MAX_MISSING_INFO_ATTEMPTS = Number(process.env.WHATSAPP_MAX_MISSING_INFO_ATTEMPTS || 2);
 
 function isOrderConfirmation(text) {
   const t = (text || '').toLowerCase();
@@ -104,6 +105,78 @@ function normalizeComparable(value) {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeKeyword(value) {
+  return normalizeComparable(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseKnowledgeItems(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (typeof item === 'string') {
+        return {
+          keywords: [item],
+          answer: item
+        };
+      }
+      if (!item || typeof item !== 'object') return null;
+      const answer = String(item.answer || item.response || item.reponse || '').trim();
+      if (!answer) return null;
+      const keywords = Array.isArray(item.keywords)
+        ? item.keywords.map((k) => String(k || '').trim()).filter(Boolean)
+        : [];
+      return { keywords, answer };
+    })
+    .filter(Boolean);
+}
+
+async function getProductKnowledge(productId) {
+  if (!productId) return null;
+  return prisma.whatsAppProductKnowledge.findUnique({
+    where: { productId }
+  });
+}
+
+function findKnowledgeAnswer(text, items) {
+  const normalizedText = normalizeKeyword(text);
+  if (!normalizedText || items.length === 0) return null;
+
+  for (const item of items) {
+    const normalizedKeywords = (item.keywords || []).map(normalizeKeyword).filter(Boolean);
+    if (normalizedKeywords.length > 0) {
+      const keywordMatch = normalizedKeywords.some(
+        (keyword) => normalizedText.includes(keyword) || keyword.includes(normalizedText)
+      );
+      if (keywordMatch) return item.answer;
+    }
+  }
+
+  return null;
+}
+
+function isLikelyMissingInfoQuestion(text) {
+  const normalizedText = normalizeKeyword(text);
+  if (!normalizedText) return false;
+  const infoSignals = [
+    '?',
+    'ingredient',
+    'composition',
+    'effet secondaire',
+    'danger',
+    'risque',
+    'certifie',
+    'authentique',
+    'garantie',
+    'comment utiliser',
+    'utilisation',
+    'combien de temps',
+    'resultat'
+  ];
+  return infoSignals.some((signal) => normalizedText.includes(signal));
 }
 
 function extractLikelyProductQueries(text) {
@@ -369,7 +442,7 @@ export async function sendWhatsAppText(to, text) {
   );
 }
 
-async function generateAIReply({ userMessage, product, state }) {
+async function generateAIReply({ userMessage, product, state, knowledge }) {
   if (!WHATSAPP_AI_ENABLED || !AI_API_KEY) return null;
 
   const productContext = product
@@ -380,6 +453,16 @@ async function generateAIReply({ userMessage, product, state }) {
 - stockActuel: ${product.stockActuel}
 - description: ${product.description || 'N/A'}`
     : 'Produit cible: non determine';
+
+  const knowledgeContext = knowledge
+    ? `Connaissance produit:
+- keyBenefits: ${knowledge.keyBenefits || 'N/A'}
+- usageTips: ${knowledge.usageTips || 'N/A'}
+- objectionHandling: ${JSON.stringify(knowledge.objectionHandling || [])}
+- faq: ${JSON.stringify(knowledge.faq || [])}
+- closingScript: ${knowledge.closingScript || 'N/A'}
+- missingInfoEscalation: ${knowledge.missingInfoEscalation || 'N/A'}`
+    : 'Connaissance produit: non renseignee';
 
   const systemPrompt = `Tu es l'assistant WhatsApp de GS Pipeline.
 Objectif:
@@ -394,6 +477,7 @@ Objectif:
 
 Etat conversation: ${JSON.stringify(state || {})}
 ${productContext}
+${knowledgeContext}
 
 Reponds en maximum 5 lignes.`;
 
@@ -557,22 +641,60 @@ function extractWhatsAppMessages(payload) {
   return messages;
 }
 
-async function buildRuleBasedReply({ text, product, state }) {
+async function buildRuleBasedReply({ text, product, state, knowledge }) {
+  const objectionItems = parseKnowledgeItems(knowledge?.objectionHandling);
+  const faqItems = parseKnowledgeItems(knowledge?.faq);
+  const objectionAnswer = findKnowledgeAnswer(text, objectionItems);
+  const faqAnswer = findKnowledgeAnswer(text, faqItems);
+
   if (state.awaitingField === 'city') {
-    return 'Merci. Peux-tu me donner ta commune/quartier (optionnel) puis ton adresse exacte ?';
+    return {
+      reply: 'Merci. Peux-tu me donner ta commune/quartier (optionnel) puis ton adresse exacte ?',
+      escaladeManqueInfo: false
+    };
   }
 
   if (state.awaitingField === 'address') {
-    return 'Parfait. Ecris "je confirme" pour valider la commande, ou "modifier" pour corriger une info.';
+    return {
+      reply: 'Parfait. Ecris "je confirme" pour valider la commande, ou "modifier" pour corriger une info.',
+      escaladeManqueInfo: false
+    };
+  }
+
+  if (objectionAnswer) {
+    const closeLine = knowledge?.closingScript
+      || "Si tu veux, je peux preparer ta commande maintenant. Reponds simplement: je confirme.";
+    return {
+      reply: `${objectionAnswer}\n${closeLine}`,
+      escaladeManqueInfo: false
+    };
+  }
+
+  if (faqAnswer) {
+    return {
+      reply: faqAnswer,
+      escaladeManqueInfo: false
+    };
   }
 
   if (product) {
-    return `Le produit ${product.nom} est disponible. Prix de base: ${product.prixUnitaire} FCFA. Si tu veux commander, envoie: "Je commande ${product.code} quantite 1 ville Abidjan".`;
+    const benefits = knowledge?.keyBenefits ? `\nAtouts: ${knowledge.keyBenefits}` : '';
+    const usage = knowledge?.usageTips ? `\nUtilisation: ${knowledge.usageTips}` : '';
+    const closeLine =
+      knowledge?.closingScript ||
+      `Si tu veux commander, envoie: "Je commande ${product.code} quantite 1 ville Abidjan".`;
+    return {
+      reply: `Le produit ${product.nom} est disponible. Prix de base: ${product.prixUnitaire} FCFA.${benefits}${usage}\n${closeLine}`,
+      escaladeManqueInfo: isLikelyMissingInfoQuestion(text) && !knowledge?.keyBenefits && !knowledge?.usageTips
+    };
   }
 
   const products = await listTopProducts(6);
   const lines = products.map((p) => `- ${p.code}: ${p.nom} (${p.prixUnitaire} FCFA)`);
-  return `Je peux t'aider tout de suite.\nVoici quelques produits:\n${lines.join('\n')}\nDis-moi le code ou le nom du produit qui t'interesse.`;
+  return {
+    reply: `Je peux t'aider tout de suite.\nVoici quelques produits:\n${lines.join('\n')}\nDis-moi le code ou le nom du produit qui t'interesse.`,
+    escaladeManqueInfo: false
+  };
 }
 
 export async function processIncomingWhatsAppPayload(payload) {
@@ -638,6 +760,7 @@ export async function processIncomingWhatsAppPayload(payload) {
     }
 
     let product = null;
+    let knowledge = null;
 
     if (state.productId) {
       product = await prisma.product.findUnique({ where: { id: state.productId } });
@@ -650,6 +773,28 @@ export async function processIncomingWhatsAppPayload(payload) {
         state.productName = product.nom;
       }
     }
+
+    if (product?.id) {
+      knowledge = await getProductKnowledge(product.id);
+    }
+
+    const objectionAnswerPreview = findKnowledgeAnswer(
+      item.text,
+      parseKnowledgeItems(knowledge?.objectionHandling)
+    );
+    const faqAnswerPreview = findKnowledgeAnswer(
+      item.text,
+      parseKnowledgeItems(knowledge?.faq)
+    );
+    const hasDescriptionInfo = Boolean(String(product?.description || '').trim());
+    const infoQuestionWithoutKnowledge =
+      Boolean(product) &&
+      isLikelyMissingInfoQuestion(item.text) &&
+      !objectionAnswerPreview &&
+      !faqAnswerPreview &&
+      !knowledge?.keyBenefits &&
+      !knowledge?.usageTips &&
+      !hasDescriptionInfo;
 
     const quantity = parseQuantityFromText(item.text);
     if (quantity) state.quantity = quantity;
@@ -702,22 +847,27 @@ export async function processIncomingWhatsAppPayload(payload) {
     }
 
     let reply = null;
+    let fallbackEscalationFlag = false;
     try {
       reply = await generateAIReply({
         userMessage: item.text,
         product,
-        state
+        state,
+        knowledge
       });
     } catch (error) {
       console.warn('WhatsApp AI indisponible, fallback regle:', error.message);
     }
 
     if (!reply) {
-      reply = await buildRuleBasedReply({
+      const fallback = await buildRuleBasedReply({
         text: item.text,
         product,
-        state
+        state,
+        knowledge
       });
+      reply = fallback.reply;
+      fallbackEscalationFlag = fallback.escaladeManqueInfo;
     }
 
     if (state.awaitingField === 'confirm' && state.productId && state.city) {
@@ -725,10 +875,31 @@ export async function processIncomingWhatsAppPayload(payload) {
       reply += `\n\nRecap: ${state.productName} x${q}, ville ${state.city}. Reponds "je confirme" pour valider.`;
     }
 
+    if (fallbackEscalationFlag || infoQuestionWithoutKnowledge) {
+      state.missingInfoAttempts = Number(state.missingInfoAttempts || 0) + 1;
+    } else {
+      state.missingInfoAttempts = 0;
+    }
+
+    const shouldEscalateForMissingInfo =
+      state.missingInfoAttempts >= Math.max(1, WHATSAPP_MAX_MISSING_INFO_ATTEMPTS);
+    if (shouldEscalateForMissingInfo) {
+      const escalationMessage =
+        knowledge?.missingInfoEscalation ||
+        "Je prefere te transferer a un conseiller humain pour te donner une information precise et fiable.";
+      reply += `\n\n${escalationMessage}`;
+      await prisma.whatsAppConversation.update({
+        where: { id: conversation.id },
+        data: { handedToHuman: true }
+      });
+      state.missingInfoAttempts = 0;
+    }
+
     await sendWhatsAppText(item.from, reply);
     await saveMessage(conversation.id, 'BOT', reply, {
       intent: detectedIntent,
-      productId: state.productId || null
+      productId: state.productId || null,
+      knowledgeId: knowledge?.id || null
     });
 
     await prisma.whatsAppConversation.update({

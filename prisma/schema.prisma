@@ -283,6 +283,7 @@ model Product {
   // Relations
   stockMovements StockMovement[]
   orders         Order[]          @relation("ProductOrders")
+  whatsappKnowledge WhatsAppProductKnowledge?
 
   @@map("products")
   @@index([code])
@@ -502,6 +503,24 @@ model WhatsAppMessage {
   @@map("whatsapp_messages")
   @@index([conversationId])
   @@index([createdAt])
+}
+
+// Base de connaissance commerciale WhatsApp par produit
+model WhatsAppProductKnowledge {
+  id                    Int      @id @default(autoincrement())
+  productId             Int      @unique
+  product               Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  keyBenefits           String?  @db.Text
+  usageTips             String?  @db.Text
+  objectionHandling     Json?
+  faq                   Json?
+  closingScript         String?  @db.Text
+  missingInfoEscalation String?  @db.Text
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("whatsapp_product_knowledge")
+  @@index([productId])
 }
 
 // 📍 SYSTÈME DE POINTAGE GÉOLOCALISÉ

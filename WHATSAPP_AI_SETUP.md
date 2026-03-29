@@ -36,6 +36,9 @@ AI_TEMPERATURE=0.3
 
 # Optionnel (historique status)
 WHATSAPP_SYSTEM_USER_ID=1
+
+# V2 commerciale - escalation auto si information manquante
+WHATSAPP_MAX_MISSING_INFO_ATTEMPTS=2
 ```
 
 ### A quoi sert chaque variable 360
@@ -106,6 +109,38 @@ Apres ajout des variables + deploy code:
 - Le bot gere seulement les messages texte pour le moment.
 - Le client peut demander un humain en ecrivant: `agent`, `humain`, `conseiller`.
 - Pour reactiver le bot: `retour bot`.
+- V2 commerciale active:
+  - arguments produit personnalisables,
+  - objections/FAQ par produit,
+  - closing intelligent,
+  - escalade automatique vers humain si info manquante repetee.
+
+## 6.1) Configurer la base connaissance commerciale (nouveau)
+
+Routes admin (token ADMIN/GESTIONNAIRE requis):
+
+- `GET /api/whatsapp/knowledge?search=BEE`
+- `PUT /api/whatsapp/knowledge/:productId`
+- `DELETE /api/whatsapp/knowledge/:productId`
+
+Exemple payload `PUT`:
+
+```json
+{
+  "keyBenefits": "Ameliore l'energie et la concentration, formule premium.",
+  "usageTips": "Prendre 1 dose matin et soir apres repas.",
+  "objectionHandling": [
+    { "keywords": ["cher", "prix"], "answer": "Le prix inclut une formule concentree et un suivi client." },
+    { "keywords": ["peur", "danger"], "answer": "Le produit est utilise selon dosage recommande, avec conseils clairs." }
+  ],
+  "faq": [
+    { "keywords": ["livraison"], "answer": "Livraison rapide selon ta ville." },
+    { "keywords": ["resultat"], "answer": "Les premiers effets varient selon la regularite d'utilisation." }
+  ],
+  "closingScript": "Si tu veux, je valide ta commande maintenant en 1 minute.",
+  "missingInfoEscalation": "Je te passe un conseiller pour une reponse precise sur ce point."
+}
+```
 
 ## 7) Test rapide de bout en bout
 

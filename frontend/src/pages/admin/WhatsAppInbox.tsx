@@ -7,7 +7,9 @@ import {
   UserCheck,
   Send,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Save,
+  Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { whatsappApi } from '@/lib/api';
@@ -22,6 +24,21 @@ interface InboxStats {
     bot: number;
     agent: number;
   };
+}
+
+interface KnowledgeRow {
+  productId: number;
+  productCode: string;
+  productName: string;
+  configured: boolean;
+  knowledge: {
+    keyBenefits?: string;
+    usageTips?: string;
+    objectionHandling?: Array<{ keywords?: string[]; answer: string }>;
+    faq?: Array<{ keywords?: string[]; answer: string }>;
+    closingScript?: string;
+    missingInfoEscalation?: string;
+  } | null;
 }
 
 const INTENT_OPTIONS: Array<{ label: string; value: WhatsAppIntent | 'ALL' }> = [
@@ -61,6 +78,18 @@ export default function WhatsAppInbox() {
   const [search, setSearch] = useState('');
   const [intent, setIntent] = useState<WhatsAppIntent | 'ALL'>('ALL');
   const [handoverFilter, setHandoverFilter] = useState<'all' | 'human' | 'bot'>('all');
+  const [knowledgeRows, setKnowledgeRows] = useState<KnowledgeRow[]>([]);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeRow | null>(null);
+  const [knowledgeSearch, setKnowledgeSearch] = useState('');
+  const [savingKnowledge, setSavingKnowledge] = useState(false);
+  const [knowledgeForm, setKnowledgeForm] = useState({
+    keyBenefits: '',
+    usageTips: '',
+    objectionHandling: '[]',
+    faq: '[]',
+    closingScript: '',
+    missingInfoEscalation: ''
+  });
 
   const filters = useMemo(() => {
     const params: {
@@ -105,6 +134,16 @@ export default function WhatsAppInbox() {
     }
   };
 
+  const loadKnowledge = async () => {
+    const data = await whatsappApi.getKnowledge({
+      search: knowledgeSearch.trim() || undefined
+    });
+    setKnowledgeRows(data.items || []);
+    if (!selectedKnowledge && data.items?.length > 0) {
+      setSelectedKnowledge(data.items[0]);
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -118,6 +157,7 @@ export default function WhatsAppInbox() {
 
   useEffect(() => {
     loadAll();
+    loadKnowledge().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -130,15 +170,36 @@ export default function WhatsAppInbox() {
   }, [filters]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      loadKnowledge().catch(() => undefined);
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [knowledgeSearch]);
+
+  useEffect(() => {
     if (selectedConversation?.id) {
       loadMessages(selectedConversation.id);
     }
   }, [selectedConversation?.id]);
 
+  useEffect(() => {
+    if (!selectedKnowledge) return;
+    setKnowledgeForm({
+      keyBenefits: selectedKnowledge.knowledge?.keyBenefits || '',
+      usageTips: selectedKnowledge.knowledge?.usageTips || '',
+      objectionHandling: JSON.stringify(selectedKnowledge.knowledge?.objectionHandling || [], null, 2),
+      faq: JSON.stringify(selectedKnowledge.knowledge?.faq || [], null, 2),
+      closingScript: selectedKnowledge.knowledge?.closingScript || '',
+      missingInfoEscalation: selectedKnowledge.knowledge?.missingInfoEscalation || ''
+    });
+  }, [selectedKnowledge]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       await Promise.all([loadStats(), loadConversations()]);
+      await loadKnowledge();
       if (selectedConversation?.id) {
         await loadMessages(selectedConversation.id);
       }
@@ -172,6 +233,53 @@ export default function WhatsAppInbox() {
       toast.error(error?.response?.data?.error || 'Erreur envoi message');
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const saveKnowledge = async () => {
+    if (!selectedKnowledge) return;
+    setSavingKnowledge(true);
+    try {
+      let objectionHandling: Array<{ keywords?: string[]; answer: string }> = [];
+      let faq: Array<{ keywords?: string[]; answer: string }> = [];
+      try {
+        objectionHandling = JSON.parse(knowledgeForm.objectionHandling || '[]');
+        faq = JSON.parse(knowledgeForm.faq || '[]');
+      } catch {
+        toast.error('Le JSON objections/FAQ est invalide');
+        return;
+      }
+
+      await whatsappApi.upsertKnowledge(selectedKnowledge.productId, {
+        keyBenefits: knowledgeForm.keyBenefits.trim(),
+        usageTips: knowledgeForm.usageTips.trim(),
+        objectionHandling,
+        faq,
+        closingScript: knowledgeForm.closingScript.trim(),
+        missingInfoEscalation: knowledgeForm.missingInfoEscalation.trim()
+      });
+
+      toast.success('Connaissance produit enregistree');
+      await loadKnowledge();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erreur sauvegarde connaissance');
+    } finally {
+      setSavingKnowledge(false);
+    }
+  };
+
+  const deleteKnowledge = async () => {
+    if (!selectedKnowledge) return;
+    setSavingKnowledge(true);
+    try {
+      await whatsappApi.deleteKnowledge(selectedKnowledge.productId);
+      toast.success('Connaissance supprimee');
+      await loadKnowledge();
+      setSelectedKnowledge(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erreur suppression connaissance');
+    } finally {
+      setSavingKnowledge(false);
     }
   };
 
@@ -223,6 +331,108 @@ export default function WhatsAppInbox() {
           <p className="text-2xl font-bold text-gray-900">
             {stats?.messages7d?.client || 0}/{stats?.messages7d?.bot || 0}/{stats?.messages7d?.agent || 0}
           </p>
+        </div>
+      </div>
+
+      <div className="bg-white border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Knowledge commerciale (V2)</h2>
+            <p className="text-sm text-gray-600">Arguments, objections, FAQ, closing et message d'escalade.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="border rounded-lg p-3">
+            <input
+              className="w-full px-3 py-2 border rounded-lg text-sm mb-3"
+              placeholder="Rechercher produit code/nom..."
+              value={knowledgeSearch}
+              onChange={(e) => setKnowledgeSearch(e.target.value)}
+            />
+            <div className="max-h-[320px] overflow-y-auto space-y-2">
+              {knowledgeRows.map((row) => (
+                <button
+                  key={row.productId}
+                  onClick={() => setSelectedKnowledge(row)}
+                  className={`w-full text-left border rounded-lg p-2 ${
+                    selectedKnowledge?.productId === row.productId ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">{row.productCode}</p>
+                  <p className="text-xs text-gray-600 truncate">{row.productName}</p>
+                  <p className={`text-[11px] mt-1 ${row.configured ? 'text-green-600' : 'text-gray-500'}`}>
+                    {row.configured ? 'Configure' : 'Non configure'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 border rounded-lg p-3 space-y-3">
+            {!selectedKnowledge ? (
+              <p className="text-sm text-gray-500">Selectionne un produit pour configurer la connaissance.</p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  {selectedKnowledge.productCode} - {selectedKnowledge.productName}
+                </p>
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
+                  placeholder="Arguments convaincants / benefices"
+                  value={knowledgeForm.keyBenefits}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, keyBenefits: e.target.value }))}
+                />
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
+                  placeholder="Conseils d'utilisation"
+                  value={knowledgeForm.usageTips}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, usageTips: e.target.value }))}
+                />
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[100px] font-mono"
+                  placeholder='Objections JSON: [{"keywords":["cher","prix"],"answer":"..."}]'
+                  value={knowledgeForm.objectionHandling}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, objectionHandling: e.target.value }))}
+                />
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[100px] font-mono"
+                  placeholder='FAQ JSON: [{"keywords":["livraison"],"answer":"..."}]'
+                  value={knowledgeForm.faq}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, faq: e.target.value }))}
+                />
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
+                  placeholder="Script de closing intelligent"
+                  value={knowledgeForm.closingScript}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, closingScript: e.target.value }))}
+                />
+                <textarea
+                  className="w-full border rounded-lg p-2 text-sm min-h-[70px]"
+                  placeholder="Message d'escalade si info manquante"
+                  value={knowledgeForm.missingInfoEscalation}
+                  onChange={(e) => setKnowledgeForm((prev) => ({ ...prev, missingInfoEscalation: e.target.value }))}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveKnowledge}
+                    disabled={savingKnowledge}
+                    className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm flex items-center gap-2 disabled:opacity-60"
+                  >
+                    {savingKnowledge ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Enregistrer
+                  </button>
+                  <button
+                    onClick={deleteKnowledge}
+                    disabled={savingKnowledge}
+                    className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm flex items-center gap-2 disabled:opacity-60"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

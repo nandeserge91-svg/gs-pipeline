@@ -8,6 +8,22 @@ const WHATSAPP_PROVIDER = (process.env.WHATSAPP_PROVIDER || '360MESSENGER').toUp
 const WHATSAPP_WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET || '';
 const WHATSAPP_WEBHOOK_ENFORCE_SECRET = process.env.WHATSAPP_WEBHOOK_ENFORCE_SECRET === 'true';
 
+function parseKnowledgeField(rawValue) {
+  if (rawValue == null) return null;
+  if (Array.isArray(rawValue)) return rawValue;
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+}
+
 // Verification webhook (Meta only). Pour 360Messenger, retourne simplement OK.
 router.get('/webhook', (req, res) => {
   if (WHATSAPP_PROVIDER !== 'META') {
@@ -286,6 +302,126 @@ router.post('/conversations/:id/reply', async (req, res) => {
   } catch (error) {
     console.error('Erreur reponse manuelle WhatsApp:', error);
     return res.status(500).json({ error: 'Erreur lors de l envoi de la reponse.' });
+  }
+});
+
+// GET /api/whatsapp/knowledge - Base connaissance WhatsApp
+router.get('/knowledge', async (req, res) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const onlyConfigured = String(req.query.onlyConfigured || 'false') === 'true';
+
+    const products = await prisma.product.findMany({
+      where: {
+        actif: true,
+        ...(search
+          ? {
+              OR: [
+                { code: { contains: search, mode: 'insensitive' } },
+                { nom: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          : {})
+      },
+      select: {
+        id: true,
+        code: true,
+        nom: true,
+        actif: true,
+        whatsappKnowledge: true
+      },
+      orderBy: { nom: 'asc' },
+      take: 200
+    });
+
+    const rows = products
+      .map((product) => ({
+        productId: product.id,
+        productCode: product.code,
+        productName: product.nom,
+        configured: Boolean(product.whatsappKnowledge),
+        knowledge: product.whatsappKnowledge
+      }))
+      .filter((row) => (onlyConfigured ? row.configured : true));
+
+    return res.json({
+      items: rows,
+      total: rows.length
+    });
+  } catch (error) {
+    console.error('Erreur knowledge WhatsApp:', error);
+    return res.status(500).json({ error: 'Erreur lors du chargement de la base connaissance.' });
+  }
+});
+
+// PUT /api/whatsapp/knowledge/:productId - Creer/mettre a jour connaissance produit
+router.put('/knowledge/:productId', async (req, res) => {
+  try {
+    const productId = Number(req.params.productId);
+    if (Number.isNaN(productId)) {
+      return res.status(400).json({ error: 'productId invalide.' });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, code: true, nom: true, actif: true }
+    });
+    if (!product) {
+      return res.status(404).json({ error: 'Produit introuvable.' });
+    }
+
+    const payload = {
+      keyBenefits: String(req.body.keyBenefits || '').trim() || null,
+      usageTips: String(req.body.usageTips || '').trim() || null,
+      objectionHandling: parseKnowledgeField(req.body.objectionHandling),
+      faq: parseKnowledgeField(req.body.faq),
+      closingScript: String(req.body.closingScript || '').trim() || null,
+      missingInfoEscalation: String(req.body.missingInfoEscalation || '').trim() || null
+    };
+
+    const knowledge = await prisma.whatsAppProductKnowledge.upsert({
+      where: { productId },
+      create: {
+        productId,
+        ...payload
+      },
+      update: payload
+    });
+
+    return res.json({
+      success: true,
+      product,
+      knowledge
+    });
+  } catch (error) {
+    console.error('Erreur update knowledge WhatsApp:', error);
+    return res.status(500).json({ error: 'Erreur lors de la mise a jour de la connaissance produit.' });
+  }
+});
+
+// DELETE /api/whatsapp/knowledge/:productId - Supprimer connaissance produit
+router.delete('/knowledge/:productId', async (req, res) => {
+  try {
+    const productId = Number(req.params.productId);
+    if (Number.isNaN(productId)) {
+      return res.status(400).json({ error: 'productId invalide.' });
+    }
+
+    const existing = await prisma.whatsAppProductKnowledge.findUnique({
+      where: { productId }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Aucune connaissance configuree pour ce produit.' });
+    }
+
+    await prisma.whatsAppProductKnowledge.delete({
+      where: { productId }
+    });
+
+    return res.json({ success: true, message: 'Connaissance produit supprimee.' });
+  } catch (error) {
+    console.error('Erreur delete knowledge WhatsApp:', error);
+    return res.status(500).json({ error: 'Erreur lors de la suppression de la connaissance produit.' });
   }
 });
 

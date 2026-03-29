@@ -6,7 +6,8 @@ import type {
   Order,
   DeliveryList,
   WhatsAppConversation,
-  WhatsAppMessage
+  WhatsAppMessage,
+  WhatsAppProductKnowledge
 } from '@/types';
 
 const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -402,6 +403,37 @@ export const whatsappApi = {
   },
   sendManualReply: async (conversationId: number, message: string) => {
     const { data } = await api.post(`/whatsapp/conversations/${conversationId}/reply`, { message });
+    return data;
+  },
+  getKnowledge: async (params?: { search?: string; onlyConfigured?: 'true' | 'false' }): Promise<{
+    items: Array<{
+      productId: number;
+      productCode: string;
+      productName: string;
+      configured: boolean;
+      knowledge: WhatsAppProductKnowledge | null;
+    }>;
+    total: number;
+  }> => {
+    const { data } = await api.get('/whatsapp/knowledge', { params });
+    return data;
+  },
+  upsertKnowledge: async (
+    productId: number,
+    payload: {
+      keyBenefits?: string;
+      usageTips?: string;
+      objectionHandling?: Array<{ keywords?: string[]; answer: string }>;
+      faq?: Array<{ keywords?: string[]; answer: string }>;
+      closingScript?: string;
+      missingInfoEscalation?: string;
+    }
+  ) => {
+    const { data } = await api.put(`/whatsapp/knowledge/${productId}`, payload);
+    return data;
+  },
+  deleteKnowledge: async (productId: number) => {
+    const { data } = await api.delete(`/whatsapp/knowledge/${productId}`);
     return data;
   }
 };
