@@ -387,6 +387,8 @@ function normalizeToChatId(value) {
   const source = String(value || '').trim();
   if (!source) return '';
   if (source.includes('@')) return source;
+  // Certains providers renvoient un chatId opaque (non numerique): on le conserve tel quel.
+  if (/[a-z]/i.test(source)) return source;
   const digits = source.replace(/[^\d]/g, '');
   if (!digits) return '';
   return `${digits}@c.us`;
@@ -436,21 +438,26 @@ export async function sendWhatsAppText(to, text, options = {}) {
 
   if (shouldUseReplyEndpoint) {
     headers['Content-Type'] = 'application/json';
-    await axios.post(
-      WHATSAPP_360_REPLY_URL,
-      {
-        chatId: incomingChatId,
-        messageId: incomingMessageId,
-        destinationChatId: incomingChatId,
-        content: text
-      },
-      {
-        headers,
-        params,
-        timeout: 15000
-      }
-    );
-    return;
+    try {
+      await axios.post(
+        WHATSAPP_360_REPLY_URL,
+        {
+          chatId: incomingChatId,
+          messageId: incomingMessageId,
+          destinationChatId: incomingChatId,
+          content: text
+        },
+        {
+          headers,
+          params,
+          timeout: 15000
+        }
+      );
+      return;
+    } catch (error) {
+      // Fallback sur sendMessage classique si le endpoint reply rejette le payload.
+      console.warn('360 reply endpoint echec, fallback sendMessage:', error.message);
+    }
   }
 
   let extraPayload = {};
