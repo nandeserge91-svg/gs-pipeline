@@ -640,7 +640,8 @@ async function callGeminiNativeAPI(systemPrompt, userPrompt) {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: {
         temperature: AI_TEMPERATURE,
-        maxOutputTokens: 300
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 0 }
       }
     },
     {
@@ -1088,8 +1089,12 @@ export async function processIncomingWhatsAppPayload(payload) {
         }
       }
     } else if (state.awaitingField === 'name' && !state.customerName && item.text.length <= 80) {
-      state.customerName = item.text.trim();
-      state.awaitingField = 'confirm';
+      const nameCandidate = item.text.trim();
+      const notAName = /^(bonjour|bonsoir|salut|hello|oui|non|merci|ok|comment|pourquoi|combien|quel|quelle|aide|je veux|c.est|est.ce|utilisation|produit|prix|livraison|il |elle |ca |vous )/i;
+      if (!notAName.test(nameCandidate) && !isQuestionLike(nameCandidate) && nameCandidate.length >= 2) {
+        state.customerName = nameCandidate;
+        state.awaitingField = 'confirm';
+      }
     }
 
     const shouldConfirmOrder = isOrderConfirmation(item.text) && state.productId && state.city && state.customerName;
