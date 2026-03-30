@@ -52,7 +52,7 @@ const GLOBAL_FAQ = [
 ];
 
 function isOrderConfirmation(text) {
-  const t = (text || '').toLowerCase();
+  const t = (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   return [
     'je confirme',
     'confirmer',
@@ -61,7 +61,40 @@ function isOrderConfirmation(text) {
     'je valide',
     'commander',
     'je commande',
-    'acheter'
+    'acheter',
+    'oui je veux',
+    'oui je confirme',
+    'oui',
+    'ok',
+    'okay',
+    'd accord',
+    'daccord',
+    "d'accord",
+    'je veux',
+    'je prends',
+    'je suis interesse',
+    'allez-y',
+    'allez y',
+    'allons-y',
+    'go',
+    'c est bon',
+    'vous pouvez livrer',
+    'vous pouvez livrez',
+    'pouvez livrer',
+    'envoyez',
+    'envoyer',
+    'livrez',
+    'livrer',
+    'on y va',
+    'parfait',
+    'ca marche',
+    'super',
+    'genial',
+    'bien sur',
+    'avec plaisir',
+    'je le prends',
+    'je la prends',
+    'je les prends'
   ].some((k) => t.includes(k));
 }
 
