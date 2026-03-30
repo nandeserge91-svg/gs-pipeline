@@ -26,8 +26,9 @@ const WHATSAPP_360_USE_REPLY_ENDPOINT = process.env.WHATSAPP_360_USE_REPLY_ENDPO
 
 const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
-const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
-const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
+const AI_MODEL = process.env.AI_MODEL || (AI_PROVIDER === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.3);
 const WHATSAPP_AI_TIMEOUT_MS = Math.max(2000, Number(process.env.WHATSAPP_AI_TIMEOUT_MS || 9000));
@@ -562,6 +563,36 @@ ${userMessage}
 
 Reponds en 2-3 lignes maximum. Sois naturel et vendeur.`;
 
+  if (AI_PROVIDER === 'gemini') {
+    return callGeminiNativeAPI(systemPrompt, userPrompt);
+  }
+  return callOpenAICompatibleAPI(systemPrompt, userPrompt);
+}
+
+async function callGeminiNativeAPI(systemPrompt, userPrompt) {
+  const model = AI_MODEL || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${AI_API_KEY}`;
+
+  const response = await axios.post(
+    url,
+    {
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        temperature: AI_TEMPERATURE,
+        maxOutputTokens: 300
+      }
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: WHATSAPP_AI_TIMEOUT_MS
+    }
+  );
+
+  return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+}
+
+async function callOpenAICompatibleAPI(systemPrompt, userPrompt) {
   const response = await axios.post(
     `${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`,
     {
