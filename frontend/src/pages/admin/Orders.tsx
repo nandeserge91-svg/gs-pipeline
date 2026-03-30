@@ -387,7 +387,9 @@ export default function Orders() {
                     <tr 
                       key={order.id} 
                       className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        order.enAttentePaiement 
+                        order.sourcePage === 'WhatsApp'
+                          ? 'bg-pink-50 border-l-4 border-l-pink-500'
+                          : order.enAttentePaiement 
                           ? 'bg-yellow-50 border-l-4 border-l-yellow-500' 
                           : order.renvoyeAAppelerAt 
                           ? 'bg-green-50 border-l-4 border-l-green-500' 
@@ -396,6 +398,11 @@ export default function Orders() {
                     >
                       <td className="py-3 px-4 text-sm font-medium">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {order.sourcePage === 'WhatsApp' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800" title="Commande WhatsApp">
+                              💬 WhatsApp
+                            </span>
+                          )}
                           {order.enAttentePaiement && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800" title="En attente de paiement">
                               ⏳ Attente paiement

@@ -506,6 +506,8 @@ export default function Orders() {
               className={`card p-3 sm:p-4 hover:shadow-xl transition-all duration-300 ${
                 selectedOrderIds.includes(order.id) 
                   ? 'ring-2 ring-primary-500 bg-primary-50/50 scale-[0.98]' 
+                  : order.sourcePage === 'WhatsApp'
+                  ? 'border-l-4 border-pink-500 bg-pink-50/40'
                   : order.enAttentePaiement
                   ? 'border-l-4 border-yellow-500 bg-yellow-50/30'
                   : (order as any).renvoyeAAppelerAt 
@@ -545,6 +547,11 @@ export default function Orders() {
                     <span className={`badge text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
+                    {order.sourcePage === 'WhatsApp' && (
+                      <span className="badge bg-pink-100 text-pink-700 border border-pink-300 text-[10px] sm:text-xs flex items-center gap-0.5 px-1.5 py-0.5">
+                        💬 <span className="hidden sm:inline">WhatsApp</span>
+                      </span>
+                    )}
                     {(order as any).renvoyeAAppelerAt && (
                       <span className="badge bg-success-100 text-success-700 border border-success-300 text-[10px] sm:text-xs flex items-center gap-0.5 px-1.5 py-0.5">
                         📌 <span className="hidden sm:inline">Prior.</span>
