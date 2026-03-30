@@ -806,6 +806,86 @@ async function createValidatedOrderFromConversation(conversation, state) {
   return order;
 }
 
+function extractMediaUrl(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const candidates = [
+    obj.audio?.url,
+    obj.audio?.link,
+    typeof obj.audio === 'string' ? obj.audio : null,
+    obj.voice?.url,
+    obj.voice?.link,
+    typeof obj.voice === 'string' ? obj.voice : null,
+    obj.ptt?.url,
+    obj.ptt?.link,
+    obj.media?.url,
+    obj.media?.link,
+    obj.media_url,
+    obj.file_url,
+    obj.file?.url,
+    obj.url,
+    obj.link,
+    obj.download_url,
+    obj.downloadUrl
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && (c.startsWith('http://') || c.startsWith('https://'))) return c;
+  }
+  return null;
+}
+
+async function transcribeAudio(audioUrl) {
+  if (!AI_API_KEY) return null;
+
+  const audioResponse = await axios.get(audioUrl, {
+    responseType: 'arraybuffer',
+    timeout: 20000,
+    headers: build360AuthHeadersAndParams().headers
+  });
+  const audioBuffer = Buffer.from(audioResponse.data);
+
+  if (AI_PROVIDER === 'gemini') {
+    const base64Audio = audioBuffer.toString('base64');
+    const model = AI_MODEL || 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${AI_API_KEY}`;
+
+    const result = await axios.post(
+      url,
+      {
+        contents: [{
+          parts: [
+            { text: 'Transcris ce message vocal en francais. Donne UNIQUEMENT le texte transcrit, sans commentaire.' },
+            { inlineData: { mimeType: 'audio/ogg', data: base64Audio } }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+      },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 20000 }
+    );
+
+    return result.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  }
+
+  const FormData = (await import('form-data')).default || (await import('form-data'));
+  const form = new FormData();
+  form.append('file', audioBuffer, { filename: 'voice.ogg', contentType: 'audio/ogg' });
+  form.append('model', 'whisper-1');
+  form.append('language', 'fr');
+
+  const result = await axios.post(
+    `${AI_BASE_URL.replace(/\/$/, '')}/audio/transcriptions`,
+    form,
+    {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Bearer ${AI_API_KEY}`
+      },
+      timeout: 20000
+    }
+  );
+
+  return result.data?.text?.trim() || null;
+}
+
 function extractWhatsAppMessages(payload) {
   // 1) Format Meta officiel
   const messages = [];
@@ -826,7 +906,8 @@ function extractWhatsAppMessages(payload) {
           type: msg.type,
           text: msg?.text?.body || '',
           messageId: msg.id,
-          chatId: msg?.from ? `${String(msg.from).replace(/[^\d]/g, '')}@c.us` : null
+          chatId: msg?.from ? `${String(msg.from).replace(/[^\d]/g, '')}@c.us` : null,
+          mediaUrl: extractMediaUrl(msg)
         });
       }
     }
@@ -888,14 +969,15 @@ function extractWhatsAppMessages(payload) {
     const messageId = raw?.id || raw?.ID || raw?.message_id || raw?.msgId || raw?.Hash || null;
     const chatId = raw?.chatId || raw?.chat_id || raw?.jid || raw?.WhatsappId || payload?.chatId || payload?.WhatsappId || null;
 
-    if (from && text) {
+    if (from && (text || ['audio', 'ptt', 'voice'].includes(type))) {
       messages.push({
         from,
         name: name ? String(name) : null,
         type: String(type),
-        text: String(text),
+        text: String(text || ''),
         messageId: messageId ? String(messageId) : null,
-        chatId: chatId ? String(chatId) : normalizeToChatId(from)
+        chatId: chatId ? String(chatId) : normalizeToChatId(from),
+        mediaUrl: extractMediaUrl(raw) || extractMediaUrl(payload)
       });
     }
   }
@@ -1023,15 +1105,37 @@ export async function processIncomingWhatsAppPayload(payload) {
 
   for (const item of incoming) {
     if (item.type !== 'text') {
-      await sendWhatsAppText(
-        item.from,
-        'Je traite uniquement les messages texte pour le moment. Ecris ton message et je te reponds.',
-        {
-          incomingMessageId: item.messageId,
-          incomingChatId: item.chatId || item.from
+      if (['audio', 'ptt', 'voice'].includes(item.type)) {
+        if (item.mediaUrl && AI_API_KEY) {
+          try {
+            console.log(`[BOT ${item.from}] Transcription audio en cours...`);
+            const transcription = await transcribeAudio(item.mediaUrl);
+            if (transcription) {
+              console.log(`[BOT ${item.from}] Transcrit: ${transcription.substring(0, 80)}`);
+              item.text = transcription;
+              item.type = 'text';
+            }
+          } catch (error) {
+            console.error(`[BOT ${item.from}] Transcription echec:`, error.message);
+          }
         }
-      );
-      continue;
+
+        if (item.type !== 'text') {
+          await sendWhatsAppText(
+            item.from,
+            "J'ai bien recu ton message vocal mais je n'ai pas pu le transcrire. Peux-tu m'envoyer ton message en texte s'il te plait ?",
+            { incomingMessageId: item.messageId, incomingChatId: item.chatId || item.from }
+          );
+          continue;
+        }
+      } else {
+        await sendWhatsAppText(
+          item.from,
+          'Je traite uniquement les messages texte et vocaux pour le moment. Ecris ou envoie un vocal et je te reponds.',
+          { incomingMessageId: item.messageId, incomingChatId: item.chatId || item.from }
+        );
+        continue;
+      }
     }
 
     const detectedIntent = detectIntent(item.text);
