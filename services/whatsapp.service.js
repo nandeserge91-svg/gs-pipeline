@@ -649,6 +649,7 @@ REGLES ABSOLUES:
 #3: Maximum 3 lignes par message. Une seule question a la fois.
 #4: Francais simple, ton humain, poli et vendeur.
 #5: Ne jamais inventer d'information. Ne jamais demander de paiement dans le chat.
+#6: TOUJOURS terminer ton message par une question de relance pour faire avancer la conversation (ex: "Ca t'interesse ?", "Tu veux commander ?", "Quelle est ta ville ?").
 
 POLITIQUE BOUTIQUE (a respecter strictement):
 - Nous sommes une BOUTIQUE EN LIGNE. Pas de magasin physique.
@@ -935,6 +936,25 @@ function extractWhatsAppMessages(payload) {
   return messages;
 }
 
+function getFollowUpQuestion(state, product) {
+  if (state.awaitingField === 'confirm' && state.city && state.customerName) {
+    return 'Reponds "je confirme" pour valider ta commande.';
+  }
+  if (state.awaitingField === 'name' && state.city) {
+    return 'Quel est ton nom complet pour finaliser la commande ?';
+  }
+  if (state.awaitingField === 'city' && state.productId) {
+    return 'Dans quelle ville ou commune souhaites-tu la livraison ?';
+  }
+  if (product && state.productIntroduced) {
+    return 'Souhaites-tu commander ou tu as une autre question ?';
+  }
+  if (product) {
+    return 'Ca t\'interesse ? Je peux t\'en dire plus ou enregistrer ta commande.';
+  }
+  return 'Quel produit t\'interesse ?';
+}
+
 async function buildRuleBasedReply({ text, product, state, knowledge }) {
   const clientAsking = isQuestionLike(text);
   const objectionItems = parseKnowledgeItems(knowledge?.objectionHandling);
@@ -942,9 +962,11 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
   const objectionAnswer = findKnowledgeAnswer(text, objectionItems);
   const faqAnswer = findKnowledgeAnswer(text, faqItems);
 
+  const followUpQuestion = getFollowUpQuestion(state, product);
+
   const globalAnswer = findKnowledgeAnswer(text, GLOBAL_FAQ);
   if (globalAnswer) {
-    return { reply: globalAnswer, escaladeManqueInfo: false };
+    return { reply: `${globalAnswer}\n\n${followUpQuestion}`, escaladeManqueInfo: false };
   }
 
   if (objectionAnswer) {
@@ -954,7 +976,7 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
   }
 
   if (faqAnswer) {
-    return { reply: faqAnswer, escaladeManqueInfo: false };
+    return { reply: `${faqAnswer}\n\n${followUpQuestion}`, escaladeManqueInfo: false };
   }
 
   if (!clientAsking && state.productIntroduced) {
@@ -1290,8 +1312,12 @@ export async function processIncomingWhatsAppPayload(payload) {
 
     if (!reply) {
       reply = product
-        ? `${product.nom} - ${Math.round(product.prixUnitaire)} FCFA. Comment puis-je t'aider ?`
+        ? `${product.nom} - ${Math.round(product.prixUnitaire)} FCFA. ${getFollowUpQuestion(state, product)}`
         : "Bonjour ! Quel produit t'interesse ?";
+    }
+
+    if (reply && product && !reply.includes('?') && state.productIntroduced) {
+      reply += `\n\n${getFollowUpQuestion(state, product)}`;
     }
 
     if (state.awaitingField === 'confirm' && state.productId && state.city && !reply.includes('je confirme')) {
