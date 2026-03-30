@@ -24,6 +24,18 @@ function parseKnowledgeField(rawValue) {
   return [];
 }
 
+// Diagnostic IA (public, pas de secrets exposés)
+router.get('/ai-status', (req, res) => {
+  res.json({
+    AI_ENABLED: process.env.WHATSAPP_AI_ENABLED,
+    AI_PROVIDER: process.env.AI_PROVIDER || 'non defini',
+    AI_MODEL: process.env.AI_MODEL || 'defaut',
+    HAS_AI_API_KEY: Boolean(process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY),
+    KEY_PREFIX: (process.env.AI_API_KEY || '').substring(0, 8) + '...',
+    AI_BASE_URL: process.env.AI_BASE_URL || 'defaut'
+  });
+});
+
 // Verification webhook (Meta only). Pour 360Messenger, retourne simplement OK.
 router.get('/webhook', (req, res) => {
   if (WHATSAPP_PROVIDER !== 'META') {
