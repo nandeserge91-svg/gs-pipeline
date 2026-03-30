@@ -36,6 +36,21 @@ const WHATSAPP_MAX_MISSING_INFO_ATTEMPTS = Number(process.env.WHATSAPP_MAX_MISSI
 const KNOWLEDGE_CACHE_TTL_MS = Math.max(1000, Number(process.env.WHATSAPP_KNOWLEDGE_CACHE_TTL_MS || 60000));
 const knowledgeCache = new Map();
 
+const GLOBAL_FAQ = [
+  { keywords: ["magasin", "boutique", "local", "situe", "situes", "localise", "localisation", "adresse", "ou etes vous", "quelle ville", "sur place", "venir", "se trouve"],
+    answer: "Nous sommes une boutique en ligne. Nous livrons uniquement sur commande et le paiement se fait a la livraison." },
+  { keywords: ["dimanche", "livrez dimanche", "travaillez dimanche", "disponible dimanche"],
+    answer: "Non, nous ne livrons pas le dimanche. Les livraisons se font du lundi au samedi." },
+  { keywords: ["jours de livraison", "quand livrer", "quel jour", "jours ouvrables"],
+    answer: "Nous livrons du lundi au samedi. Les livraisons ne se font pas le dimanche." },
+  { keywords: ["paiement", "comment payer", "mode de paiement", "payer comment"],
+    answer: "Le paiement se fait a la livraison. Tu paies quand tu recois ton produit." },
+  { keywords: ["retour", "rembourser", "remboursement", "pas satisfait", "echanger"],
+    answer: "Si le produit ne te convient pas, contacte-nous dans les 48h apres reception." },
+  { keywords: ["original", "authentique", "vrai", "contrefacon", "faux", "certifie"],
+    answer: "Tous nos produits sont 100% originaux et authentiques." }
+];
+
 function isOrderConfirmation(text) {
   const t = (text || '').toLowerCase();
   return [
@@ -537,22 +552,34 @@ async function generateAIReply({ userMessage, product, state, knowledge }) {
   if (state.awaitingField) stateDescription.push(`En attente de: ${state.awaitingField}`);
   const stateText = stateDescription.length > 0 ? stateDescription.join(', ') : 'debut conversation';
 
-  const systemPrompt = `Tu es un conseiller commercial WhatsApp chaleureux et professionnel.
+  const systemPrompt = `Tu es un agent commercial et service client WhatsApp professionnel, poli, clair et rassurant.
 
-REGLE #1: Reponds TOUJOURS a la question exacte du client AVANT de parler de commande.
-REGLE #2: Ne repete JAMAIS une info deja partagee dans la conversation.
-REGLE #3: Maximum 3 lignes par message. Une seule question a la fois.
-REGLE #4: Phrases courtes en francais simple, ton humain, poli et vendeur.
+REGLES ABSOLUES:
+#1: Reponds TOUJOURS a la question exacte du client AVANT de parler de commande.
+#2: Ne repete JAMAIS une info deja partagee dans la conversation.
+#3: Maximum 3 lignes par message. Une seule question a la fois.
+#4: Francais simple, ton humain, poli et vendeur.
+#5: Ne jamais inventer d'information. Ne jamais demander de paiement dans le chat.
 
-Etapes de vente (dans l'ordre naturel):
+POLITIQUE BOUTIQUE (a respecter strictement):
+- Nous sommes une BOUTIQUE EN LIGNE. Pas de magasin physique.
+- Livraison uniquement sur commande. Paiement a la livraison.
+- Livraison gratuite a Abidjan, sous 24-48h.
+- Livraison hors Abidjan possible (frais selon ville).
+- Jours de livraison: lundi au samedi. PAS de livraison le dimanche.
+- Produits 100% originaux et authentiques.
+
+Si le client demande l'adresse/magasin/localisation: repondre que c'est une boutique en ligne avec livraison sur commande et paiement a la livraison.
+Si le client demande pour le dimanche: repondre non, livraison du lundi au samedi.
+
+ETAPES DE VENTE (dans l'ordre naturel):
 1. Saluer et identifier le besoin
 2. Presenter brievement: produit, prix, livraison
 3. Demander ville/commune de livraison
 4. Demander nom complet
 5. Resumer et demander "je confirme"
 
-Si le client pose une question (utilisation, benefices, effets, composition...), reponds clairement PUIS relance doucement vers la commande.
-Ne jamais inventer d'information. Ne jamais demander de paiement.`;
+Si le client pose une question (utilisation, benefices, localisation, jours...), reponds clairement PUIS relance doucement vers la commande.`;
 
   const userPrompt = `${productContext}
 ${knowledgeContext}
@@ -823,6 +850,11 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
   const faqItems = parseKnowledgeItems(knowledge?.faq);
   const objectionAnswer = findKnowledgeAnswer(text, objectionItems);
   const faqAnswer = findKnowledgeAnswer(text, faqItems);
+
+  const globalAnswer = findKnowledgeAnswer(text, GLOBAL_FAQ);
+  if (globalAnswer) {
+    return { reply: globalAnswer, escaladeManqueInfo: false };
+  }
 
   if (objectionAnswer) {
     const closeLine = knowledge?.closingScript
