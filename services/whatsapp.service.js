@@ -966,6 +966,10 @@ export async function processIncomingWhatsAppPayload(payload) {
       }
     }
 
+    if (!product && state.lastProductId) {
+      product = await prisma.product.findUnique({ where: { id: state.lastProductId } });
+    }
+
     if (product?.id) {
       knowledge = await getProductKnowledge(product.id);
     }
@@ -1038,7 +1042,7 @@ export async function processIncomingWhatsAppPayload(payload) {
         await prisma.whatsAppConversation.update({
           where: { id: conversation.id },
           data: {
-            state: {},
+            state: { lastProductId: state.productId, lastProductName: state.productName },
             currentIntent: 'ORDER',
             lastMessageAt: new Date()
           }
@@ -1081,10 +1085,11 @@ export async function processIncomingWhatsAppPayload(payload) {
       && ['city', 'name', 'confirm'].includes(state.awaitingField);
     const shouldSkipAI = (hasDirectKnowledgeAnswer || isProvidingOrderData) && reply != null;
 
-    console.log(`[BOT ${item.from}] skipAI=${shouldSkipAI} asking=${clientIsAsking} field=${state.awaitingField} introduced=${!!state.productIntroduced} hasFallback=${!!reply}`);
+    console.log(`[BOT ${item.from}] skipAI=${shouldSkipAI} asking=${clientIsAsking} field=${state.awaitingField} introduced=${!!state.productIntroduced} hasFallback=${!!reply} AI_ENABLED=${WHATSAPP_AI_ENABLED} AI_PROVIDER=${AI_PROVIDER} HAS_KEY=${!!AI_API_KEY}`);
 
     if (!shouldSkipAI) {
       try {
+        console.log(`[BOT ${item.from}] Appel IA ${AI_PROVIDER}/${AI_MODEL}...`);
         const aiReply = await generateAIReply({
           userMessage: conversationContextText
             ? `Historique:\n${conversationContextText}\n\nDernier message client: ${item.text}`
@@ -1093,9 +1098,10 @@ export async function processIncomingWhatsAppPayload(payload) {
           state,
           knowledge
         });
+        console.log(`[BOT ${item.from}] IA reponse: ${aiReply ? aiReply.substring(0, 80) + '...' : 'NULL'}`);
         if (aiReply) reply = aiReply;
       } catch (error) {
-        console.warn('WhatsApp AI indisponible, fallback regle:', error.message);
+        console.error(`[BOT ${item.from}] IA ERREUR: ${error.response?.data?.error?.message || error.message}`);
       }
     }
 
