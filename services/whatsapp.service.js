@@ -28,7 +28,7 @@ const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'openai').toLowerCase();
 const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
-const AI_MODEL = process.env.AI_MODEL || (AI_PROVIDER === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
+const AI_MODEL = process.env.AI_MODEL || (AI_PROVIDER === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.3);
 const WHATSAPP_AI_TIMEOUT_MS = Math.max(2000, Number(process.env.WHATSAPP_AI_TIMEOUT_MS || 9000));
