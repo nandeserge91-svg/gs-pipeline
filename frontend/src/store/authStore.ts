@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
 import { authApi } from '@/lib/api';
+import { clearAuthToken, getAuthToken, setAuthToken } from '@/lib/authStorage';
 
 interface AuthState {
   user: User | null;
@@ -14,14 +15,14 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
+  token: getAuthToken(),
   isAuthenticated: false,
   isLoading: true,
 
   login: async (email: string, password: string) => {
     try {
       const response = await authApi.login({ email, password });
-      localStorage.setItem('token', response.token);
+      setAuthToken(response.token);
       set({
         user: response.user,
         token: response.token,
@@ -33,7 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('token');
+    clearAuthToken();
     set({
       user: null,
       token: null,
@@ -42,9 +43,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   loadUser: async () => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) {
-      set({ isLoading: false });
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
       return;
     }
 
@@ -52,11 +58,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       const response = await authApi.getCurrentUser();
       set({
         user: response.user,
+        token,
         isAuthenticated: true,
         isLoading: false,
       });
     } catch (error) {
-      localStorage.removeItem('token');
+      clearAuthToken();
       set({
         user: null,
         token: null,

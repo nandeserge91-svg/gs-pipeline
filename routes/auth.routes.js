@@ -7,6 +7,15 @@ import prisma from '../config/prisma.js';
 
 const router = express.Router();
 
+// Evite tout cache navigateur/proxy sur les endpoints d'authentification.
+router.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Vary', 'Authorization');
+  next();
+});
+
 // POST /api/auth/login - Connexion
 router.post('/login', [
   body('email').isEmail().withMessage('Email invalide'),
