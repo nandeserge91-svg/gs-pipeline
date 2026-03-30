@@ -686,11 +686,10 @@ async function createValidatedOrderFromConversation(conversation, state) {
       productId: product.id,
       quantite: quantity,
       montant: total,
-      status: 'VALIDEE',
-      validatedAt: new Date(),
+      status: 'A_APPELER',
       sourceCampagne: 'WhatsApp AI Bot',
       sourcePage: 'WhatsApp',
-      noteAppelant: 'Commande validee automatiquement via WhatsApp bot.'
+      noteAppelant: 'Commande recue via WhatsApp bot. A appeler pour confirmation.'
     }
   });
 
@@ -701,9 +700,9 @@ async function createValidatedOrderFromConversation(conversation, state) {
         data: {
           orderId: order.id,
           oldStatus: null,
-          newStatus: 'VALIDEE',
+          newStatus: 'A_APPELER',
           changedBy,
-          comment: 'Commande creee et validee automatiquement via WhatsApp bot.'
+          comment: 'Commande recue via WhatsApp bot. En attente d appel de confirmation.'
         }
       });
     } catch (error) {
@@ -1064,7 +1063,7 @@ export async function processIncomingWhatsAppPayload(payload) {
     if (shouldConfirmOrder) {
       const order = await createValidatedOrderFromConversation(conversation, state);
       if (order) {
-        const reply = `Commande validee avec succes.\nReference: ${order.orderReference}\nProduit: ${order.produitNom}\nQuantite: ${order.quantite}\nMontant: ${Math.round(order.montant)} FCFA\nMerci pour ta confiance.`;
+        const reply = `Commande enregistree avec succes!\nReference: ${order.orderReference}\nProduit: ${order.produitNom}\nQuantite: ${order.quantite}\nMontant: ${Math.round(order.montant)} FCFA\nUn conseiller va te rappeler pour confirmer. Merci pour ta confiance!`;
         await sendWhatsAppText(item.from, reply, {
           incomingMessageId: item.messageId,
           incomingChatId: item.chatId || item.from
