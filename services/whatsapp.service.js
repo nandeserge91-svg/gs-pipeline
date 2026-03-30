@@ -408,6 +408,51 @@ async function listTopProducts(limit = 8) {
   });
 }
 
+async function findProductsByDescription(text) {
+  if (!text || text.length < 3) return [];
+
+  const normalizedText = normalizeComparable(text);
+  const tokens = normalizedText.split(' ').filter(t => t.length >= 3);
+  if (tokens.length === 0) return [];
+
+  const products = await prisma.product.findMany({
+    where: { actif: true },
+    select: {
+      id: true,
+      code: true,
+      nom: true,
+      description: true,
+      prixUnitaire: true,
+      whatsappKnowledge: true
+    }
+  });
+
+  const scored = [];
+
+  for (const p of products) {
+    const searchable = normalizeComparable([
+      p.description || '',
+      p.whatsappKnowledge?.keyBenefits || '',
+      p.whatsappKnowledge?.usageTips || ''
+    ].join(' '));
+
+    if (!searchable) continue;
+
+    let matchCount = 0;
+    for (const token of tokens) {
+      if (searchable.includes(token)) matchCount++;
+    }
+
+    const score = matchCount / tokens.length;
+    if (score >= 0.4 && matchCount >= 1) {
+      scored.push({ product: p, score, matchCount });
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score || b.matchCount - a.matchCount);
+  return scored.slice(0, 5);
+}
+
 function build360AuthHeadersAndParams() {
   const headers = {};
 
@@ -559,14 +604,25 @@ export async function sendWhatsAppText(to, text, options = {}) {
 async function generateAIReply({ userMessage, product, state, knowledge }) {
   if (!WHATSAPP_AI_ENABLED || !AI_API_KEY) return null;
 
-  const productContext = product
-    ? `Produit cible:
+  let productContext;
+  if (product) {
+    productContext = `Produit cible:
 - nom: ${product.nom}
 - code: ${product.code}
 - prixUnitaire: ${product.prixUnitaire}
 - stockActuel: ${product.stockActuel}
-- description: ${product.description || 'N/A'}`
-    : 'Produit cible: non determine';
+- description: ${product.description || 'N/A'}`;
+  } else {
+    const catalogue = await prisma.product.findMany({
+      where: { actif: true },
+      select: { nom: true, prixUnitaire: true, description: true, whatsappKnowledge: { select: { keyBenefits: true } } },
+      take: 15
+    });
+    const catalogueLines = catalogue.map(p =>
+      `- ${p.nom} (${Math.round(p.prixUnitaire)} FCFA): ${p.whatsappKnowledge?.keyBenefits?.substring(0, 80) || p.description?.substring(0, 80) || ''}`
+    ).join('\n');
+    productContext = `Pas de produit selectionne. Catalogue disponible:\n${catalogueLines}`;
+  }
 
   const knowledgeContext = knowledge
     ? `Connaissance produit:
@@ -612,7 +668,9 @@ ETAPES DE VENTE (dans l'ordre naturel):
 4. Demander nom complet
 5. Resumer et demander "je confirme"
 
-Si le client pose une question (utilisation, benefices, localisation, jours...), reponds clairement PUIS relance doucement vers la commande.`;
+Si le client pose une question (utilisation, benefices, localisation, jours...), reponds clairement PUIS relance doucement vers la commande.
+
+Si le client decrit un besoin sans nommer de produit (ex: "creme contre les douleurs", "produit pour cicatrices"), propose le ou les produits correspondants avec nom et prix. Si un seul correspond, presente-le directement. Si plusieurs, liste-les pour que le client choisisse.`;
 
   const userPrompt = `${productContext}
 ${knowledgeContext}
@@ -1018,6 +1076,7 @@ export async function processIncomingWhatsAppPayload(payload) {
 
     let product = null;
     let knowledge = null;
+    let suggestedProducts = null;
 
     if (state.productId) {
       product = await prisma.product.findUnique({ where: { id: state.productId } });
@@ -1028,6 +1087,17 @@ export async function processIncomingWhatsAppPayload(payload) {
       if (product) {
         state.productId = product.id;
         state.productName = product.nom;
+      }
+    }
+
+    if (!product && !state.productId) {
+      const descMatches = await findProductsByDescription(item.text);
+      if (descMatches.length === 1) {
+        product = descMatches[0].product;
+        state.productId = product.id;
+        state.productName = product.nom;
+      } else if (descMatches.length > 1) {
+        suggestedProducts = descMatches;
       }
     }
 
@@ -1117,6 +1187,50 @@ export async function processIncomingWhatsAppPayload(payload) {
           }
         });
         continue;
+      }
+    }
+
+    if (suggestedProducts && suggestedProducts.length > 1 && !state.productId) {
+      const lines = ['J\'ai trouve plusieurs produits qui pourraient correspondre:'];
+      suggestedProducts.forEach((s, i) => {
+        lines.push(`${i + 1}. ${s.product.nom} - ${Math.round(s.product.prixUnitaire)} FCFA`);
+      });
+      lines.push('\nLequel t\'interesse ? Donne-moi le nom ou le numero.');
+      const reply = lines.join('\n');
+      await sendWhatsAppText(item.from, reply, {
+        incomingMessageId: item.messageId,
+        incomingChatId: item.chatId || item.from
+      });
+      await saveMessage(conversation.id, 'BOT', reply, { suggestedProducts: suggestedProducts.map(s => s.product.nom) });
+      state.suggestedProductIds = suggestedProducts.map(s => s.product.id);
+      await prisma.whatsAppConversation.update({
+        where: { id: conversation.id },
+        data: { state, lastMessageAt: new Date() }
+      });
+      continue;
+    }
+
+    if (state.suggestedProductIds && !state.productId) {
+      const choiceNum = parseInt(item.text.trim(), 10);
+      if (choiceNum >= 1 && choiceNum <= state.suggestedProductIds.length) {
+        const chosenId = state.suggestedProductIds[choiceNum - 1];
+        product = await prisma.product.findUnique({ where: { id: chosenId } });
+        if (product) {
+          state.productId = product.id;
+          state.productName = product.nom;
+          delete state.suggestedProductIds;
+        }
+      } else {
+        const chosenByName = await findProductFromText(item.text);
+        if (chosenByName && state.suggestedProductIds.includes(chosenByName.id)) {
+          product = chosenByName;
+          state.productId = product.id;
+          state.productName = product.nom;
+          delete state.suggestedProductIds;
+        }
+      }
+      if (product?.id) {
+        knowledge = await getProductKnowledge(product.id);
       }
     }
 
