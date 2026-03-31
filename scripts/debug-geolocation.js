@@ -13,6 +13,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { startOfTodayAppDay } from '../utils/appDayBounds.js';
 
 const prisma = new PrismaClient();
 
@@ -132,7 +133,7 @@ async function debugGeolocation() {
     const todayAttendances = await prisma.attendance.count({
       where: {
         date: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0))
+          gte: startOfTodayAppDay()
         }
       }
     });

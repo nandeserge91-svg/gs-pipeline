@@ -14,6 +14,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { formatYmdInAppTz, startOfAppDay, endOfAppDay } from '../utils/appDayBounds.js';
 
 const prisma = new PrismaClient();
 
@@ -26,13 +27,11 @@ async function generateDailyAbsences() {
   console.log('═══════════════════════════════════════════════════════════\n');
 
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayEnd = new Date(today);
-    todayEnd.setHours(23, 59, 59, 999);
+    const ymd = formatYmdInAppTz(new Date());
+    const today = startOfAppDay(ymd);
+    const todayEnd = endOfAppDay(ymd);
 
-    console.log(`📅 Date : ${today.toLocaleDateString('fr-FR')}\n`);
+    console.log(`📅 Date (Abidjan) : ${ymd}\n`);
 
     // 1. Récupérer tous les employés concernés
     const employees = await prisma.user.findMany({
@@ -125,7 +124,7 @@ async function generateDailyAbsences() {
     console.log(`   Total employés       : ${employees.length}`);
     console.log(`   Présents/Pointés     : ${employeesWithAttendance.size}`);
     console.log(`   Absents créés        : ${absencesCreated.length}`);
-    console.log(`   Date                 : ${today.toLocaleDateString('fr-FR')}\n`);
+    console.log(`   Date                 : ${ymd}\n`);
 
     console.log('═══════════════════════════════════════════════════════════');
     console.log('✨ Génération des absences terminée !');

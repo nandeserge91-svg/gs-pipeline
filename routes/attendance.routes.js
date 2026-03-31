@@ -2,6 +2,13 @@ import express from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { body, validationResult } from 'express-validator';
 import prisma from '../config/prisma.js';
+import {
+  startOfAppDay,
+  endOfAppDay,
+  startOfNextAppDay,
+  startOfTodayAppDay,
+  formatYmdInAppTz
+} from '../utils/appDayBounds.js';
 
 const router = express.Router();
 
@@ -38,8 +45,7 @@ router.post('/mark-arrival',
 
       const { latitude, longitude } = req.body;
       const userId = req.user.id;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = startOfTodayAppDay();
 
       // Vérifier si déjà pointé aujourd'hui
       const existingAttendance = await prisma.attendance.findUnique({
@@ -118,9 +124,16 @@ router.post('/mark-arrival',
       // Déterminer la validation (uniquement si dans la zone)
       let validation = 'VALIDE';
       const now = new Date();
-      const heureOuverture = new Date();
-      const [heureO, minuteO] = storeConfig.heureOuverture.split(':');
-      heureOuverture.setHours(parseInt(heureO), parseInt(minuteO), 0, 0);
+      const [heureO, minuteO] = storeConfig.heureOuverture.split(':').map((x) => parseInt(x, 10));
+      const heureOuverture = new Date(Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
+        heureO,
+        minuteO,
+        0,
+        0
+      ));
       
       if (now > heureOuverture) {
         const retardMinutes = Math.floor((now - heureOuverture) / (1000 * 60));
@@ -195,8 +208,7 @@ router.post('/mark-departure',
 
       const { latitude, longitude } = req.body;
       const userId = req.user.id;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = startOfTodayAppDay();
 
       // Trouver le pointage d'aujourd'hui
       const attendance = await prisma.attendance.findUnique({
@@ -271,8 +283,7 @@ router.post('/mark-departure',
 router.get('/my-attendance-today', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfTodayAppDay();
 
     const attendance = await prisma.attendance.findUnique({
       where: {
@@ -315,41 +326,25 @@ router.get('/history',
         where.userId = parseInt(userId);
       }
       
-      // ✅ NOUVEAU : Filtre par date unique (ex: "2026-01-22")
       if (date) {
-        const selectedDate = new Date(date);
-        selectedDate.setHours(0, 0, 0, 0);
-        const nextDay = new Date(selectedDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        
-        where.date = {
-          gte: selectedDate,
-          lt: nextDay
-        };
-      }
-      // ✅ Filtre par plage de dates
-      else if (startDate && endDate) {
-        const rangeStart = new Date(startDate);
-        rangeStart.setHours(0, 0, 0, 0);
-        const rangeEnd = new Date(endDate);
-        rangeEnd.setHours(23, 59, 59, 999);
-
-        where.date = {
-          gte: rangeStart,
-          lte: rangeEnd
-        };
-      }
-      // ✅ PAR DÉFAUT : Afficher uniquement AUJOURD'HUI
-      else {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        where.date = {
-          gte: today,
-          lt: tomorrow
-        };
+        const dayStart = startOfAppDay(date);
+        const dayEndExcl = startOfNextAppDay(date);
+        if (dayStart && dayEndExcl) {
+          where.date = { gte: dayStart, lt: dayEndExcl };
+        }
+      } else if (startDate && endDate) {
+        const rangeStart = startOfAppDay(startDate);
+        const rangeEnd = endOfAppDay(endDate);
+        if (rangeStart && rangeEnd) {
+          where.date = { gte: rangeStart, lte: rangeEnd };
+        }
+      } else {
+        const ymd = formatYmdInAppTz(new Date());
+        const dayStart = startOfTodayAppDay();
+        const dayEndExcl = startOfNextAppDay(ymd);
+        if (dayStart && dayEndExcl) {
+          where.date = { gte: dayStart, lt: dayEndExcl };
+        }
       }
 
       if (validee !== undefined) {
@@ -402,13 +397,16 @@ router.get('/stats',
   async (req, res) => {
     try {
       const { userId, month, year } = req.query;
-      
-      const now = new Date();
-      const targetMonth = month ? parseInt(month) : now.getMonth() + 1;
-      const targetYear = year ? parseInt(year) : now.getFullYear();
-      
-      const startDate = new Date(targetYear, targetMonth - 1, 1);
-      const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+
+      const ymdNow = formatYmdInAppTz(new Date());
+      const [cyStr, cmStr] = ymdNow.split('-');
+      const cy = parseInt(cyStr, 10);
+      const cm = parseInt(cmStr, 10);
+      const targetMonth = month ? parseInt(month, 10) : cm;
+      const targetYear = year ? parseInt(year, 10) : cy;
+
+      const startDate = new Date(Date.UTC(targetYear, targetMonth - 1, 1, 0, 0, 0, 0));
+      const endDate = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59, 999));
       
       const where = {
         date: {
@@ -570,9 +568,8 @@ router.delete('/cleanup',
   authorize('ADMIN'),
   async (req, res) => {
     try {
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-      sixtyDaysAgo.setHours(0, 0, 0, 0);
+      const todayAbidjan = startOfTodayAppDay();
+      const sixtyDaysAgo = new Date(todayAbidjan.getTime() - 60 * 86400000);
 
       console.log(`🗑️ Nettoyage des données avant le ${sixtyDaysAgo.toLocaleDateString('fr-FR')}...`);
 
@@ -607,13 +604,12 @@ router.post('/generate-absences',
   async (req, res) => {
     try {
       const { date } = req.body;
-      
-      // Date cible (par défaut : aujourd'hui)
-      const targetDate = date ? new Date(date) : new Date();
-      targetDate.setHours(0, 0, 0, 0);
-      
-      const targetDateEnd = new Date(targetDate);
-      targetDateEnd.setHours(23, 59, 59, 999);
+
+      const targetDate = date
+        ? (startOfAppDay(String(date).trim()) || startOfTodayAppDay())
+        : startOfTodayAppDay();
+      const ymdResolved = `${targetDate.getUTCFullYear()}-${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}-${String(targetDate.getUTCDate()).padStart(2, '0')}`;
+      const targetDateEnd = endOfAppDay(ymdResolved);
 
       console.log(`📋 Génération des absences pour le ${targetDate.toLocaleDateString('fr-FR')}...`);
 

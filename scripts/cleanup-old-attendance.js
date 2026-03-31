@@ -13,6 +13,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { startOfTodayAppDay } from '../utils/appDayBounds.js';
 
 const prisma = new PrismaClient();
 
@@ -25,10 +26,8 @@ async function cleanupOldAttendance() {
   console.log('═══════════════════════════════════════════════════════════\n');
 
   try {
-    // Calculer la date limite (60 jours en arrière)
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
-    cutoffDate.setHours(0, 0, 0, 0);
+    const todayAbidjan = startOfTodayAppDay();
+    const cutoffDate = new Date(todayAbidjan.getTime() - RETENTION_DAYS * 86400000);
 
     console.log(`📅 Date limite : ${cutoffDate.toLocaleDateString('fr-FR')}`);
     console.log(`📊 Suppression des données avant cette date...\n`);

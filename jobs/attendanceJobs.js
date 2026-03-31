@@ -1,14 +1,17 @@
 import cron from 'node-cron';
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay, formatYmdInAppTz } from '../utils/appDayBounds.js';
 
 const ROLES_WITH_ATTENDANCE = ['APPELANT', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'];
 
-async function generateAbsencesForDate(date, initiatedBy = 'system') {
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
-
-  const targetDateEnd = new Date(targetDate);
-  targetDateEnd.setHours(23, 59, 59, 999);
+async function generateAbsencesForDate(dateInput, initiatedBy = 'system') {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const ymd = formatYmdInAppTz(d);
+  const targetDate = startOfAppDay(ymd);
+  const targetDateEnd = endOfAppDay(ymd);
+  if (!targetDate || !targetDateEnd) {
+    throw new Error('Date invalide pour génération absences');
+  }
 
   const employees = await prisma.user.findMany({
     where: { role: { in: ROLES_WITH_ATTENDANCE } },
