@@ -8,24 +8,28 @@ interface ProductStat {
   productName: string;
   stockActuel: number;
   stockExpress: number;
-  totalRecus: number;
+  totalCommandes: number;
+  totalEnAttente: number;
   totalValides: number;
   totalLivres: number;
   totalAnnules: number;
   totalExpeditionExpress: number;
-  quantiteRecue: number;
+  quantiteTotale: number;
+  quantiteEnAttente: number;
   quantiteValidee: number;
   quantiteLivree: number;
   quantiteExpeditionExpress: number;
 }
 
 interface ProductStatsTotals {
-  totalRecus: number;
+  totalCommandes: number;
+  totalEnAttente: number;
   totalValides: number;
   totalLivres: number;
   totalAnnules: number;
   totalExpeditionExpress: number;
-  quantiteRecue: number;
+  quantiteTotale: number;
+  quantiteEnAttente: number;
   quantiteValidee: number;
   quantiteLivree: number;
   quantiteExpeditionExpress: number;
@@ -40,12 +44,14 @@ export default function ProductStats() {
   );
   const [products, setProducts] = useState<ProductStat[]>([]);
   const [totals, setTotals] = useState<ProductStatsTotals>({
-    totalRecus: 0,
+    totalCommandes: 0,
+    totalEnAttente: 0,
     totalValides: 0,
     totalLivres: 0,
     totalAnnules: 0,
     totalExpeditionExpress: 0,
-    quantiteRecue: 0,
+    quantiteTotale: 0,
+    quantiteEnAttente: 0,
     quantiteValidee: 0,
     quantiteLivree: 0,
     quantiteExpeditionExpress: 0
@@ -89,9 +95,9 @@ export default function ProductStats() {
     return () => clearInterval(interval);
   }, [autoRefresh, startDate, endDate]);
 
-  const getTauxValidation = (recus: number, valides: number): string => {
-    if (recus === 0) return '0.00';
-    return ((valides / (recus + valides)) * 100).toFixed(2);
+  const getTauxValidation = (totalCommandes: number, valides: number): string => {
+    if (totalCommandes === 0) return '0.00';
+    return ((valides / totalCommandes) * 100).toFixed(2);
   };
 
   const getTauxLivraison = (valides: number, livres: number): string => {
@@ -261,14 +267,14 @@ export default function ProductStats() {
       </div>
 
       {/* Cartes de résumé */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Produits Reçus</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{totals.totalRecus}</p>
+              <p className="text-sm text-gray-600">Total Commandes</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{totals.totalCommandes}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Quantité : {totals.quantiteRecue}
+                Qté : {totals.quantiteTotale}
               </p>
             </div>
             <div className="bg-gray-100 p-3 rounded-lg">
@@ -280,10 +286,25 @@ export default function ProductStats() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Produits Validés</p>
+              <p className="text-sm text-gray-600">En attente</p>
+              <p className="text-3xl font-bold text-orange-500 mt-2">{totals.totalEnAttente}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Qté : {totals.quantiteEnAttente}
+              </p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-lg">
+              <Package size={24} className="text-orange-500" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Validés</p>
               <p className="text-3xl font-bold text-green-600 mt-2">{totals.totalValides}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Quantité : {totals.quantiteValidee}
+                Qté : {totals.quantiteValidee}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
@@ -295,10 +316,10 @@ export default function ProductStats() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Produits Livrés</p>
+              <p className="text-sm text-gray-600">Livrés</p>
               <p className="text-3xl font-bold text-blue-600 mt-2">{totals.totalLivres}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Quantité : {totals.quantiteLivree}
+                Qté : {totals.quantiteLivree}
               </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
@@ -313,7 +334,7 @@ export default function ProductStats() {
               <p className="text-sm text-gray-600">Expédition/Express</p>
               <p className="text-3xl font-bold text-purple-600 mt-2">{totals.totalExpeditionExpress}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Quantité : {totals.quantiteExpeditionExpress}
+                Qté : {totals.quantiteExpeditionExpress}
               </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
@@ -328,7 +349,7 @@ export default function ProductStats() {
               <p className="text-sm text-gray-600">Annulations</p>
               <p className="text-3xl font-bold text-red-600 mt-2">{totals.totalAnnules}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Taux : {getTauxValidation(totals.totalRecus, totals.totalValides)}%
+                Taux val. : {getTauxValidation(totals.totalCommandes, totals.totalValides)}%
               </p>
             </div>
             <div className="bg-red-100 p-3 rounded-lg">
@@ -362,12 +383,13 @@ export default function ProductStats() {
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Code</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock Actuel</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock Express</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Reçus</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Total</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-orange-50">En attente</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Validés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Livrés</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-purple-50">📦⚡ Expédition/Express</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-purple-50">Expéd./Express</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Annulés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Taux Validation</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Taux Livraison</th>
@@ -375,7 +397,7 @@ export default function ProductStats() {
               </thead>
               <tbody>
                 {products.map((product, index) => {
-                  const tauxValidation = getTauxValidation(product.totalRecus, product.totalValides);
+                  const tauxValidation = getTauxValidation(product.totalCommandes, product.totalValides);
                   const tauxLivraison = getTauxLivraison(product.totalValides, product.totalLivres);
                   
                   return (
@@ -401,9 +423,15 @@ export default function ProductStats() {
                         </span>
                       </td>
                       <td className="text-center py-3 px-4">
-                        <div className="font-semibold text-sm">{product.totalRecus}</div>
+                        <div className="font-semibold text-sm">{product.totalCommandes}</div>
                         <div className="text-xs text-gray-500">
-                          Qté: {product.quantiteRecue}
+                          Qté: {product.quantiteTotale}
+                        </div>
+                      </td>
+                      <td className="text-center py-3 px-4 bg-orange-50">
+                        <div className="font-semibold text-sm text-orange-500">{product.totalEnAttente}</div>
+                        <div className="text-xs text-gray-500">
+                          Qté: {product.quantiteEnAttente}
                         </div>
                       </td>
                       <td className="text-center py-3 px-4">

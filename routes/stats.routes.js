@@ -164,12 +164,12 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
       
       const stats = callerStats[callerId];
       
-      // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
+      if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+        return;
+      }
+      
       stats.totalAppels++;
       
-      // 🆕 CORRECTION PERFORMANCE APPELANTS : Ne pas pénaliser pour les échecs de livraison
-      // Compter selon le statut
-      // ✅ VALIDÉES : Commandes que l'appelant a réussi à valider (incluant celles refusées à la livraison)
       if (
         order.status === 'VALIDEE' || 
         order.status === 'ASSIGNEE' || 
@@ -180,17 +180,16 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
         order.status === 'EXPRESS_ARRIVE' || 
         order.status === 'EXPRESS_LIVRE' ||
         order.status === 'RETOURNE' ||
-        order.status === 'REFUSEE' ||              // 🆕 Le client a refusé à la livraison (pas la faute de l'appelant)
-        order.status === 'ANNULEE_LIVRAISON'       // 🆕 Annulée pendant livraison (pas la faute de l'appelant)
+        order.status === 'REFUSEE' ||
+        order.status === 'ANNULEE_LIVRAISON'
       ) {
         stats.totalValides++;
-      } else if (order.status === 'ANNULEE') {     // 🆕 UNIQUEMENT les annulations par l'appelant
+      } else if (order.status === 'ANNULEE') {
         stats.totalAnnules++;
       } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
         stats.totalInjoignables++;
       }
       
-      // Compter EXPEDITION et EXPRESS
       if (order.deliveryType === 'EXPEDITION' && order.expedieAt) {
         stats.totalExpeditions++;
       } else if (order.deliveryType === 'EXPRESS' && order.expedieAt) {
@@ -382,10 +381,12 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
       };
 
       orders.forEach(order => {
-        // ✅ CORRECTION : Compter TOUTES les commandes dans totalAppels
-          totals.totalAppels++;
+        if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
+          return;
+        }
         
-        // ✅ CORRECTION : Inclure TOUS les statuts qui représentent des commandes validées
+        totals.totalAppels++;
+        
         if (
           order.status === 'VALIDEE' || 
           order.status === 'ASSIGNEE' || 
@@ -395,10 +396,12 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
           order.status === 'EXPRESS' || 
           order.status === 'EXPRESS_ARRIVE' || 
           order.status === 'EXPRESS_LIVRE' ||
-          order.status === 'RETOURNE'
+          order.status === 'RETOURNE' ||
+          order.status === 'REFUSEE' ||
+          order.status === 'ANNULEE_LIVRAISON'
         ) {
           totals.totalValides++;
-        } else if (order.status === 'ANNULEE' || order.status === 'REFUSEE' || order.status === 'ANNULEE_LIVRAISON') {
+        } else if (order.status === 'ANNULEE') {
           totals.totalAnnules++;
         } else if (order.status === 'INJOIGNABLE' || order.status === 'REPORTE') {
           totals.totalInjoignables++;
@@ -537,12 +540,14 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
           productName,
           stockActuel: order.product?.stockActuel || 0,
           stockExpress: order.product?.stockExpress || 0,
-          totalRecus: 0,
+          totalCommandes: 0,
+          totalEnAttente: 0,
           totalValides: 0,
           totalLivres: 0,
           totalAnnules: 0,
           totalExpeditionExpress: 0,
-          quantiteRecue: 0,
+          quantiteTotale: 0,
+          quantiteEnAttente: 0,
           quantiteValidee: 0,
           quantiteLivree: 0,
           quantiteExpeditionExpress: 0
@@ -551,13 +556,14 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
 
       const stats = productStats[key];
       
-      // Compter les produits reçus (NOUVELLE, A_APPELER)
+      stats.totalCommandes++;
+      stats.quantiteTotale += order.quantite;
+      
       if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
-        stats.totalRecus++;
-        stats.quantiteRecue += order.quantite;
+        stats.totalEnAttente++;
+        stats.quantiteEnAttente += order.quantite;
       }
       
-      // Compter les produits validés (tous les statuts après A_APPELER sauf ANNULEE et INJOIGNABLE)
       if (
         order.status === 'VALIDEE' || 
         order.status === 'ASSIGNEE' || 
@@ -597,19 +603,19 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       }
     });
 
-    // Convertir en tableau et trier par nombre de produits reçus
     const result = Object.values(productStats).sort((a, b) => 
-      (b.totalRecus + b.totalValides) - (a.totalRecus + a.totalValides)
+      b.totalCommandes - a.totalCommandes
     );
 
-    // Calculer les totaux globaux
     const totals = {
-      totalRecus: result.reduce((sum, p) => sum + p.totalRecus, 0),
+      totalCommandes: result.reduce((sum, p) => sum + p.totalCommandes, 0),
+      totalEnAttente: result.reduce((sum, p) => sum + p.totalEnAttente, 0),
       totalValides: result.reduce((sum, p) => sum + p.totalValides, 0),
       totalLivres: result.reduce((sum, p) => sum + p.totalLivres, 0),
       totalAnnules: result.reduce((sum, p) => sum + p.totalAnnules, 0),
       totalExpeditionExpress: result.reduce((sum, p) => sum + p.totalExpeditionExpress, 0),
-      quantiteRecue: result.reduce((sum, p) => sum + p.quantiteRecue, 0),
+      quantiteTotale: result.reduce((sum, p) => sum + p.quantiteTotale, 0),
+      quantiteEnAttente: result.reduce((sum, p) => sum + p.quantiteEnAttente, 0),
       quantiteValidee: result.reduce((sum, p) => sum + p.quantiteValidee, 0),
       quantiteLivree: result.reduce((sum, p) => sum + p.quantiteLivree, 0),
       quantiteExpeditionExpress: result.reduce((sum, p) => sum + p.quantiteExpeditionExpress, 0)
