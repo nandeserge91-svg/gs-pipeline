@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
 
 router.use(authenticate);
 
@@ -16,16 +17,12 @@ router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => 
     if (startDate || endDate) {
       dateFilter.createdAt = {};
       if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) dateFilter.createdAt.gte = start;
       }
       if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) dateFilter.createdAt.lte = end;
       }
     }
 
@@ -111,16 +108,12 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.createdAt.gte = start;
       }
       if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.createdAt.lte = end;
       }
     }
 
@@ -255,18 +248,14 @@ router.get('/deliverers', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) =
     };
     
     if (startDate || endDate) {
-      where.deliveredAt = {}; // Date de livraison
+      where.deliveredAt = {};
       if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.deliveredAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.deliveredAt.gte = start;
       }
       if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.deliveredAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.deliveredAt.lte = end;
       }
     }
 
@@ -343,15 +332,16 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
     const { period = 'today' } = req.query;
     const user = req.user;
 
-    let startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
+    let startDate = startOfTodayAppDay();
 
     if (period === 'week') {
-      startDate.setDate(startDate.getDate() - 7);
+      startDate = new Date(startDate.getTime() - 7 * 86400000);
     } else if (period === 'month') {
-      startDate.setMonth(startDate.getMonth() - 1);
+      startDate = new Date(startDate);
+      startDate.setUTCMonth(startDate.getUTCMonth() - 1);
     } else if (period === 'year') {
-      startDate.setFullYear(startDate.getFullYear() - 1);
+      startDate = new Date(startDate);
+      startDate.setUTCFullYear(startDate.getUTCFullYear() - 1);
     }
 
     if (user.role === 'APPELANT') {
@@ -479,27 +469,17 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
     if (startDate || endDate) {
       dateFilter.createdAt = {};
       if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) dateFilter.createdAt.gte = start;
       }
       if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) dateFilter.createdAt.lte = end;
       }
-    }
-    // Sinon, si date unique (pour rétrocompatibilité)
-    else if (date) {
-      // Début de journée : 00:00:00
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      // Fin de journée : 23:59:59
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      dateFilter.createdAt = { gte: start, lte: end };
+    } else if (date) {
+      const start = startOfAppDay(date);
+      const end = endOfAppDay(date);
+      if (start && end) dateFilter.createdAt = { gte: start, lte: end };
     }
 
     // Récupérer toutes les commandes de la date
@@ -643,16 +623,12 @@ router.get('/export', authorize('ADMIN'), async (req, res) => {
     if (startDate || endDate) {
       dateFilter.createdAt = {};
       if (startDate) {
-        // Début de journée : 00:00:00
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) dateFilter.createdAt.gte = start;
       }
       if (endDate) {
-        // Fin de journée : 23:59:59
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) dateFilter.createdAt.lte = end;
       }
     }
 

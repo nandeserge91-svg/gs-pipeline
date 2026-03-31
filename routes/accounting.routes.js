@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay, startOfTodayAppDay, endOfTodayAppDay } from '../utils/appDayBounds.js';
 
 // GET /api/accounting/stats - Statistiques comptables détaillées
 // Accessible uniquement par ADMIN
@@ -11,25 +12,17 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
 
-    // Définir les dates par défaut (aujourd'hui en heure d'Abidjan - UTC+0)
-    // Les dates viennent du frontend au format YYYY-MM-DD (ex: "2025-12-08")
-    // Abidjan est en UTC+0, donc on utilise directement les dates UTC
+    // Journées calendaires Africa/Abidjan (GMT)
     let startDate, endDate;
-    
     if (dateDebut) {
-      startDate = new Date(`${dateDebut}T00:00:00.000Z`);
+      startDate = startOfAppDay(dateDebut) || startOfTodayAppDay();
     } else {
-      // Aujourd'hui à minuit en UTC+0
-      const now = new Date();
-      startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      startDate = startOfTodayAppDay();
     }
-    
     if (dateFin) {
-      endDate = new Date(`${dateFin}T23:59:59.999Z`);
+      endDate = endOfAppDay(dateFin) || endOfTodayAppDay();
     } else {
-      // Aujourd'hui à 23:59:59 en UTC+0
-      const now = new Date();
-      endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+      endDate = endOfTodayAppDay();
     }
 
     // Récupérer toutes les commandes dans la période (tous types)
@@ -270,21 +263,16 @@ router.get('/express-retrait-par-ville', authenticate, authorize('ADMIN'), async
   try {
     const { dateDebut, dateFin } = req.query;
 
-    // Définir les dates (même logique que /stats)
     let startDate, endDate;
-    
     if (dateDebut) {
-      startDate = new Date(`${dateDebut}T00:00:00.000Z`);
+      startDate = startOfAppDay(dateDebut) || startOfTodayAppDay();
     } else {
-      const now = new Date();
-      startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      startDate = startOfTodayAppDay();
     }
-    
     if (dateFin) {
-      endDate = new Date(`${dateFin}T23:59:59.999Z`);
+      endDate = endOfAppDay(dateFin) || endOfTodayAppDay();
     } else {
-      const now = new Date();
-      endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+      endDate = endOfTodayAppDay();
     }
 
     // Récupérer toutes les commandes Express Retrait (90%)

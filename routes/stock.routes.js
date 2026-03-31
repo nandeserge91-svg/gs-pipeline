@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBounds.js';
 
 router.use(authenticate);
 
@@ -17,24 +18,19 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
     
     // Gestion de la plage de dates
     if (dateDebut && dateFin) {
-      // Plage de dates
-      const startDate = new Date(`${dateDebut}T00:00:00.000Z`);
-      const endDate = new Date(`${dateFin}T23:59:59.999Z`);
-      where.date = { gte: startDate, lte: endDate };
+      const s = startOfAppDay(dateDebut);
+      const e = endOfAppDay(dateFin);
+      if (s && e) where.date = { gte: s, lte: e };
     } else if (dateDebut) {
-      // Date de début uniquement
-      const startDate = new Date(`${dateDebut}T00:00:00.000Z`);
-      where.date = { gte: startDate };
+      const s = startOfAppDay(dateDebut);
+      if (s) where.date = { gte: s };
     } else if (dateFin) {
-      // Date de fin uniquement
-      const endDate = new Date(`${dateFin}T23:59:59.999Z`);
-      where.date = { lte: endDate };
+      const e = endOfAppDay(dateFin);
+      if (e) where.date = { lte: e };
     } else if (date) {
-      // Ancien format : une seule date (pour rétrocompatibilité)
-      const selectedDate = new Date(`${date}T00:00:00.000Z`);
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      where.date = { gte: selectedDate, lt: nextDay };
+      const dayStart = startOfAppDay(date);
+      const dayEndExcl = startOfNextAppDay(date);
+      if (dayStart && dayEndExcl) where.date = { gte: dayStart, lt: dayEndExcl };
     }
     
     if (delivererId) where.delivererId = parseInt(delivererId);
@@ -411,14 +407,12 @@ router.get('/movements', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, r
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.createdAt.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.createdAt.lte = end;
       }
     }
 
@@ -458,14 +452,12 @@ router.get('/stats', authorize('ADMIN', 'GESTIONNAIRE_STOCK'), async (req, res) 
     if (startDate || endDate) {
       dateFilter.createdAt = {};
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) dateFilter.createdAt.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) dateFilter.createdAt.lte = end;
       }
     }
 

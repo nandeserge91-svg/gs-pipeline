@@ -4,6 +4,7 @@ import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
+import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -190,14 +191,12 @@ router.get('/', async (req, res) => {
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.createdAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.createdAt.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.createdAt.lte = end;
       }
     }
 
@@ -668,8 +667,7 @@ router.put('/:id/status', async (req, res) => {
 
 // Fonction helper pour mettre à jour les statistiques
 async function updateStatistics(userId, role, oldStatus, newStatus, montant) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfTodayAppDay();
 
   if (role === 'APPELANT') {
     // Statistiques des appelants

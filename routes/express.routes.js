@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay } from '../utils/appDayBounds.js';
 
 // GET /api/express/en-agence - Récupérer tous les EXPRESS en agence avec stats
 router.get('/en-agence', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (req, res) => {
@@ -49,21 +50,29 @@ router.get('/en-agence', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 'APPEL
       const filterDateType = dateType || 'arrive'; // Par défaut: date d'arrivée
       
       if (filterDateType === 'retrait') {
-        // Filtrer par date de retrait (updatedAt pour EXPRESS_LIVRE)
-        where.AND = [
-          { status: 'EXPRESS_LIVRE' }, // Seulement les colis retirés
-          {
-            updatedAt: {
-              ...(startDate && { gte: new Date(startDate + 'T00:00:00.000Z') }),
-              ...(endDate && { lte: new Date(endDate + 'T23:59:59.999Z') })
-            }
-          }
-        ];
+        const uAt = {};
+        if (startDate) {
+          const s = startOfAppDay(startDate);
+          if (s) uAt.gte = s;
+        }
+        if (endDate) {
+          const e = endOfAppDay(endDate);
+          if (e) uAt.lte = e;
+        }
+        const andClause = [{ status: 'EXPRESS_LIVRE' }];
+        if (Object.keys(uAt).length > 0) andClause.push({ updatedAt: uAt });
+        where.AND = andClause;
       } else {
-        // Filtrer par date d'arrivée en agence (arriveAt)
-        where.arriveAt = {};
-        if (startDate) where.arriveAt.gte = new Date(startDate + 'T00:00:00.000Z');
-        if (endDate) where.arriveAt.lte = new Date(endDate + 'T23:59:59.999Z');
+        const arrive = {};
+        if (startDate) {
+          const s = startOfAppDay(startDate);
+          if (s) arrive.gte = s;
+        }
+        if (endDate) {
+          const e = endOfAppDay(endDate);
+          if (e) arrive.lte = e;
+        }
+        if (Object.keys(arrive).length > 0) where.arriveAt = arrive;
       }
     }
 

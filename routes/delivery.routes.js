@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
+import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBounds.js';
 
 router.use(authenticate);
 
@@ -36,14 +37,12 @@ router.get('/lists', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'A
     if (startDate || endDate) {
       where.date = {};
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.date.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.date.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.date.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.date.lte = end;
       }
     }
 
@@ -178,14 +177,11 @@ router.get('/my-orders', authorize('LIVREUR'), async (req, res) => {
     };
 
     if (date) {
-      const selectedDate = new Date(date);
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      
-      where.deliveryDate = {
-        gte: selectedDate,
-        lt: nextDay
-      };
+      const dayStart = startOfAppDay(date);
+      const dayEndExcl = startOfNextAppDay(date);
+      if (dayStart && dayEndExcl) {
+        where.deliveryDate = { gte: dayStart, lt: dayEndExcl };
+      }
     }
 
     if (status) {
@@ -246,14 +242,12 @@ router.get('/validated-orders', authorize('ADMIN', 'GESTIONNAIRE'), async (req, 
     if (startDate || endDate) {
       where.validatedAt = {};
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.validatedAt.gte = start;
+        const start = startOfAppDay(startDate);
+        if (start) where.validatedAt.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.validatedAt.lte = end;
+        const end = endOfAppDay(endDate);
+        if (end) where.validatedAt.lte = end;
       }
     }
 
@@ -290,15 +284,11 @@ router.get('/my-expeditions', authorize('LIVREUR'), async (req, res) => {
 
     // Filtre par date
     if (date) {
-      const selectedDate = new Date(date);
-      selectedDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      
-      where.deliveryDate = {
-        gte: selectedDate,
-        lt: nextDay
-      };
+      const dayStart = startOfAppDay(date);
+      const dayEndExcl = startOfNextAppDay(date);
+      if (dayStart && dayEndExcl) {
+        where.deliveryDate = { gte: dayStart, lt: dayEndExcl };
+      }
     }
 
     // Filtre par statut
