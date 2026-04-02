@@ -9,6 +9,11 @@ import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBo
 
 router.use(authenticate);
 
+/** Colis encore concernés par la tournée (hors commandes repassées en VALIDEE sans détachement DB historique). */
+function ordersPourComptageTournee(orders) {
+  return orders.filter((o) => o.status !== 'VALIDEE');
+}
+
 // GET /api/stock/tournees - Liste des tournées pour gestion stock
 router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
@@ -70,12 +75,13 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
     // Calculer les statistiques pour chaque tournée
     const now = new Date();
     const tourneesWithStats = deliveryLists.map(list => {
-      const totalOrders = list.orders.length;
-      const livrees = list.orders.filter(o => o.status === 'LIVREE').length;
-      const refusees = list.orders.filter(o => o.status === 'REFUSEE').length;
-      const annulees = list.orders.filter(o => o.status === 'ANNULEE_LIVRAISON').length;
-      const enAttente = list.orders.filter(o => o.status === 'ASSIGNEE').length;
-      const retournes = list.orders.filter(o => o.status === 'RETOURNE').length;
+      const ordresTournee = ordersPourComptageTournee(list.orders);
+      const totalOrders = ordresTournee.length;
+      const livrees = ordresTournee.filter(o => o.status === 'LIVREE').length;
+      const refusees = ordresTournee.filter(o => o.status === 'REFUSEE').length;
+      const annulees = ordresTournee.filter(o => o.status === 'ANNULEE_LIVRAISON').length;
+      const enAttente = ordresTournee.filter(o => o.status === 'ASSIGNEE').length;
+      const retournes = ordresTournee.filter(o => o.status === 'RETOURNE').length;
       const colisRemisBrut = list.tourneeStock?.colisRemis || totalOrders;
       const colisRemis = Math.min(colisRemisBrut, totalOrders);
       
@@ -180,9 +186,11 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
       return res.status(404).json({ error: 'Tournée non trouvée.' });
     }
 
+    const ordresTournee = ordersPourComptageTournee(deliveryList.orders);
+
     // Calculer les produits par tournée
     const produitsSummary = {};
-    deliveryList.orders.forEach(order => {
+    ordresTournee.forEach(order => {
       const key = order.productId || order.produitNom;
       if (!produitsSummary[key]) {
         produitsSummary[key] = {
@@ -215,10 +223,10 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
       joursChezLivreur = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     }
     
-    const colisRemisBrut = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
-    const colisRemis = Math.min(colisRemisBrut, deliveryList.orders.length);
-    const colisLivres = deliveryList.orders.filter(o => o.status === 'LIVREE').length;
-    const colisRetournes = deliveryList.orders.filter(o => o.status === 'RETOURNE').length;
+    const colisRemisBrut = deliveryList.tourneeStock?.colisRemis || ordresTournee.length;
+    const colisRemis = Math.min(colisRemisBrut, ordresTournee.length);
+    const colisLivres = ordresTournee.filter(o => o.status === 'LIVREE').length;
+    const colisRetournes = ordresTournee.filter(o => o.status === 'RETOURNE').length;
     const colisRestants = dateRetour
       ? 0
       : Math.max(0, colisRemis - colisLivres - colisRetournes);
@@ -321,9 +329,11 @@ router.post('/tournees/:id/confirm-retour', authorize('ADMIN', 'GESTIONNAIRE', '
       return res.status(404).json({ error: 'Tournée non trouvée.' });
     }
 
+    const ordresTournee = ordersPourComptageTournee(deliveryList.orders);
+
     // Calculer les colis livrés
-    const colisLivres = deliveryList.orders.filter(o => o.status === 'LIVREE').length;
-    const colisRemis = deliveryList.tourneeStock?.colisRemis || deliveryList.orders.length;
+    const colisLivres = ordresTournee.filter(o => o.status === 'LIVREE').length;
+    const colisRemis = deliveryList.tourneeStock?.colisRemis || ordresTournee.length;
     const ecart = colisRemis - (colisLivres + parseInt(colisRetour));
 
     // Transaction pour tout traiter ensemble

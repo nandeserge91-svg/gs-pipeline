@@ -9,6 +9,15 @@ import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayB
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+/** Commandes à inclure dans les totaux d’une tournée (exclut les repassées en validées / hors circuit). */
+function detachTourneeIfValidated(updateData, order, status) {
+  if (status !== 'VALIDEE') return;
+  if (order.deliveryListId == null && order.delivererId == null) return;
+  updateData.delivererId = null;
+  updateData.deliveryListId = null;
+  updateData.deliveryDate = null;
+}
+
 // ⏰ Basculer automatiquement les RDV échus vers "À appeler"
 async function autoReturnExpiredRdvToCallList(userId) {
   const BATCH_SIZE = 200;
@@ -467,7 +476,7 @@ router.put('/:id/status', async (req, res) => {
         noteAppelant: user.role === 'APPELANT' && note ? note : order.noteAppelant,
         noteLivreur: user.role === 'LIVREUR' && note ? note : order.noteLivreur,
         noteGestionnaire: (user.role === 'GESTIONNAIRE' || user.role === 'ADMIN') && note ? note : order.noteGestionnaire,
-        validatedAt: status === 'VALIDEE' ? new Date() : order.validatedAt,
+        validatedAt: status === 'VALIDEE' ? (order.validatedAt || new Date()) : order.validatedAt,
         deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
         raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
         retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
@@ -484,6 +493,9 @@ router.put('/:id/status', async (req, res) => {
         updateData.calledAt = new Date();
         console.log('📞 Assignation automatique du callerId:', user.id, 'à la commande', order.orderReference);
       }
+
+      // Retour « commandes validées » : détacher la tournée pour que les compteurs tournée se mettent à jour
+      detachTourneeIfValidated(updateData, order, status);
 
       // Mettre à jour le statut de la commande
       const updated = await tx.order.update({

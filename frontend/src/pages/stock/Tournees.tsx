@@ -239,7 +239,7 @@ export default function Tournees() {
     }
 
     // Vérifier que toutes les raisons ont été spécifiées
-    const ordersNonLivres = tourneeDetail?.orders?.filter((order: any) => 
+    const ordersNonLivres = tourneeDetail?.tournee?.orders?.filter((order: any) =>
       ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status)
     ) || [];
     
@@ -960,7 +960,7 @@ export default function Tournees() {
               <div className="mt-4">
                 <h4 className="font-semibold text-gray-800 mb-2">Détail des produits non livrés attendus :</h4>
                 <div className="space-y-3">
-                  {tourneeDetail?.orders
+                  {tourneeDetail?.tournee?.orders
                     ?.filter((order: any) => ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status))
                     .map((order: any) => (
                       <div key={order.id} className="bg-white p-3 rounded-lg border border-orange-200">
@@ -994,7 +994,7 @@ export default function Tournees() {
                       </div>
                     ))}
                   
-                  {tourneeDetail?.orders?.filter((order: any) => ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status)).length === 0 && (
+                  {tourneeDetail?.tournee?.orders?.filter((order: any) => ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(order.status)).length === 0 && (
                     <p className="text-sm text-gray-500 italic">Aucun colis non livré.</p>
                   )}
                 </div>
