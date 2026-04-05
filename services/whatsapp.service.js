@@ -24,6 +24,16 @@ const WHATSAPP_360_EXTRA_PAYLOAD = process.env.WHATSAPP_360_EXTRA_PAYLOAD || '';
 const WHATSAPP_360_REQUEST_FORMAT = (process.env.WHATSAPP_360_REQUEST_FORMAT || 'form-data').toLowerCase();
 const WHATSAPP_360_USE_REPLY_ENDPOINT = process.env.WHATSAPP_360_USE_REPLY_ENDPOINT === 'true';
 
+/**
+ * Désactive les réponses auto (webhook / bot). Réponses manuelles admin : sendWhatsAppText(..., { manual: true }).
+ * Accepte false / False / FALSE / 0 / off / non / disabled (Railway peut normaliser la casse).
+ */
+export function isWhatsAppAutoMessagesEnabled() {
+  const v = (process.env.WHATSAPP_AUTO_MESSAGES_ENABLED ?? '').trim().toLowerCase();
+  if (!v) return true;
+  return !['false', '0', 'no', 'off', 'disabled', 'non', 'faux'].includes(v);
+}
+
 const WHATSAPP_AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true';
 
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'openai').toLowerCase();
@@ -489,6 +499,11 @@ function normalizeToChatId(value) {
 }
 
 export async function sendWhatsAppText(to, text, options = {}) {
+  if (!isWhatsAppAutoMessagesEnabled() && !options.manual) {
+    console.log('[WhatsApp] Envoi auto désactivé, skip vers', to);
+    return null;
+  }
+
   if (WHATSAPP_PROVIDER === 'META') {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
       throw new Error('WHATSAPP_ACCESS_TOKEN ou WHATSAPP_PHONE_NUMBER_ID manquant');
@@ -1102,6 +1117,16 @@ async function buildRuleBasedReply({ text, product, state, knowledge }) {
 
 export async function processIncomingWhatsAppPayload(payload) {
   const incoming = extractWhatsAppMessages(payload);
+  if (!incoming.length) return;
+
+  if (!isWhatsAppAutoMessagesEnabled()) {
+    console.log(
+      '[WhatsApp] Webhook reçu mais envois auto coupés (WHATSAPP_AUTO_MESSAGES_ENABLED).',
+      incoming.length,
+      'message(s) — aucun traitement bot ni envoi. Si le client reçoit encore des réponses, vérifiez les réponses auto du panneau 360Messenger / WhatsApp Business.'
+    );
+    return;
+  }
 
   for (const item of incoming) {
     if (item.type !== 'text') {
@@ -1470,7 +1495,15 @@ export async function processIncomingWhatsAppPayload(payload) {
   }
 }
 
+console.log(
+  '[WhatsApp] Envois automatiques:',
+  isWhatsAppAutoMessagesEnabled() ? 'ACTIFS' : 'DÉSACTIVÉS',
+  '| WHATSAPP_AUTO_MESSAGES_ENABLED =',
+  JSON.stringify(process.env.WHATSAPP_AUTO_MESSAGES_ENABLED)
+);
+
 export default {
   processIncomingWhatsAppPayload,
-  sendWhatsAppText
+  sendWhatsAppText,
+  isWhatsAppAutoMessagesEnabled
 };

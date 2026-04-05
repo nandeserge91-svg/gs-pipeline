@@ -1,5 +1,5 @@
 import express from 'express';
-import { processIncomingWhatsAppPayload, sendWhatsAppText } from '../services/whatsapp.service.js';
+import { processIncomingWhatsAppPayload, sendWhatsAppText, isWhatsAppAutoMessagesEnabled } from '../services/whatsapp.service.js';
 import prisma from '../config/prisma.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 
@@ -27,6 +27,8 @@ function parseKnowledgeField(rawValue) {
 // Diagnostic IA (public, pas de secrets exposés)
 router.get('/ai-status', (req, res) => {
   res.json({
+    AUTO_MESSAGES_ENABLED: isWhatsAppAutoMessagesEnabled(),
+    AUTO_MESSAGES_RAW: process.env.WHATSAPP_AUTO_MESSAGES_ENABLED ?? null,
     AI_ENABLED: process.env.WHATSAPP_AI_ENABLED,
     AI_PROVIDER: process.env.AI_PROVIDER || 'non defini',
     AI_MODEL: process.env.AI_MODEL || 'defaut',
@@ -291,7 +293,7 @@ router.post('/conversations/:id/reply', async (req, res) => {
       return res.status(404).json({ error: 'Conversation non trouvée.' });
     }
 
-    await sendWhatsAppText(conversation.phoneNumber, text);
+    await sendWhatsAppText(conversation.phoneNumber, text, { manual: true });
 
     await prisma.whatsAppMessage.create({
       data: {
