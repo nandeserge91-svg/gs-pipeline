@@ -8,6 +8,44 @@ import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayB
 
 router.use(authenticate);
 
+/**
+ * Filtre période pour les stats appelant : date à laquelle l'appel a été traité
+ * (calledAt ou validatedAt), avec repli sur createdAt pour les anciennes données.
+ */
+function callerActivityDateWhere(startDate, endDate) {
+  const start = startDate ? startOfAppDay(startDate) : null;
+  const end = endDate ? endOfAppDay(endDate) : null;
+  if (!start && !end) return null;
+
+  const or = [];
+  const calledRange = {};
+  if (start) calledRange.gte = start;
+  if (end) calledRange.lte = end;
+  if (Object.keys(calledRange).length) {
+    or.push({ calledAt: calledRange });
+  }
+
+  const validatedRange = {};
+  if (start) validatedRange.gte = start;
+  if (end) validatedRange.lte = end;
+  if (Object.keys(validatedRange).length) {
+    or.push({
+      AND: [{ calledAt: null }, { validatedAt: validatedRange }]
+    });
+  }
+
+  const createdRange = {};
+  if (start) createdRange.gte = start;
+  if (end) createdRange.lte = end;
+  if (Object.keys(createdRange).length) {
+    or.push({
+      AND: [{ calledAt: null }, { validatedAt: null }, { createdAt: createdRange }]
+    });
+  }
+
+  return { OR: or };
+}
+
 // GET /api/stats/overview - Vue d'ensemble (Admin/Gestionnaire)
 router.get('/overview', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
@@ -104,17 +142,10 @@ router.get('/callers', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), async (re
     const where = {
       callerId: callerId ? parseInt(callerId) : { not: null }
     };
-    
-    if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        const start = startOfAppDay(startDate);
-        if (start) where.createdAt.gte = start;
-      }
-      if (endDate) {
-        const end = endOfAppDay(endDate);
-        if (end) where.createdAt.lte = end;
-      }
+
+    const activityWhere = callerActivityDateWhere(startDate, endDate);
+    if (activityWhere) {
+      where.AND = [activityWhere];
     }
 
     // Récupérer toutes les commandes avec appelant
@@ -345,18 +376,24 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
     }
 
     if (user.role === 'APPELANT') {
-      // Récupérer les commandes de l'appelant
+      const activityOr = [
+        { calledAt: { gte: startDate } },
+        { AND: [{ calledAt: null }, { validatedAt: { gte: startDate } }] },
+        { AND: [{ calledAt: null }, { validatedAt: null }, { createdAt: { gte: startDate } }] }
+      ];
       const orders = await prisma.order.findMany({
         where: {
           callerId: user.id,
-          createdAt: { gte: startDate }
+          OR: activityOr
         },
         select: {
           id: true,
           status: true,
           deliveryType: true,
           expedieAt: true,
-          createdAt: true
+          createdAt: true,
+          calledAt: true,
+          validatedAt: true
         }
       });
 

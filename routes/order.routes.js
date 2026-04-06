@@ -457,7 +457,12 @@ router.put('/:id/status', async (req, res) => {
       if (!['VALIDEE', 'ANNULEE', 'INJOIGNABLE'].includes(status)) {
         return res.status(400).json({ error: 'Statut invalide pour un appelant.' });
       }
-      // ✅ Note: Le callerId sera assigné dans la transaction ci-dessous
+      if (!['NOUVELLE', 'A_APPELER'].includes(order.status)) {
+        return res.status(400).json({
+          error: 'Seules les commandes en file d\'appel (nouvelle / à appeler) peuvent être traitées par un appelant.'
+        });
+      }
+      // ✅ callerId / calledAt : assignés dans la transaction (toujours l'appelant qui clôture l'appel)
     } else if (user.role === 'LIVREUR') {
       // Le livreur peut changer : ASSIGNEE -> LIVREE/REFUSEE/ANNULEE_LIVRAISON/RETOURNE
       if (!['LIVREE', 'REFUSEE', 'ANNULEE_LIVRAISON', 'RETOURNE'].includes(status)) {
@@ -476,7 +481,12 @@ router.put('/:id/status', async (req, res) => {
         noteAppelant: user.role === 'APPELANT' && note ? note : order.noteAppelant,
         noteLivreur: user.role === 'LIVREUR' && note ? note : order.noteLivreur,
         noteGestionnaire: (user.role === 'GESTIONNAIRE' || user.role === 'ADMIN') && note ? note : order.noteGestionnaire,
-        validatedAt: status === 'VALIDEE' ? (order.validatedAt || new Date()) : order.validatedAt,
+        validatedAt:
+          status === 'VALIDEE'
+            ? (order.validatedAt || new Date())
+            : user.role === 'APPELANT' && ['ANNULEE', 'INJOIGNABLE'].includes(status)
+              ? (order.validatedAt || new Date())
+              : order.validatedAt,
         deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
         raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
         retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
@@ -487,11 +497,11 @@ router.put('/:id/status', async (req, res) => {
         renvoyeAAppelerAt: status === 'A_APPELER' ? order.renvoyeAAppelerAt : null
       };
 
-      // 🆕 CORRECTION STATS: Si c'est un APPELANT qui change le statut, assigner automatiquement le callerId
-      if (user.role === 'APPELANT' && !order.callerId) {
+      // Stats appelants : l'appelant qui valide / annule / injoignable depuis « À appeler » est toujours crédité
+      if (user.role === 'APPELANT' && ['NOUVELLE', 'A_APPELER'].includes(order.status)) {
         updateData.callerId = user.id;
         updateData.calledAt = new Date();
-        console.log('📞 Assignation automatique du callerId:', user.id, 'à la commande', order.orderReference);
+        console.log('📞 Attribution appelant (clôture file d\'appel):', user.id, 'commande', order.orderReference);
       }
 
       // Retour « commandes validées » : détacher la tournée pour que les compteurs tournée se mettent à jour
@@ -1317,11 +1327,10 @@ router.post('/:id/expedition', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
         rdvRappele: order.rdvProgramme ? true : order.rdvRappele
       };
 
-      // 🆕 CORRECTION STATS: Assigner le callerId uniquement si c'est un APPELANT et que la commande n'a pas déjà un callerId
-      if (req.user.role === 'APPELANT' && !order.callerId) {
+      if (req.user.role === 'APPELANT' && ['NOUVELLE', 'A_APPELER'].includes(order.status)) {
         updateData.callerId = req.user.id;
         updateData.calledAt = new Date();
-        console.log('📞 EXPEDITION: Assignation automatique du callerId:', req.user.id, 'à la commande', order.orderReference);
+        console.log('📞 EXPEDITION: Attribution appelant:', req.user.id, 'commande', order.orderReference);
       }
 
       // Mettre à jour la commande
@@ -1410,11 +1419,10 @@ router.post('/:id/express', authorize('APPELANT', 'ADMIN', 'GESTIONNAIRE'), [
         rdvRappele: order.rdvProgramme ? true : order.rdvRappele
       };
 
-      // 🆕 CORRECTION STATS: Assigner le callerId uniquement si c'est un APPELANT et que la commande n'a pas déjà un callerId
-      if (req.user.role === 'APPELANT' && !order.callerId) {
+      if (req.user.role === 'APPELANT' && ['NOUVELLE', 'A_APPELER'].includes(order.status)) {
         updateData.callerId = req.user.id;
         updateData.calledAt = new Date();
-        console.log('📞 EXPRESS: Assignation automatique du callerId:', req.user.id, 'à la commande', order.orderReference);
+        console.log('📞 EXPRESS: Attribution appelant:', req.user.id, 'commande', order.orderReference);
       }
 
       const updated = await tx.order.update({
