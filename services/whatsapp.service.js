@@ -840,7 +840,8 @@ function extractMediaUrl(obj) {
     obj.url,
     obj.link,
     obj.download_url,
-    obj.downloadUrl
+    obj.downloadUrl,
+    obj.DownloadLink
   ];
   for (const c of candidates) {
     if (typeof c === 'string' && (c.startsWith('http://') || c.startsWith('https://'))) return c;
@@ -955,14 +956,17 @@ function extractWhatsAppMessages(payload) {
       raw?.from_number ||
       raw?.sender_number ||
       raw?.chatId ||
-      raw?.WhatsappId ||
       raw?.sender?.id ||
       payload?.from ||
       payload?.From ||
       payload?.phone;
-    const from = String(fromRaw || '')
+    let from = String(fromRaw || '')
       .replace(/[^\d]/g, '')
       .trim();
+    if (!from) {
+      const wid = raw?.WhatsappId || payload?.WhatsappId;
+      if (wid) from = String(wid).replace(/[^\d]/g, '').trim();
+    }
     const text =
       raw?.text?.body ||
       raw?.text ||
@@ -972,9 +976,11 @@ function extractWhatsAppMessages(payload) {
       raw?.message ||
       raw?.body ||
       raw?.caption ||
+      raw?.Caption ||
       raw?.content ||
       raw?.conversation ||
       payload?.Chat ||
+      payload?.Caption ||
       '';
     const rawType = String(raw?.type || raw?.Type || (text ? 'text' : 'unknown'))
       .trim()
@@ -984,7 +990,8 @@ function extractWhatsAppMessages(payload) {
     const messageId = raw?.id || raw?.ID || raw?.message_id || raw?.msgId || raw?.Hash || null;
     const chatId = raw?.chatId || raw?.chat_id || raw?.jid || raw?.WhatsappId || payload?.chatId || payload?.WhatsappId || null;
 
-    if (from && (text || ['audio', 'ptt', 'voice'].includes(type))) {
+    const mediaWithCaption = ['image', 'document', 'video', 'sticker'].includes(type) && String(text || '').trim();
+    if (from && (text || ['audio', 'ptt', 'voice'].includes(type) || mediaWithCaption)) {
       messages.push({
         from,
         name: name ? String(name) : null,
@@ -1000,18 +1007,24 @@ function extractWhatsAppMessages(payload) {
   // 3) Format ultra simple
   if (
     messages.length === 0 &&
-    (payload?.from || payload?.From || payload?.phone) &&
-    (payload?.text || payload?.message || payload?.chat || payload?.Chat)
+    (payload?.from || payload?.From || payload?.phone || payload?.WhatsappId) &&
+    (payload?.text || payload?.message || payload?.chat || payload?.Chat || payload?.Caption || payload?.caption)
   ) {
+    let fromUltra = String(payload.from || payload.From || payload.phone || '').replace(/[^\d]/g, '');
+    if (!fromUltra && payload.WhatsappId) {
+      fromUltra = String(payload.WhatsappId).replace(/[^\d]/g, '');
+    }
     messages.push({
-      from: String(payload.from || payload.From || payload.phone).replace(/[^\d]/g, ''),
+      from: fromUltra,
       name: payload.name ? String(payload.name) : null,
       type: ['chat', 'conversation', 'text'].includes(
         String(payload.type || payload.Type || 'text').trim().toLowerCase()
       )
         ? 'text'
         : String(payload.type || payload.Type || 'text').trim().toLowerCase(),
-      text: String(payload.text || payload.message || payload.chat || payload.Chat),
+      text: String(
+        payload.text || payload.message || payload.chat || payload.Chat || payload.Caption || payload.caption || ''
+      ),
       messageId: payload.id ? String(payload.id) : payload.ID ? String(payload.ID) : null,
       chatId: payload.chatId
         ? String(payload.chatId)
@@ -1024,7 +1037,15 @@ function extractWhatsAppMessages(payload) {
   if (messages.length === 0) {
     try {
       const keys = Object.keys(payload || {});
-      console.warn('WhatsApp webhook: payload non reconnu, keys=', keys);
+      const looks360 = keys.includes('webhook_type') || keys.includes('webhookUrl');
+      if (looks360) {
+        console.info(
+          '[WhatsApp] Webhook 360Messenger sans message texte/vocal exploitable (accusé, statut ou média sans légende).',
+          { dataType: payload?.dataType, type: payload?.Type }
+        );
+      } else {
+        console.warn('WhatsApp webhook: payload non reconnu, keys=', keys);
+      }
     } catch (error) {
       console.warn('WhatsApp webhook: payload non reconnu');
     }
