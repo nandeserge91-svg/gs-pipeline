@@ -51,9 +51,7 @@ const verifyApiKey = (req, res, next) => {
 // POST /api/webhook/make - Réception des commandes depuis Make
 router.post('/make', verifyApiKey, [
   body('product_key').notEmpty().withMessage('product_key requis'),
-  body('customer_name').notEmpty().withMessage('customer_name requis'),
   body('customer_phone').notEmpty().withMessage('customer_phone requis'),
-  body('customer_city').notEmpty().withMessage('customer_city requis'),
 ], async (req, res) => {
   try {
     // Validation des données
@@ -125,10 +123,10 @@ router.post('/make', verifyApiKey, [
     // 4. Créer la commande dans la base de données
     const order = await prisma.order.create({
       data: {
-        // Informations client
-        clientNom: customer_name,
+        // Informations client (seul le contact est obligatoire)
+        clientNom: (customer_name && customer_name.trim()) ? customer_name.trim() : 'À renseigner',
         clientTelephone: cleanedPhone,
-        clientVille: customer_city,
+        clientVille: (customer_city && customer_city.trim()) ? customer_city.trim() : 'À renseigner',
         clientCommune: customer_commune || null,
         clientAdresse: customer_address || null,
         
@@ -253,9 +251,7 @@ router.get('/products', verifyApiKey, async (req, res) => {
 
 // POST /api/webhook/google-sheet - Réception depuis Google Apps Script (Bee Venom)
 router.post('/google-sheet', [
-  body('nom').notEmpty().withMessage('nom requis'),
   body('telephone').notEmpty().withMessage('telephone requis'),
-  body('ville').notEmpty().withMessage('ville requis'),
 ], async (req, res) => {
   try {
     // Validation des données
@@ -384,10 +380,10 @@ router.post('/google-sheet', [
     // Créer la commande avec statut NOUVELLE (apparaîtra dans "À appeler")
     const order = await prisma.order.create({
       data: {
-        // Informations client
-        clientNom: nom,
+        // Informations client (seul le contact est obligatoire)
+        clientNom: (nom && nom.trim()) ? nom.trim() : 'À renseigner',
         clientTelephone: cleanedPhone,
-        clientVille: ville,
+        clientVille: (ville && ville.trim()) ? ville.trim() : 'À renseigner',
         clientCommune: null,
         clientAdresse: null,
         
