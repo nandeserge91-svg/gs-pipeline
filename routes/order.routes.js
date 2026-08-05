@@ -3,6 +3,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
+import { notifyClientOfDeliveryAssignment } from '../services/delivery-assignment-sms.service.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
 import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
 
@@ -417,12 +418,16 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), [
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
         const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
-        await sendSMS(order.clientTelephone, message, {
+        const smsResult = await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED',
           userId: req.user.id
         });
-        console.log(`✅ SMS envoyé pour commande ${order.orderReference}`);
+        if (smsResult.success) {
+          console.log(`✅ SMS envoyé pour commande ${order.orderReference}`);
+        } else {
+          console.error(`⚠️ Échec SMS pour commande ${order.orderReference}: ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error('⚠️ Erreur envoi SMS (non bloquante):', smsError.message);
         // Ne pas bloquer la création de commande si l'envoi SMS échoue
@@ -666,12 +671,16 @@ router.put('/:id/status', async (req, res) => {
 
         // Envoyer le SMS si un message a été déterminé
         if (smsMessage) {
-          await sendSMS(updatedOrder.clientTelephone, smsMessage, {
+          const smsResult = await sendSMS(updatedOrder.clientTelephone, smsMessage, {
             orderId: updatedOrder.id,
             type: smsType,
             userId: user.id
           });
-          console.log(`✅ SMS ${smsType} envoyé pour commande ${updatedOrder.orderReference}`);
+          if (smsResult.success) {
+            console.log(`✅ SMS ${smsType} envoyé pour commande ${updatedOrder.orderReference}`);
+          } else {
+            console.error(`⚠️ Échec SMS ${smsType} pour commande ${updatedOrder.orderReference}: ${smsResult.error}`);
+          }
         }
 
       } catch (smsError) {
@@ -1540,13 +1549,17 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
           Math.round(updatedOrder.montantRestant || (updatedOrder.montant * 0.90))
         );
         
-        await sendSMS(updatedOrder.clientTelephone, message, {
+        const smsResult = await sendSMS(updatedOrder.clientTelephone, message, {
           orderId: updatedOrder.id,
           type: 'EXPRESS_ARRIVED',
           userId: req.user.id
         });
-        
-        console.log(`✅ SMS EXPRESS arrivé envoyé pour commande ${updatedOrder.orderReference}`);
+
+        if (smsResult.success) {
+          console.log(`✅ SMS EXPRESS arrivé envoyé pour commande ${updatedOrder.orderReference}`);
+        } else {
+          console.error(`⚠️ Échec SMS EXPRESS pour commande ${updatedOrder.orderReference}: ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error('⚠️ Erreur envoi SMS EXPRESS (non bloquante):', smsError.message);
       }
@@ -1836,10 +1849,23 @@ router.post('/:id/expedition/assign', authorize('ADMIN', 'GESTIONNAIRE'), [
       }
     });
 
+    // Notification client avec le nom et le numéro du livreur.
+    // La fonction ignore une réassignation au même livreur pour éviter les doublons.
+    const smsResult = await notifyClientOfDeliveryAssignment({
+      order,
+      deliverer,
+      userId: req.user.id
+    });
+
     res.json({ 
       order: updatedOrder,
       deliveryList,
-      message: `${typeName} assignée au livreur avec succès.${order.status === 'EXPEDITION' ? ' Le gestionnaire de stock doit confirmer la remise du colis.' : ''}` 
+      message: `${typeName} assignée au livreur avec succès.${order.status === 'EXPEDITION' ? ' Le gestionnaire de stock doit confirmer la remise du colis.' : ''}`,
+      sms: {
+        sent: smsResult.success ? 1 : 0,
+        failed: !smsResult.success && !smsResult.skipped ? 1 : 0,
+        skipped: smsResult.skipped ? 1 : 0
+      }
     });
   } catch (error) {
     console.error('Erreur lors de l\'assignation du livreur:', error);

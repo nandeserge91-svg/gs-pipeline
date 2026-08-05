@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBounds.js';
+import { notifyClientsOfDeliveryAssignment } from '../services/delivery-assignment-sms.service.js';
 
 router.use(authenticate);
 
@@ -157,9 +158,18 @@ router.post('/assign', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
 
     await Promise.all(historyPromises);
 
+    // Informer chaque client avec le nom et le contact du nouveau livreur.
+    // L'échec d'un SMS ne remet pas en cause l'assignation déjà enregistrée.
+    const smsSummary = await notifyClientsOfDeliveryAssignment({
+      orders: ordersToAssign,
+      deliverer,
+      userId: req.user.id
+    });
+
     res.json({ 
       deliveryList, 
-      message: `${orderIds.length} commande(s) assignée(s) avec succès.` 
+      message: `${orderIds.length} commande(s) assignée(s) avec succès.`,
+      sms: smsSummary
     });
   } catch (error) {
     console.error('Erreur assignation commandes:', error);

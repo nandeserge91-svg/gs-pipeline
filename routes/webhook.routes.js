@@ -156,11 +156,15 @@ router.post('/make', verifyApiKey, [
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
         const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
-        await sendSMS(order.clientTelephone, message, {
+        const smsResult = await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED'
         });
-        console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Make webhook)`);
+        if (smsResult.success) {
+          console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Make webhook)`);
+        } else {
+          console.error(`⚠️ Échec SMS ORDER_CREATED pour commande ${order.orderReference} (Make webhook): ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error('⚠️ Erreur envoi SMS Make webhook (non bloquante):', smsError.message);
       }
@@ -412,11 +416,15 @@ router.post('/google-sheet', [
     if (smsEnabled && smsOrderCreatedEnabled) {
       try {
         const message = await smsTemplates.orderCreated(order.clientNom, order.orderReference, order.produitNom);
-        await sendSMS(order.clientTelephone, message, {
+        const smsResult = await sendSMS(order.clientTelephone, message, {
           orderId: order.id,
           type: 'ORDER_CREATED'
         });
-        console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Google Sheet webhook)`);
+        if (smsResult.success) {
+          console.log(`✅ SMS ORDER_CREATED envoyé pour commande ${order.orderReference} (Google Sheet webhook)`);
+        } else {
+          console.error(`⚠️ Échec SMS ORDER_CREATED pour commande ${order.orderReference} (Google Sheet webhook): ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error('⚠️ Erreur envoi SMS Google Sheet webhook (non bloquante):', smsError.message);
       }

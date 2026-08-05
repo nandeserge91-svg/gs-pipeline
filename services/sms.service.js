@@ -14,12 +14,52 @@ import prisma from '../config/prisma.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 // Configuration SMS8.io
-const SMS8_API_KEY = process.env.SMS8_API_KEY || '6a854258b60b92bd3a87ee563ac8a375ed28a78f';
 const SMS8_API_URL = process.env.SMS8_API_URL || 'https://app.sms8.io/services/send.php';
-const SMS_DEVICE_ID = process.env.SMS_DEVICE_ID || '5298'; // Device Android dédié KLE-A0
-const SMS_SIM_SLOT = process.env.SMS_SIM_SLOT || '0'; // SIM 1 (slot 0)
-const SMS_SENDER_NUMBER = process.env.SMS_SENDER_NUMBER || '+2250595871746'; // Numéro de la SIM
-const SMS_SENDER_NAME = process.env.SMS_SENDER_NAME || 'GS-Pipeline';
+const SMS_DEVICE_ID = process.env.SMS_DEVICE_ID?.trim();
+const SMS_SIM_SLOT = process.env.SMS_SIM_SLOT?.trim() || '0'; // SIM 1 (index 0)
+const CONFIGURED_SMS8_API_KEY = process.env.SMS8_API_KEY?.trim();
+
+export function buildSmsDeviceParam(deviceId, simSlot = '0') {
+  const normalizedDeviceId = String(deviceId || '').trim();
+  const normalizedSimSlot = String(simSlot).trim();
+
+  if (!normalizedDeviceId) {
+    throw new Error('Configuration SMS8 incomplète : SMS_DEVICE_ID est manquant');
+  }
+
+  if (!['0', '1'].includes(normalizedSimSlot)) {
+    throw new Error('Configuration SMS8 invalide : SMS_SIM_SLOT doit être 0 (SIM 1) ou 1 (SIM 2)');
+  }
+
+  // SMS8 sélectionne la carte par son emplacement physique, jamais par son numéro.
+  return `${normalizedDeviceId}|${normalizedSimSlot}`;
+}
+
+function getSms8ErrorMessage(apiResponse, messageData) {
+  return apiResponse?.error?.message
+    || messageData?.error?.message
+    || messageData?.error
+    || apiResponse?.message
+    || messageData?.message
+    || `Échec SMS8 (${messageData?.status || 'statut inconnu'})`;
+}
+
+export function parseSms8Response(apiResponse = {}) {
+  const messageData = apiResponse.data?.messages?.[0] || {};
+  const providerStatus = String(messageData.status || '').toLowerCase();
+  const isSuccess = Boolean(
+    apiResponse.success
+    && apiResponse.data?.messages?.length > 0
+    && providerStatus !== 'failed'
+    && providerStatus !== 'error'
+  );
+
+  return {
+    messageData,
+    isSuccess,
+    providerError: isSuccess ? null : getSms8ErrorMessage(apiResponse, messageData)
+  };
+}
 
 /**
  * 📋 Charger un template SMS depuis la base de données
@@ -68,6 +108,10 @@ function replaceVariables(template, variables) {
  */
 export async function sendSMS(phone, message, metadata = {}) {
   try {
+    if (!CONFIGURED_SMS8_API_KEY) {
+      throw new Error('Configuration SMS8 incomplète : SMS8_API_KEY est manquante');
+    }
+
     // Validation du numéro de téléphone
     const cleanPhone = cleanPhoneNumber(phone);
     if (!cleanPhone) {
@@ -79,13 +123,14 @@ export async function sendSMS(phone, message, metadata = {}) {
       throw new Error('Message vide');
     }
 
-    // Envoi du SMS via SMS8.io avec Android dédié
-    // Format du device : "deviceID|simSlot" (ex: "5298|0")
-    const deviceParam = `${SMS_DEVICE_ID}|${SMS_SIM_SLOT}`;
+    // Envoi via l'emplacement SIM physique. "deviceID|0" = SIM 1.
+    // Si le téléphone ne contient qu'une carte dans SIM 1, cette carte est utilisée
+    // quel que soit son numéro de téléphone.
+    const deviceParam = buildSmsDeviceParam(SMS_DEVICE_ID, SMS_SIM_SLOT);
     
     const response = await axios.post(SMS8_API_URL, null, {
       params: {
-        key: SMS8_API_KEY,
+        key: CONFIGURED_SMS8_API_KEY,
         number: cleanPhone,
         message: message,
         devices: deviceParam,
@@ -96,8 +141,7 @@ export async function sendSMS(phone, message, metadata = {}) {
 
     // Parser la réponse de l'API send.php
     const apiResponse = response.data;
-    const isSuccess = apiResponse.success && apiResponse.data?.messages?.length > 0;
-    const messageData = apiResponse.data?.messages?.[0] || {};
+    const { messageData, isSuccess, providerError } = parseSms8Response(apiResponse);
     
     // Log du SMS en base de données
     const smsLog = await prisma.smsLog.create({
@@ -107,7 +151,7 @@ export async function sendSMS(phone, message, metadata = {}) {
         status: isSuccess && messageData.status !== 'Failed' ? 'SENT' : 'FAILED',
         provider: `SMS8-Device-${SMS_DEVICE_ID}`,
         providerId: messageData.ID ? String(messageData.ID) : null, // Convertir en String
-        errorMessage: !isSuccess ? (apiResponse.error?.message || 'Erreur inconnue') : null,
+        errorMessage: providerError,
         orderId: metadata.orderId || null,
         userId: metadata.userId || null,
         type: metadata.type || 'NOTIFICATION',
@@ -115,6 +159,18 @@ export async function sendSMS(phone, message, metadata = {}) {
         sentAt: new Date()
       }
     });
+
+    if (!isSuccess) {
+      console.error(`❌ Échec SMS8 pour ${cleanPhone}: ${providerError}`);
+      return {
+        success: false,
+        smsLogId: smsLog.id,
+        error: providerError,
+        providerStatus: messageData.status || null,
+        deviceId: SMS_DEVICE_ID,
+        simSlot: SMS_SIM_SLOT
+      };
+    }
 
     console.log(`📱 SMS envoyé via Android ${SMS_DEVICE_ID} (SIM ${parseInt(SMS_SIM_SLOT) + 1}) : ${cleanPhone}`);
 
@@ -124,7 +180,6 @@ export async function sendSMS(phone, message, metadata = {}) {
       messageId: messageData.ID,
       deviceId: SMS_DEVICE_ID,
       simSlot: SMS_SIM_SLOT,
-      senderNumber: SMS_SENDER_NUMBER,
       message: 'SMS envoyé via Android dédié avec succès'
     };
 
@@ -191,7 +246,7 @@ function generateFallbackMessage(templateKey, variables) {
   const fallbacks = {
     ORDER_CREATED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} est enregistree. - AFGestion`,
     ORDER_VALIDATED: `Bonjour ${variables.prenom}, votre commande ${variables.produit} (${variables.montant} F) est confirmee. - AFGestion`,
-    DELIVERY_ASSIGNED: `Bonjour ${variables.prenom}, votre livreur ${variables.livreur} (${variables.telephone}) est en route. - AFGestion`,
+    DELIVERY_ASSIGNED: `Bonjour ${variables.prenom}, votre colis a ete confie au livreur ${variables.livreur}. Il est en route vers vous. Contact: ${variables.telephone}. - AFGestion`,
     ORDER_DELIVERED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete livree avec succes. - AFGestion`,
     EXPEDITION_CONFIRMED: `Bonjour ${variables.prenom}, votre colis a ete expedie vers ${variables.ville}. Code: ${variables.code}. - AFGestion`,
     EXPRESS_ARRIVED: `Bonjour ${variables.prenom}, votre colis est arrive a ${variables.agence}. Code: ${variables.code}. A payer: ${variables.montant} F. - AFGestion`,
@@ -314,7 +369,7 @@ export async function getSMSCredits() {
   try {
     const response = await axios.get(SMS8_API_URL, {
       params: {
-        key: SMS8_API_KEY
+        key: CONFIGURED_SMS8_API_KEY
       },
       timeout: 5000
     });

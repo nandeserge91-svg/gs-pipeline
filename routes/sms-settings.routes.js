@@ -105,7 +105,8 @@ router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
       androidConfig: {
         deviceId: process.env.SMS_DEVICE_ID || null,
         simSlot: process.env.SMS_SIM_SLOT || null,
-        senderNumber: process.env.SMS_SENDER_NUMBER || null
+        selectionMode: 'SIM_SLOT',
+        usesSenderNumber: false
       },
       settings
     });
