@@ -280,7 +280,11 @@ model Product {
   stockExpress Int      @default(0)  // Stock réservé EXPRESS (payé 10%, en attente retrait)
   stockAlerte  Int      @default(10) // Seuil d'alerte
   actif        Boolean  @default(true)
-  marketingFunnelUrl String? // Tunnel de vente utilisé dans les relances après annulation
+  marketingEnabled    Boolean @default(false) // Activation propre à ce produit
+  marketingFunnelUrl  String? // Tunnel de vente utilisé dans les relances après annulation
+  marketingTemplateJ3 String  @default("Bonjour {prenom}, {produit} est toujours disponible. Voir l'offre : {lien} - AFGestion") @db.Text
+  marketingTemplateJ5 String  @default("Bonjour {prenom}, profitez toujours de {produit}. Commandez ici : {lien} - AFGestion") @db.Text
+  marketingTemplateJ7 String  @default("Bonjour {prenom}, derniere relance pour {produit}. Offre ici : {lien} - AFGestion") @db.Text
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

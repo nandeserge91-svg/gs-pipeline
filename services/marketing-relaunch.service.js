@@ -12,6 +12,12 @@ const REMINDER_TYPES = Object.freeze({
   7: 'MARKETING_RELANCE_J7'
 });
 
+const REMINDER_TEMPLATE_FIELDS = Object.freeze({
+  3: 'marketingTemplateJ3',
+  5: 'marketingTemplateJ5',
+  7: 'marketingTemplateJ7'
+});
+
 export function buildMarketingReminderSchedule(orderId, cancellationAt) {
   const cancelledAt = new Date(cancellationAt);
 
@@ -124,7 +130,10 @@ export async function runMarketingRelaunches(options = {}) {
           status: 'ANNULEE',
           marketingCancelledAt: { not: null },
           product: {
-            is: { marketingFunnelUrl: { not: null } }
+            is: {
+              marketingEnabled: true,
+              marketingFunnelUrl: { not: null }
+            }
           }
         }
       }
@@ -171,6 +180,11 @@ export async function runMarketingRelaunches(options = {}) {
       continue;
     }
 
+    if (!order.product?.marketingEnabled) {
+      summary.blocked += 1;
+      continue;
+    }
+
     const marketingUrl = order.product?.marketingFunnelUrl?.trim();
     if (!isValidMarketingUrl(marketingUrl)) {
       summary.blocked += 1;
@@ -178,7 +192,8 @@ export async function runMarketingRelaunches(options = {}) {
     }
 
     const smsType = REMINDER_TYPES[reminder.dayOffset];
-    if (!smsType) {
+    const templateField = REMINDER_TEMPLATE_FIELDS[reminder.dayOffset];
+    if (!smsType || !templateField) {
       await db.marketingReminder.update({
         where: { id: reminder.id },
         data: {
@@ -187,6 +202,12 @@ export async function runMarketingRelaunches(options = {}) {
         }
       });
       summary.skipped += 1;
+      continue;
+    }
+
+    const productTemplate = order.product?.[templateField]?.trim();
+    if (!productTemplate) {
+      summary.blocked += 1;
       continue;
     }
 
@@ -240,7 +261,7 @@ export async function runMarketingRelaunches(options = {}) {
         prenom: firstName(order.clientNom),
         produit: order.product?.nom || order.produitNom,
         lien: marketingUrl
-      });
+      }, productTemplate);
 
       const result = await sendSms(order.clientTelephone, message, {
         orderId: order.id,

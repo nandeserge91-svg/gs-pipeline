@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSmsDeviceParam, parseSms8Response } from '../services/sms.service.js';
+import { buildSmsDeviceParam, generateSmsFromTemplate, parseSms8Response } from '../services/sms.service.js';
 
 test('sélectionne SIM 1 par son emplacement, sans numéro de SIM', () => {
   assert.equal(buildSmsDeviceParam('12286', '0'), '12286|0');
@@ -43,4 +43,14 @@ test('refuse un message marqué Failed par SMS8', () => {
 
   assert.equal(result.isSuccess, false);
   assert.equal(result.providerError, 'Device offline');
+});
+
+test('rend un texte Marketing propre au produit sans charger le modèle global', async () => {
+  const message = await generateSmsFromTemplate(
+    'MARKETING_RELANCE_J3',
+    { prenom: 'Awa', produit: 'Produit A', lien: 'https://example.com/a' },
+    'Bonjour {prenom}, offre {produit}: {lien}'
+  );
+
+  assert.equal(message, 'Bonjour Awa, offre Produit A: https://example.com/a');
 });

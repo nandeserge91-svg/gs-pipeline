@@ -218,8 +218,14 @@ export async function sendSMS(phone, message, metadata = {}) {
  * @param {object} variables - Variables à remplacer {prenom: 'John', ref: '123', ...}
  * @returns {Promise<string>} - Message généré
  */
-export async function generateSmsFromTemplate(templateKey, variables) {
+export async function generateSmsFromTemplate(templateKey, variables, customTemplate = null) {
   try {
+    // Les relances marketing peuvent fournir un texte propre au produit.
+    // Dans ce cas, ne jamais consulter le template global de la base.
+    if (typeof customTemplate === 'string' && customTemplate.trim()) {
+      return replaceVariables(customTemplate.trim(), variables);
+    }
+
     // Charger le template depuis la DB
     const template = await getTemplate(templateKey);
     

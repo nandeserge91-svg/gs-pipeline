@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import SmsTemplateEditor from './SmsTemplateEditor';
 
 interface SmsSetting {
@@ -368,20 +369,29 @@ export default function SmsSettings() {
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Bouton test */}
-                      <button
-                        onClick={() => testSms(setting.key)}
-                        disabled={testingType === setting.key}
-                        className="px-3 py-2 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 
-                                 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
-                      >
-                        {testingType === setting.key ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                        Test
-                      </button>
+                      {setting.key === 'SMS_MARKETING_RELAUNCH' ? (
+                        <Link
+                          to="/admin/products"
+                          className="px-3 py-2 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          Configurer par produit
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => testSms(setting.key)}
+                          disabled={testingType === setting.key}
+                          className="px-3 py-2 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100
+                                   rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {testingType === setting.key ? (
+                            <Loader className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                          Test
+                        </button>
+                      )}
 
                       {/* Toggle */}
                       <button

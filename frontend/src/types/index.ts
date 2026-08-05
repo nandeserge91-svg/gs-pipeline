@@ -188,7 +188,11 @@ export interface Product {
   stockExpress: number;
   stockAlerte: number;
   actif: boolean;
+  marketingEnabled: boolean;
   marketingFunnelUrl?: string | null;
+  marketingTemplateJ3: string;
+  marketingTemplateJ5: string;
+  marketingTemplateJ7: string;
   createdAt: string;
   updatedAt: string;
 }
