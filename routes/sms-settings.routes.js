@@ -89,7 +89,7 @@ const SMS_TYPES = [
   {
     key: 'SMS_MARKETING_RELAUNCH',
     label: 'Relances après annulation',
-    description: 'SMS automatiques à J+3, J+5 et J+7 avec le tunnel du produit',
+    description: 'Bouton maître des relances J+3, J+5 et J+7 configurées séparément dans chaque produit',
     icon: '📣',
     category: 'Marketing'
   }

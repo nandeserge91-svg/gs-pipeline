@@ -8,6 +8,25 @@ import prisma from '../config/prisma.js';
 
 const router = express.Router();
 
+const PRODUCT_MARKETING_TEMPLATE_KEYS = [
+  'MARKETING_RELANCE_J3',
+  'MARKETING_RELANCE_J5',
+  'MARKETING_RELANCE_J7'
+];
+
+function isProductMarketingTemplate(key) {
+  return PRODUCT_MARKETING_TEMPLATE_KEYS.includes(String(key || '').toUpperCase());
+}
+
+function rejectGlobalProductMarketingEdit(req, res) {
+  if (!isProductMarketingTemplate(req.params.key)) return false;
+
+  res.status(400).json({
+    error: 'Cette relance se configure directement dans la fiche du produit.'
+  });
+  return true;
+}
+
 /**
  * GET /api/sms-templates
  * Récupérer tous les templates SMS
@@ -15,6 +34,9 @@ const router = express.Router();
 router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const templates = await prisma.smsTemplate.findMany({
+      where: {
+        key: { notIn: PRODUCT_MARKETING_TEMPLATE_KEYS }
+      },
       orderBy: [
         { category: 'asc' },
         { label: 'asc' }
@@ -58,6 +80,7 @@ router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
 router.get('/:key', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { key } = req.params;
+    if (rejectGlobalProductMarketingEdit(req, res)) return;
     
     const template = await prisma.smsTemplate.findUnique({
       where: { key: key.toUpperCase() }
@@ -93,6 +116,7 @@ router.put('/:key', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { key } = req.params;
     const { template, isActive } = req.body;
+    if (rejectGlobalProductMarketingEdit(req, res)) return;
 
     if (!template) {
       return res.status(400).json({
@@ -146,6 +170,7 @@ router.put('/:key', authenticate, authorize('ADMIN'), async (req, res) => {
 router.post('/:key/reset', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
     const { key } = req.params;
+    if (rejectGlobalProductMarketingEdit(req, res)) return;
 
     // Récupérer le template
     const template = await prisma.smsTemplate.findUnique({
@@ -194,6 +219,7 @@ router.post('/:key/preview', authenticate, authorize('ADMIN'), async (req, res) 
   try {
     const { key } = req.params;
     const { template, variables } = req.body;
+    if (rejectGlobalProductMarketingEdit(req, res)) return;
 
     if (!template || !variables) {
       return res.status(400).json({
@@ -229,7 +255,11 @@ router.post('/:key/preview', authenticate, authorize('ADMIN'), async (req, res) 
  */
 router.get('/stats/usage', authenticate, authorize('ADMIN'), async (req, res) => {
   try {
-    const templates = await prisma.smsTemplate.findMany();
+    const templates = await prisma.smsTemplate.findMany({
+      where: {
+        key: { notIn: PRODUCT_MARKETING_TEMPLATE_KEYS }
+      }
+    });
     
     // Pour chaque template, compter les SMS envoyés
     const templateStats = await Promise.all(

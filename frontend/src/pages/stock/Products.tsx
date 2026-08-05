@@ -1,17 +1,30 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2, Link2 } from 'lucide-react';
+import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2, Link2, Megaphone, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/utils/statusHelpers';
 import type { Product } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
+const DEFAULT_MARKETING_TEMPLATES = {
+  marketingTemplateJ3: "Bonjour {prenom}, {produit} est toujours disponible. Voir l'offre : {lien} - AFGestion",
+  marketingTemplateJ5: 'Bonjour {prenom}, profitez toujours de {produit}. Commandez ici : {lien} - AFGestion',
+  marketingTemplateJ7: 'Bonjour {prenom}, derniere relance pour {produit}. Offre ici : {lien} - AFGestion'
+};
+
+const MARKETING_STEPS = [
+  { key: 'marketingTemplateJ3', label: 'Message J+3' },
+  { key: 'marketingTemplateJ5', label: 'Message J+5' },
+  { key: 'marketingTemplateJ7', label: 'Message J+7' }
+] as const;
+
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showEditProductModal, setShowEditProductModal] = useState(false);
+  const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [adjustQuantity, setAdjustQuantity] = useState('');
@@ -26,8 +39,7 @@ export default function Products() {
     prix2: '',
     prix3: '',
     stockActuel: '',
-    stockAlerte: '10',
-    marketingFunnelUrl: ''
+    stockAlerte: '10'
   });
   const [editProduct, setEditProduct] = useState({
     code: '',
@@ -37,8 +49,12 @@ export default function Products() {
     prix1: '',
     prix2: '',
     prix3: '',
-    stockAlerte: '',
-    marketingFunnelUrl: ''
+    stockAlerte: ''
+  });
+  const [marketingSettings, setMarketingSettings] = useState({
+    marketingEnabled: false,
+    marketingFunnelUrl: '',
+    ...DEFAULT_MARKETING_TEMPLATES
   });
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -67,8 +83,7 @@ export default function Products() {
         prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
         prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
         stockActuel: parseInt(productData.stockActuel),
-        stockAlerte: parseInt(productData.stockAlerte),
-        marketingFunnelUrl: productData.marketingFunnelUrl.trim() || null
+        stockAlerte: parseInt(productData.stockAlerte)
       });
       return data;
     },
@@ -84,8 +99,7 @@ export default function Products() {
         prix2: '',
         prix3: '',
         stockActuel: '',
-        stockAlerte: '10',
-        marketingFunnelUrl: ''
+        stockAlerte: '10'
       });
       toast.success('Produit créé avec succès');
     },
@@ -127,8 +141,7 @@ export default function Products() {
         prix1: (productData.prix1 && productData.prix1 !== '') ? parseFloat(productData.prix1) : null,
         prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
         prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
-        stockAlerte: parseInt(productData.stockAlerte),
-        marketingFunnelUrl: productData.marketingFunnelUrl.trim() || null
+        stockAlerte: parseInt(productData.stockAlerte)
       });
       return data;
     },
@@ -143,6 +156,28 @@ export default function Products() {
       const errorMessage = error.response?.data?.error || 'Erreur lors de la modification du produit';
       toast.error(errorMessage);
     },
+  });
+
+  const updateMarketingMutation = useMutation({
+    mutationFn: async ({ id, settings }: { id: number; settings: typeof marketingSettings }) => {
+      const { data } = await api.put(`/products/${id}`, {
+        ...settings,
+        marketingFunnelUrl: settings.marketingFunnelUrl.trim() || null,
+        marketingTemplateJ3: settings.marketingTemplateJ3.trim(),
+        marketingTemplateJ5: settings.marketingTemplateJ5.trim(),
+        marketingTemplateJ7: settings.marketingTemplateJ7.trim()
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setShowMarketingModal(false);
+      setSelectedProduct(null);
+      toast.success('Marketing du produit enregistré indépendamment');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la modification Marketing');
+    }
   });
 
   const deleteProductMutation = useMutation({
@@ -199,10 +234,38 @@ export default function Products() {
       prix1: product.prix1 ? product.prix1.toString() : '',
       prix2: product.prix2 ? product.prix2.toString() : '',
       prix3: product.prix3 ? product.prix3.toString() : '',
-      stockAlerte: product.stockAlerte.toString(),
-      marketingFunnelUrl: product.marketingFunnelUrl || ''
+      stockAlerte: product.stockAlerte.toString()
     });
     setShowEditProductModal(true);
+  };
+
+  const openMarketingModal = (product: Product) => {
+    setSelectedProduct(product);
+    setMarketingSettings({
+      marketingEnabled: Boolean(product.marketingEnabled),
+      marketingFunnelUrl: product.marketingFunnelUrl || '',
+      marketingTemplateJ3: product.marketingTemplateJ3 || DEFAULT_MARKETING_TEMPLATES.marketingTemplateJ3,
+      marketingTemplateJ5: product.marketingTemplateJ5 || DEFAULT_MARKETING_TEMPLATES.marketingTemplateJ5,
+      marketingTemplateJ7: product.marketingTemplateJ7 || DEFAULT_MARKETING_TEMPLATES.marketingTemplateJ7
+    });
+    setShowMarketingModal(true);
+  };
+
+  const handleUpdateMarketing = () => {
+    if (marketingSettings.marketingEnabled && !marketingSettings.marketingFunnelUrl.trim()) {
+      toast.error("Ajoutez le lien du tunnel avant d'activer les relances");
+      return;
+    }
+
+    if (MARKETING_STEPS.some(({ key }) => !marketingSettings[key].trim())) {
+      toast.error('Les trois messages Marketing doivent être renseignés');
+      return;
+    }
+
+    updateMarketingMutation.mutate({
+      id: selectedProduct.id,
+      settings: marketingSettings
+    });
   };
 
   const openDeleteConfirm = (product: any) => {
@@ -396,22 +459,25 @@ export default function Products() {
                     </p>
                   )}
 
-                  {product.marketingFunnelUrl ? (
-                    <a
-                      href={product.marketingFunnelUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-900 border-t pt-3"
-                    >
-                      <Link2 size={16} />
-                      Tunnel de relance configuré
-                    </a>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 border-t pt-3">
-                      <Link2 size={16} />
-                      Aucun tunnel de relance
+                  <div className={`border-t pt-3 text-sm ${
+                    product.marketingEnabled ? 'text-purple-800' : 'text-gray-500'
+                  }`}>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Megaphone size={16} />
+                      {product.marketingEnabled ? 'Marketing actif pour ce produit' : 'Marketing désactivé pour ce produit'}
                     </div>
-                  )}
+                    {product.marketingFunnelUrl && (
+                      <a
+                        href={product.marketingFunnelUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 flex items-center gap-2 text-xs text-purple-700 hover:text-purple-900"
+                      >
+                        <Link2 size={14} />
+                        Ouvrir le tunnel propre au produit
+                      </a>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between pt-3 border-t">
                     <span className="text-sm text-gray-600">Prix unitaire</span>
@@ -431,21 +497,30 @@ export default function Products() {
                   </button>
                   
                   {canManageProducts && (
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
                       <button
-                        onClick={() => openEditModal(product)}
-                        className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
+                        onClick={() => openMarketingModal(product)}
+                        className="btn w-full bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center gap-2"
                       >
-                        <Edit2 size={16} />
-                        Modifier
+                        <Megaphone size={16} />
+                        Marketing
                       </button>
-                      <button
-                        onClick={() => openDeleteConfirm(product)}
-                        className="btn bg-red-600 text-white hover:bg-red-700 flex-1 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={16} />
-                        Supprimer
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openEditModal(product)}
+                          className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
+                        >
+                          <Edit2 size={16} />
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirm(product)}
+                          className="btn bg-red-600 text-white hover:bg-red-700 flex-1 flex items-center justify-center gap-2"
+                        >
+                          <Trash2 size={16} />
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -550,6 +625,107 @@ export default function Products() {
         </div>
       )}
 
+      {/* Marketing propre au produit */}
+      {showMarketingModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start gap-3 mb-5">
+              <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
+                <Megaphone size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Marketing : {selectedProduct.nom}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Ces réglages appartiennent uniquement à ce produit et ne modifient aucun autre produit.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <label className="flex items-center justify-between gap-4 rounded-lg border border-purple-200 bg-purple-50 p-4">
+                <div>
+                  <span className="block font-semibold text-purple-900">Activer les relances de ce produit</span>
+                  <span className="block text-xs text-purple-700 mt-1">Envois automatiques à J+3, J+5 et J+7 après annulation.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={marketingSettings.marketingEnabled}
+                  onChange={(e) => setMarketingSettings({ ...marketingSettings, marketingEnabled: e.target.checked })}
+                  className="h-5 w-5 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                />
+              </label>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Lien du tunnel de vente de {selectedProduct.nom}
+                </label>
+                <input
+                  type="url"
+                  value={marketingSettings.marketingFunnelUrl}
+                  onChange={(e) => setMarketingSettings({ ...marketingSettings, marketingFunnelUrl: e.target.value })}
+                  className="input"
+                  placeholder="https://votre-site.com/offre-produit"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Le lien doit être renseigné pour activer les relances de ce produit.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                Variables disponibles : <code>{'{prenom}'}</code>, <code>{'{produit}'}</code> et <code>{'{lien}'}</code>.
+              </div>
+
+              {MARKETING_STEPS.map(({ key, label }) => (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-800">{label}</label>
+                    <span className={`text-xs ${marketingSettings[key].length > 160 ? 'text-amber-600 font-medium' : 'text-gray-500'}`}>
+                      {marketingSettings[key].length} caractères
+                    </span>
+                  </div>
+                  <textarea
+                    value={marketingSettings[key]}
+                    onChange={(e) => setMarketingSettings({ ...marketingSettings, [key]: e.target.value })}
+                    className="input font-mono text-sm"
+                    rows={4}
+                    maxLength={640}
+                  />
+                  {marketingSettings[key].length > 160 && (
+                    <p className="text-xs text-amber-600 mt-1">Ce texte pourra être facturé comme plusieurs SMS.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-6">
+              <button
+                onClick={() => setMarketingSettings({ ...marketingSettings, ...DEFAULT_MARKETING_TEMPLATES })}
+                className="btn btn-secondary flex items-center justify-center gap-2"
+              >
+                <RotateCcw size={16} />
+                Textes par défaut
+              </button>
+              <button
+                onClick={handleUpdateMarketing}
+                disabled={updateMarketingMutation.isPending}
+                className="btn bg-purple-600 text-white hover:bg-purple-700 flex-1"
+              >
+                {updateMarketingMutation.isPending ? 'Enregistrement...' : 'Enregistrer le Marketing de ce produit'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowMarketingModal(false);
+                  setSelectedProduct(null);
+                }}
+                className="btn btn-secondary"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'édition de produit */}
       {showEditProductModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -599,22 +775,6 @@ export default function Products() {
                   rows={3}
                   placeholder="Description du produit..."
                 />
-              </div>
-
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <label className="block text-sm font-semibold text-purple-900 mb-2">
-                  Lien du tunnel de vente pour les relances SMS
-                </label>
-                <input
-                  type="url"
-                  value={editProduct.marketingFunnelUrl}
-                  onChange={(e) => setEditProduct({ ...editProduct, marketingFunnelUrl: e.target.value })}
-                  className="input"
-                  placeholder="https://votre-site.com/offre-produit"
-                />
-                <p className="text-xs text-purple-700 mt-2">
-                  Ce lien sera inséré dans les SMS envoyés 3, 5 et 7 jours après une annulation. Laissez vide pour suspendre les relances de ce produit.
-                </p>
               </div>
 
               <div>
@@ -843,22 +1003,6 @@ export default function Products() {
                 />
               </div>
 
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <label className="block text-sm font-semibold text-purple-900 mb-2">
-                  Lien du tunnel de vente pour les relances SMS
-                </label>
-                <input
-                  type="url"
-                  value={newProduct.marketingFunnelUrl}
-                  onChange={(e) => setNewProduct({ ...newProduct, marketingFunnelUrl: e.target.value })}
-                  className="input"
-                  placeholder="https://votre-site.com/offre-produit"
-                />
-                <p className="text-xs text-purple-700 mt-2">
-                  Optionnel. Sans ce lien, aucune relance marketing ne sera envoyée pour ce produit.
-                </p>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Prix unitaire (XOF) <span className="text-red-500">*</span>
@@ -990,8 +1134,7 @@ export default function Products() {
                     prix2: '',
                     prix3: '',
                     stockActuel: '',
-                    stockAlerte: '10',
-                    marketingFunnelUrl: ''
+                    stockAlerte: '10'
                   });
                 }}
                 className="btn btn-secondary flex-1"

@@ -6,6 +6,14 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+export const DEFAULT_PRODUCT_MARKETING_TEMPLATES = Object.freeze({
+  marketingTemplateJ3: "Bonjour {prenom}, {produit} est toujours disponible. Voir l'offre : {lien} - AFGestion",
+  marketingTemplateJ5: 'Bonjour {prenom}, profitez toujours de {produit}. Commandez ici : {lien} - AFGestion',
+  marketingTemplateJ7: 'Bonjour {prenom}, derniere relance pour {produit}. Offre ici : {lien} - AFGestion'
+});
+
+const PRODUCT_MARKETING_TEMPLATE_FIELDS = Object.keys(DEFAULT_PRODUCT_MARKETING_TEMPLATES);
+
 function normalizeMarketingFunnelUrl(value) {
   if (value === undefined) return undefined;
   if (value === null || String(value).trim() === '') return null;
@@ -17,6 +25,52 @@ function normalizeMarketingFunnelUrl(value) {
   }
 
   return url.toString();
+}
+
+function normalizeMarketingEnabled(value, fallback) {
+  if (value === undefined) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error("L'activation Marketing doit être vraie ou fausse");
+}
+
+function normalizeMarketingTemplate(value, fallback, field) {
+  if (value === undefined) return fallback;
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    throw new Error(`Le message ${field.replace('marketingTemplate', '')} ne peut pas être vide`);
+  }
+  if (normalized.length > 640) {
+    throw new Error(`Le message ${field.replace('marketingTemplate', '')} est trop long (640 caractères maximum)`);
+  }
+  return normalized;
+}
+
+export function buildProductMarketingConfig(input = {}, current = {}) {
+  const marketingFunnelUrl = input.marketingFunnelUrl !== undefined
+    ? normalizeMarketingFunnelUrl(input.marketingFunnelUrl)
+    : (current.marketingFunnelUrl || null);
+  const marketingEnabled = normalizeMarketingEnabled(
+    input.marketingEnabled,
+    current.marketingEnabled ?? Boolean(marketingFunnelUrl)
+  );
+
+  if (marketingEnabled && !marketingFunnelUrl) {
+    throw new Error("Ajoutez le lien du tunnel avant d'activer les relances Marketing");
+  }
+
+  const config = { marketingEnabled, marketingFunnelUrl };
+  for (const field of PRODUCT_MARKETING_TEMPLATE_FIELDS) {
+    config[field] = normalizeMarketingTemplate(
+      input[field],
+      current[field] || DEFAULT_PRODUCT_MARKETING_TEMPLATES[field],
+      field
+    );
+  }
+
+  return config;
 }
 
 router.use(authenticate);
@@ -82,7 +136,16 @@ router.post('/', authorize('ADMIN'), [
   body('marketingFunnelUrl')
     .optional({ checkFalsy: true })
     .isURL({ protocols: ['http', 'https'], require_protocol: true })
-    .withMessage('Le lien du tunnel de vente doit être une URL complète')
+    .withMessage('Le lien du tunnel de vente doit être une URL complète'),
+  body('marketingEnabled').optional().isBoolean().withMessage("L'activation Marketing est invalide"),
+  body(PRODUCT_MARKETING_TEMPLATE_FIELDS)
+    .optional()
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Les messages Marketing ne peuvent pas être vides')
+    .isLength({ max: 640 })
+    .withMessage('Un message Marketing ne peut pas dépasser 640 caractères')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -100,8 +163,25 @@ router.post('/', authorize('ADMIN'), [
       prix3,
       stockActuel,
       stockAlerte,
-      marketingFunnelUrl
+      marketingFunnelUrl,
+      marketingEnabled,
+      marketingTemplateJ3,
+      marketingTemplateJ5,
+      marketingTemplateJ7
     } = req.body;
+
+    let marketingConfig;
+    try {
+      marketingConfig = buildProductMarketingConfig({
+        marketingFunnelUrl,
+        marketingEnabled,
+        marketingTemplateJ3,
+        marketingTemplateJ5,
+        marketingTemplateJ7
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
 
     // Vérifier si le code existe déjà
     const existing = await prisma.product.findUnique({
@@ -124,7 +204,7 @@ router.post('/', authorize('ADMIN'), [
         prix3: (prix3 && prix3 !== '') ? parseFloat(prix3) : null,
         stockActuel: parseInt(stockActuel) || 0,
         stockAlerte: parseInt(stockAlerte) || 10,
-        marketingFunnelUrl: normalizeMarketingFunnelUrl(marketingFunnelUrl) || null
+        ...marketingConfig
       }
     });
 
@@ -164,7 +244,11 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
       stockAlerte,
       actif,
       code,
-      marketingFunnelUrl
+      marketingFunnelUrl,
+      marketingEnabled,
+      marketingTemplateJ3,
+      marketingTemplateJ5,
+      marketingTemplateJ7
     } = req.body;
 
     console.log('🔍 Modification produit - Données reçues:', {
@@ -208,9 +292,16 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     if (prix3 !== undefined) updateData.prix3 = (prix3 && prix3 !== '' && prix3 !== null) ? parseFloat(prix3) : null;
     if (stockAlerte !== undefined) updateData.stockAlerte = parseInt(stockAlerte);
     if (actif !== undefined) updateData.actif = actif;
-    if (marketingFunnelUrl !== undefined) {
+    const hasMarketingUpdate = [
+      marketingFunnelUrl,
+      marketingEnabled,
+      marketingTemplateJ3,
+      marketingTemplateJ5,
+      marketingTemplateJ7
+    ].some((value) => value !== undefined);
+    if (hasMarketingUpdate) {
       try {
-        updateData.marketingFunnelUrl = normalizeMarketingFunnelUrl(marketingFunnelUrl);
+        Object.assign(updateData, buildProductMarketingConfig(req.body, existingProduct));
       } catch (error) {
         return res.status(400).json({ error: error.message });
       }

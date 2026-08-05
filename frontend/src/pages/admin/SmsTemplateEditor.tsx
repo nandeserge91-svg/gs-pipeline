@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 interface SmsTemplate {
   id: number;
@@ -45,7 +46,9 @@ const SmsTemplateEditor: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/sms-templates');
-      setTemplates(response.data.templates);
+      setTemplates(response.data.templates.filter(
+        (template: SmsTemplate) => !template.key.startsWith('MARKETING_RELANCE_')
+      ));
     } catch (error) {
       console.error('Erreur chargement templates:', error);
       toast.error('Erreur lors du chargement des templates');
@@ -199,6 +202,13 @@ const SmsTemplateEditor: React.FC = () => {
             Personnalisez les messages SMS envoyés automatiquement
           </p>
         </div>
+      </div>
+
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-sm text-purple-800">
+        Les textes de relance Marketing sont maintenant indépendants pour chaque produit.{' '}
+        <Link to="/admin/products" className="font-semibold underline">
+          Ouvrir la gestion des produits
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
