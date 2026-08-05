@@ -12,10 +12,10 @@ Ajoutez ces lignes à votre fichier `.env` :
 # ========================================
 
 # Clé API SMS8.io
-SMS8_API_KEY=6a854258b60b92bd3a87ee563ac8a375ed28a78f
+SMS8_API_KEY=votre_cle_api_sms8
 
 # URL API SMS8.io
-SMS8_API_URL=https://app.sms8.io/services/sendFront.php
+SMS8_API_URL=https://app.sms8.io/services/send.php
 
 # Nom de l'expéditeur (apparaît sur les SMS)
 # Maximum 11 caractères, pas d'espaces
@@ -38,6 +38,13 @@ SMS_RDV_SCHEDULED=true          # SMS lors programmation RDV
 SMS_RDV_REMINDER=true           # SMS rappel RDV (1h avant)
 SMS_DELIVERER_ALERT=true        # SMS alerte livreur
 SMS_MARKETING_RELAUNCH=true     # Relances produits J+3, J+5 et J+7 après annulation
+
+# Canal WhatsApp supplémentaire via WaSenderAPI
+# Utilisez la clé API de la session WhatsApp connectée, jamais le jeton personnel.
+WHATSAPP_ENABLED=true
+WASENDER_API_KEY=votre_cle_api_de_session_wasender
+WASENDER_API_URL=https://www.wasenderapi.com/api
+WASENDER_TIMEOUT_MS=15000
 
 # Le contrôle s'exécute chaque heure à la minute 15 (facultatif)
 MARKETING_RELAUNCH_CRON=15 * * * *
@@ -93,7 +100,7 @@ Pour déployer en production sur Railway :
 1. Allez sur Railway Dashboard
 2. Sélectionnez votre projet `gs-pipeline`
 3. Allez dans "Variables"
-4. Ajoutez les variables SMS8 listées ci-dessus
+4. Ajoutez les variables SMS8 et WaSenderAPI listées ci-dessus
 5. Redéployez le service
 
 ## 📞 Support SMS8.io

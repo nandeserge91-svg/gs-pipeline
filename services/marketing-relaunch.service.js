@@ -216,6 +216,7 @@ export async function runMarketingRelaunches(options = {}) {
         orderId: order.id,
         type: smsType,
         status: 'SENT',
+        provider: { startsWith: 'SMS8' },
         sentAt: { gte: reminder.cancellationAt }
       },
       select: { id: true, sentAt: true }

@@ -13,6 +13,7 @@ import {
   getSMSStats, 
   getSMSHistory 
 } from '../services/sms.service.js';
+import { getWasenderConfiguration } from '../services/wasender.service.js';
 
 const router = express.Router();
 
@@ -272,6 +273,7 @@ router.get('/config', authorize('ADMIN'), async (req, res) => {
     const config = {
       enabled: process.env.SMS_ENABLED === 'true',
       provider: 'SMS8',
+      whatsapp: getWasenderConfiguration(),
       senderName: process.env.SMS_SENDER_NAME || 'GS-Pipeline',
       typesEnabled: {
         ORDER_CREATED: process.env.SMS_ORDER_CREATED !== 'false',

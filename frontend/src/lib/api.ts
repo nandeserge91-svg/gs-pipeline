@@ -3,11 +3,7 @@ import type {
   AuthResponse,
   LoginCredentials,
   User,
-  Order,
-  DeliveryList,
-  WhatsAppConversation,
-  WhatsAppMessage,
-  WhatsAppProductKnowledge
+  Order
 } from '@/types';
 import { clearAuthToken, getAuthToken } from './authStorage';
 
@@ -367,75 +363,5 @@ export const rdvApi = {
     const { data } = await api.delete(`/rdv/${orderId}`);
     return data;
   },
-};
-
-export const whatsappApi = {
-  getStats: async () => {
-    const { data } = await api.get('/whatsapp/stats');
-    return data;
-  },
-  getConversations: async (params?: {
-    search?: string;
-    intent?: string;
-    handedToHuman?: 'true' | 'false';
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    conversations: WhatsAppConversation[];
-    pagination: { total: number; page: number; limit: number; totalPages: number };
-  }> => {
-    const { data } = await api.get('/whatsapp/conversations', { params });
-    return data;
-  },
-  getMessages: async (
-    conversationId: number,
-    limit = 150
-  ): Promise<{ conversation: WhatsAppConversation; messages: WhatsAppMessage[] }> => {
-    const { data } = await api.get(`/whatsapp/conversations/${conversationId}/messages`, {
-      params: { limit }
-    });
-    return data;
-  },
-  setHandover: async (conversationId: number, handedToHuman: boolean) => {
-    const { data } = await api.put(`/whatsapp/conversations/${conversationId}/handover`, {
-      handedToHuman
-    });
-    return data;
-  },
-  sendManualReply: async (conversationId: number, message: string) => {
-    const { data } = await api.post(`/whatsapp/conversations/${conversationId}/reply`, { message });
-    return data;
-  },
-  getKnowledge: async (params?: { search?: string; onlyConfigured?: 'true' | 'false' }): Promise<{
-    items: Array<{
-      productId: number;
-      productCode: string;
-      productName: string;
-      configured: boolean;
-      knowledge: WhatsAppProductKnowledge | null;
-    }>;
-    total: number;
-  }> => {
-    const { data } = await api.get('/whatsapp/knowledge', { params });
-    return data;
-  },
-  upsertKnowledge: async (
-    productId: number,
-    payload: {
-      keyBenefits?: string;
-      usageTips?: string;
-      objectionHandling?: Array<{ keywords?: string[]; answer: string }>;
-      faq?: Array<{ keywords?: string[]; answer: string }>;
-      closingScript?: string;
-      missingInfoEscalation?: string;
-    }
-  ) => {
-    const { data } = await api.put(`/whatsapp/knowledge/${productId}`, payload);
-    return data;
-  },
-  deleteKnowledge: async (productId: number) => {
-    const { data } = await api.delete(`/whatsapp/knowledge/${productId}`);
-    return data;
-  }
 };
 
