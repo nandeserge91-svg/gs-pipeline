@@ -13,6 +13,7 @@ import {
   XCircle,
   TrendingUp,
   Smartphone,
+  MessageCircle,
   Loader,
   Edit3
 } from 'lucide-react';
@@ -45,6 +46,14 @@ interface AndroidConfig {
   usesSenderNumber: false;
 }
 
+interface WhatsAppConfig {
+  provider: 'WaSenderAPI';
+  apiUrl: string;
+  configured: boolean;
+  enabled: boolean;
+  sessionScoped: boolean;
+}
+
 export default function SmsSettings() {
   const [activeTab, setActiveTab] = useState<'settings' | 'templates'>('settings');
   const [loading, setLoading] = useState(true);
@@ -56,6 +65,13 @@ export default function SmsSettings() {
     simSlot: null,
     selectionMode: 'SIM_SLOT',
     usesSenderNumber: false
+  });
+  const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
+    provider: 'WaSenderAPI',
+    apiUrl: 'https://www.wasenderapi.com/api',
+    configured: false,
+    enabled: false,
+    sessionScoped: true
   });
   const [testPhone, setTestPhone] = useState('');
   const [testingType, setTestingType] = useState<string | null>(null);
@@ -72,6 +88,7 @@ export default function SmsSettings() {
       setSettings(response.data.settings);
       setGlobalEnabled(response.data.globalEnabled);
       setAndroidConfig(response.data.androidConfig);
+      setWhatsAppConfig(response.data.whatsappConfig);
     } catch (error: any) {
       console.error('Erreur chargement paramètres SMS:', error);
       toast.error('Erreur lors du chargement des paramètres');
@@ -257,6 +274,39 @@ export default function SmsSettings() {
           </div>
         </div>
       )}
+
+      {/* Canal WhatsApp supplémentaire */}
+      <div className={`border rounded-lg p-4 ${
+        whatsappConfig.configured && whatsappConfig.enabled
+          ? 'bg-green-50 border-green-200'
+          : 'bg-amber-50 border-amber-200'
+      }`}>
+        <div className="flex items-start gap-3">
+          <MessageCircle className={`w-6 h-6 mt-0.5 ${
+            whatsappConfig.configured && whatsappConfig.enabled
+              ? 'text-green-600'
+              : 'text-amber-600'
+          }`} />
+          <div>
+            <h3 className={`font-semibold ${
+              whatsappConfig.configured && whatsappConfig.enabled
+                ? 'text-green-900'
+                : 'text-amber-900'
+            }`}>
+              Canal WhatsApp via WaSenderAPI
+            </h3>
+            <p className={`mt-1 text-sm ${
+              whatsappConfig.configured && whatsappConfig.enabled
+                ? 'text-green-800'
+                : 'text-amber-800'
+            }`}>
+              {whatsappConfig.configured && whatsappConfig.enabled
+                ? 'Actif : chaque SMS configuré est aussi envoyé sur WhatsApp, y compris les relances marketing.'
+                : 'Inactif : ajoutez la clé de session WaSenderAPI et activez WHATSAPP_ENABLED sur Railway.'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Activation globale */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

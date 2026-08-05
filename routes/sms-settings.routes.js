@@ -4,6 +4,7 @@
 
 import express from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { getWasenderConfiguration } from '../services/wasender.service.js';
 
 const router = express.Router();
 
@@ -115,6 +116,7 @@ router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
         selectionMode: 'SIM_SLOT',
         usesSenderNumber: false
       },
+      whatsappConfig: getWasenderConfiguration(),
       settings
     });
   } catch (error) {
@@ -174,6 +176,7 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
     const stats = await prisma.smsLog.groupBy({
       by: ['type', 'status'],
       where: {
+        provider: { startsWith: 'SMS8' },
         sentAt: {
           gte: thirtyDaysAgo
         }

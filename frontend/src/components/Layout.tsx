@@ -22,8 +22,7 @@ import {
   Bell,
   Calendar,
   Settings,
-  UserCheck,
-  MessageCircle
+  UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -37,8 +36,6 @@ export default function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const getNavigationItems = () => {
-    const baseUrl = `/${user?.role?.toLowerCase()}`;
-    
     switch (user?.role) {
       case 'ADMIN':
         return [
@@ -62,7 +59,6 @@ export default function Layout({ children }: LayoutProps) {
           { icon: Package, label: 'Stats par Produit', path: '/admin/product-stats' },
           { icon: DollarSign, label: 'Comptabilité', path: '/admin/accounting' },
           { icon: Settings, label: 'Paramètres SMS', path: '/admin/sms-settings' },
-          { icon: MessageCircle, label: 'WhatsApp Inbox', path: '/admin/whatsapp' },
         ];
       case 'GESTIONNAIRE':
         return [

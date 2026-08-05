@@ -12,6 +12,7 @@
 import axios from 'axios';
 import prisma from '../config/prisma.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
+import { sendWhatsAppMessage } from './wasender.service.js';
 
 // Configuration SMS8.io
 const SMS8_API_URL = process.env.SMS8_API_URL || 'https://app.sms8.io/services/send.php';
@@ -106,7 +107,7 @@ function replaceVariables(template, variables) {
  * @param {object} metadata - Métadonnées optionnelles (orderId, type, userId)
  * @returns {Promise<object>} - Résultat de l'envoi
  */
-export async function sendSMS(phone, message, metadata = {}) {
+async function sendSms8Message(phone, message, metadata = {}) {
   try {
     if (!CONFIGURED_SMS8_API_KEY) {
       throw new Error('Configuration SMS8 incomplète : SMS8_API_KEY est manquante');
@@ -210,6 +211,26 @@ export async function sendSMS(phone, message, metadata = {}) {
       error: error.message
     };
   }
+}
+
+/**
+ * Envoie le SMS historique et, si activé, le même texte sur WhatsApp.
+ * Le résultat principal reste celui de SMS8 afin de ne modifier aucun flux existant.
+ */
+export async function sendSMS(phone, message, metadata = {}) {
+  const [smsResult, whatsappResult] = await Promise.all([
+    sendSms8Message(phone, message, metadata),
+    sendWhatsAppMessage(phone, message, metadata)
+  ]);
+
+  if (!whatsappResult.success && !whatsappResult.skipped) {
+    console.error(`⚠️ SMS traité, mais envoi WhatsApp échoué : ${whatsappResult.error}`);
+  }
+
+  return {
+    ...smsResult,
+    whatsapp: whatsappResult
+  };
 }
 
 /**
@@ -422,6 +443,7 @@ export async function getSMSStats(days = 30) {
     const stats = await prisma.smsLog.groupBy({
       by: ['status'],
       where: {
+        provider: { startsWith: 'SMS8' },
         sentAt: {
           gte: dateLimit
         }
@@ -456,7 +478,7 @@ export async function getSMSStats(days = 30) {
  */
 export async function getSMSHistory(filters = {}) {
   try {
-    const where = {};
+    const where = { provider: { startsWith: 'SMS8' } };
     
     if (filters.orderId) where.orderId = parseInt(filters.orderId);
     if (filters.userId) where.userId = parseInt(filters.userId);
@@ -532,7 +554,7 @@ export async function sendScheduledSMS() {
         minute: '2-digit' 
       });
       
-      const message = smsTemplates.rdvReminder(order.clientNom, rdvHeure);
+      const message = await smsTemplates.rdvReminder(order.clientNom, rdvHeure);
       const result = await sendSMS(order.clientTelephone, message, {
         orderId: order.id,
         type: 'RDV_REMINDER'
@@ -580,7 +602,7 @@ export async function sendScheduledSMS() {
         (now - new Date(order.arriveAt)) / (1000 * 60 * 60 * 24)
       );
 
-      const message = smsTemplates.expressReminder(
+      const message = await smsTemplates.expressReminder(
         order.clientNom,
         order.agenceRetrait || 'notre agence',
         order.codeExpedition,
