@@ -40,7 +40,8 @@ interface SmsStats {
 interface AndroidConfig {
   deviceId: string | null;
   simSlot: string | null;
-  senderNumber: string | null;
+  selectionMode: 'SIM_SLOT';
+  usesSenderNumber: false;
 }
 
 export default function SmsSettings() {
@@ -52,7 +53,8 @@ export default function SmsSettings() {
   const [androidConfig, setAndroidConfig] = useState<AndroidConfig>({
     deviceId: null,
     simSlot: null,
-    senderNumber: null
+    selectionMode: 'SIM_SLOT',
+    usesSenderNumber: false
   });
   const [testPhone, setTestPhone] = useState('');
   const [testingType, setTestingType] = useState<string | null>(null);
@@ -243,10 +245,13 @@ export default function SmsSettings() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-green-700 font-medium">Expéditeur:</span>
-                  <span className="ml-2 text-green-900">{androidConfig.senderNumber}</span>
+                  <span className="text-green-700 font-medium">Sélection:</span>
+                  <span className="ml-2 text-green-900">Emplacement SIM uniquement</span>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-green-700">
+                Aucun numéro de SIM n'est enregistré : la carte insérée dans SIM 1 est utilisée.
+              </p>
             </div>
           </div>
         </div>

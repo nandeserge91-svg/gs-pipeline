@@ -133,13 +133,17 @@ router.post('/:id/programmer', authenticate, authorize('ADMIN', 'GESTIONNAIRE', 
           rdvHeureFormatted
         );
         
-        await sendSMS(updatedOrder.clientTelephone, message, {
+        const smsResult = await sendSMS(updatedOrder.clientTelephone, message, {
           orderId: updatedOrder.id,
           type: 'RDV_SCHEDULED',
           userId: req.user.id
         });
-        
-        console.log(`✅ SMS RDV programmé envoyé pour commande ${updatedOrder.orderReference}`);
+
+        if (smsResult.success) {
+          console.log(`✅ SMS RDV programmé envoyé pour commande ${updatedOrder.orderReference}`);
+        } else {
+          console.error(`⚠️ Échec SMS RDV pour commande ${updatedOrder.orderReference}: ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error('⚠️ Erreur envoi SMS RDV (non bloquante):', smsError.message);
       }
