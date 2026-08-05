@@ -6,6 +6,19 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 
+function normalizeMarketingFunnelUrl(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === '') return null;
+
+  const normalized = String(value).trim();
+  const url = new URL(normalized);
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Le lien du tunnel doit commencer par http:// ou https://');
+  }
+
+  return url.toString();
+}
+
 router.use(authenticate);
 
 // GET /api/products - Liste des produits
@@ -65,7 +78,11 @@ router.post('/', authorize('ADMIN'), [
   body('code').notEmpty().withMessage('Code requis'),
   body('nom').notEmpty().withMessage('Nom requis'),
   body('prixUnitaire').isFloat({ min: 0 }).withMessage('Prix invalide'),
-  body('stockActuel').optional().isInt({ min: 0 }).withMessage('Stock invalide')
+  body('stockActuel').optional().isInt({ min: 0 }).withMessage('Stock invalide'),
+  body('marketingFunnelUrl')
+    .optional({ checkFalsy: true })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Le lien du tunnel de vente doit être une URL complète')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -73,7 +90,18 @@ router.post('/', authorize('ADMIN'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { code, nom, description, prixUnitaire, prix1, prix2, prix3, stockActuel, stockAlerte } = req.body;
+    const {
+      code,
+      nom,
+      description,
+      prixUnitaire,
+      prix1,
+      prix2,
+      prix3,
+      stockActuel,
+      stockAlerte,
+      marketingFunnelUrl
+    } = req.body;
 
     // Vérifier si le code existe déjà
     const existing = await prisma.product.findUnique({
@@ -95,7 +123,8 @@ router.post('/', authorize('ADMIN'), [
         prix2: (prix2 && prix2 !== '') ? parseFloat(prix2) : null,
         prix3: (prix3 && prix3 !== '') ? parseFloat(prix3) : null,
         stockActuel: parseInt(stockActuel) || 0,
-        stockAlerte: parseInt(stockAlerte) || 10
+        stockAlerte: parseInt(stockAlerte) || 10,
+        marketingFunnelUrl: normalizeMarketingFunnelUrl(marketingFunnelUrl) || null
       }
     });
 
@@ -125,7 +154,18 @@ router.post('/', authorize('ADMIN'), [
 router.put('/:id', authorize('ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, description, prixUnitaire, prix1, prix2, prix3, stockAlerte, actif, code } = req.body;
+    const {
+      nom,
+      description,
+      prixUnitaire,
+      prix1,
+      prix2,
+      prix3,
+      stockAlerte,
+      actif,
+      code,
+      marketingFunnelUrl
+    } = req.body;
 
     console.log('🔍 Modification produit - Données reçues:', {
       id,
@@ -168,6 +208,13 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     if (prix3 !== undefined) updateData.prix3 = (prix3 && prix3 !== '' && prix3 !== null) ? parseFloat(prix3) : null;
     if (stockAlerte !== undefined) updateData.stockAlerte = parseInt(stockAlerte);
     if (actif !== undefined) updateData.actif = actif;
+    if (marketingFunnelUrl !== undefined) {
+      try {
+        updateData.marketingFunnelUrl = normalizeMarketingFunnelUrl(marketingFunnelUrl);
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+    }
 
     console.log('✅ updateData construit:', updateData);
 

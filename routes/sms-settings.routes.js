@@ -85,6 +85,13 @@ const SMS_TYPES = [
     description: 'SMS envoyé au livreur pour nouvelle livraison assignée',
     icon: '🔔',
     category: 'Interne'
+  },
+  {
+    key: 'SMS_MARKETING_RELAUNCH',
+    label: 'Relances après annulation',
+    description: 'SMS automatiques à J+3, J+5 et J+7 avec le tunnel du produit',
+    icon: '📣',
+    category: 'Marketing'
   }
 ];
 
@@ -190,6 +197,20 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
       
       formattedStats[stat.type].total += stat._count;
     });
+
+    const marketingTypes = [
+      'MARKETING_RELANCE_J3',
+      'MARKETING_RELANCE_J5',
+      'MARKETING_RELANCE_J7'
+    ];
+    formattedStats.MARKETING_RELAUNCH = marketingTypes.reduce(
+      (total, type) => ({
+        sent: total.sent + (formattedStats[type]?.sent || 0),
+        failed: total.failed + (formattedStats[type]?.failed || 0),
+        total: total.total + (formattedStats[type]?.total || 0)
+      }),
+      { sent: 0, failed: 0, total: 0 }
+    );
 
     await prisma.$disconnect();
 
@@ -319,8 +340,12 @@ router.post('/test/:type', authenticate, authorize('ADMIN'), async (req, res) =>
     let message = `[TEST ${setting.label}] Ce SMS est un test du système GS-Pipeline.`;
 
     // Envoyer le SMS de test
+    const smsLogType = type === 'SMS_MARKETING_RELAUNCH'
+      ? 'MARKETING_RELANCE_J3'
+      : type.replace('SMS_', '');
+
     const result = await sendSMS(phoneNumber, message, {
-      type: type.replace('SMS_', ''),
+      type: smsLogType,
       userId: req.user.userId
     });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2 } from 'lucide-react';
+import { Package, Plus, AlertTriangle, TrendingUp, Search, Edit2, Trash2, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/utils/statusHelpers';
@@ -26,7 +26,8 @@ export default function Products() {
     prix2: '',
     prix3: '',
     stockActuel: '',
-    stockAlerte: '10'
+    stockAlerte: '10',
+    marketingFunnelUrl: ''
   });
   const [editProduct, setEditProduct] = useState({
     code: '',
@@ -36,7 +37,8 @@ export default function Products() {
     prix1: '',
     prix2: '',
     prix3: '',
-    stockAlerte: ''
+    stockAlerte: '',
+    marketingFunnelUrl: ''
   });
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -65,7 +67,8 @@ export default function Products() {
         prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
         prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
         stockActuel: parseInt(productData.stockActuel),
-        stockAlerte: parseInt(productData.stockAlerte)
+        stockAlerte: parseInt(productData.stockAlerte),
+        marketingFunnelUrl: productData.marketingFunnelUrl.trim() || null
       });
       return data;
     },
@@ -81,7 +84,8 @@ export default function Products() {
         prix2: '',
         prix3: '',
         stockActuel: '',
-        stockAlerte: '10'
+        stockAlerte: '10',
+        marketingFunnelUrl: ''
       });
       toast.success('Produit créé avec succès');
     },
@@ -123,7 +127,8 @@ export default function Products() {
         prix1: (productData.prix1 && productData.prix1 !== '') ? parseFloat(productData.prix1) : null,
         prix2: (productData.prix2 && productData.prix2 !== '') ? parseFloat(productData.prix2) : null,
         prix3: (productData.prix3 && productData.prix3 !== '') ? parseFloat(productData.prix3) : null,
-        stockAlerte: parseInt(productData.stockAlerte)
+        stockAlerte: parseInt(productData.stockAlerte),
+        marketingFunnelUrl: productData.marketingFunnelUrl.trim() || null
       });
       return data;
     },
@@ -194,7 +199,8 @@ export default function Products() {
       prix1: product.prix1 ? product.prix1.toString() : '',
       prix2: product.prix2 ? product.prix2.toString() : '',
       prix3: product.prix3 ? product.prix3.toString() : '',
-      stockAlerte: product.stockAlerte.toString()
+      stockAlerte: product.stockAlerte.toString(),
+      marketingFunnelUrl: product.marketingFunnelUrl || ''
     });
     setShowEditProductModal(true);
   };
@@ -390,6 +396,23 @@ export default function Products() {
                     </p>
                   )}
 
+                  {product.marketingFunnelUrl ? (
+                    <a
+                      href={product.marketingFunnelUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-900 border-t pt-3"
+                    >
+                      <Link2 size={16} />
+                      Tunnel de relance configuré
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 border-t pt-3">
+                      <Link2 size={16} />
+                      Aucun tunnel de relance
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between pt-3 border-t">
                     <span className="text-sm text-gray-600">Prix unitaire</span>
                     <span className="font-medium text-gray-900">
@@ -576,6 +599,22 @@ export default function Products() {
                   rows={3}
                   placeholder="Description du produit..."
                 />
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-purple-900 mb-2">
+                  Lien du tunnel de vente pour les relances SMS
+                </label>
+                <input
+                  type="url"
+                  value={editProduct.marketingFunnelUrl}
+                  onChange={(e) => setEditProduct({ ...editProduct, marketingFunnelUrl: e.target.value })}
+                  className="input"
+                  placeholder="https://votre-site.com/offre-produit"
+                />
+                <p className="text-xs text-purple-700 mt-2">
+                  Ce lien sera inséré dans les SMS envoyés 3, 5 et 7 jours après une annulation. Laissez vide pour suspendre les relances de ce produit.
+                </p>
               </div>
 
               <div>
@@ -804,6 +843,22 @@ export default function Products() {
                 />
               </div>
 
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-purple-900 mb-2">
+                  Lien du tunnel de vente pour les relances SMS
+                </label>
+                <input
+                  type="url"
+                  value={newProduct.marketingFunnelUrl}
+                  onChange={(e) => setNewProduct({ ...newProduct, marketingFunnelUrl: e.target.value })}
+                  className="input"
+                  placeholder="https://votre-site.com/offre-produit"
+                />
+                <p className="text-xs text-purple-700 mt-2">
+                  Optionnel. Sans ce lien, aucune relance marketing ne sera envoyée pour ce produit.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Prix unitaire (XOF) <span className="text-red-500">*</span>
@@ -935,7 +990,8 @@ export default function Products() {
                     prix2: '',
                     prix3: '',
                     stockActuel: '',
-                    stockAlerte: '10'
+                    stockAlerte: '10',
+                    marketingFunnelUrl: ''
                   });
                 }}
                 className="btn btn-secondary flex-1"

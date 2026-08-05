@@ -4,6 +4,10 @@ import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
 import { notifyClientOfDeliveryAssignment } from '../services/delivery-assignment-sms.service.js';
+import {
+  cancelPendingMarketingReminders,
+  scheduleMarketingReminders
+} from '../services/marketing-relaunch.service.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
 import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
 
@@ -456,6 +460,11 @@ router.put('/:id/status', async (req, res) => {
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
 
+    const statusChangedAt = new Date();
+    const shouldScheduleMarketing = user.role === 'APPELANT'
+      && status === 'ANNULEE'
+      && order.status !== 'ANNULEE';
+
     // Vérifications selon le rôle
     if (user.role === 'APPELANT') {
       // L'appelant peut changer : A_APPELER -> VALIDEE/ANNULEE/INJOIGNABLE
@@ -493,6 +502,11 @@ router.put('/:id/status', async (req, res) => {
               ? (order.validatedAt || new Date())
               : order.validatedAt,
         deliveredAt: status === 'LIVREE' ? new Date() : order.deliveredAt,
+        marketingCancelledAt: shouldScheduleMarketing
+          ? statusChangedAt
+          : status !== 'ANNULEE'
+            ? null
+            : order.marketingCancelledAt,
         raisonRetour: status === 'RETOURNE' && raisonRetour ? raisonRetour : order.raisonRetour,
         retourneAt: status === 'RETOURNE' ? new Date() : order.retourneAt,
         // ✅ NOUVEAU: Si la commande avait un RDV programmé, marquer comme traité
@@ -526,6 +540,12 @@ router.put('/:id/status', async (req, res) => {
           product: true
         }
       });
+
+      if (shouldScheduleMarketing) {
+        await scheduleMarketingReminders(tx, order.id, statusChangedAt);
+      } else if (order.status === 'ANNULEE' && status !== 'ANNULEE') {
+        await cancelPendingMarketingReminders(tx, order.id);
+      }
 
       // RÈGLE MÉTIER 1 : Décrémenter le stock uniquement si la commande passe à LIVRÉE
       console.log('🔍 Vérification stock - Statut:', status, '| Ancien statut:', order.status, '| ProductID:', order.productId);
