@@ -37,6 +37,11 @@ SMS_EXPRESS_REMINDER=true       # SMS rappel retrait EXPRESS
 SMS_RDV_SCHEDULED=true          # SMS lors programmation RDV
 SMS_RDV_REMINDER=true           # SMS rappel RDV (1h avant)
 SMS_DELIVERER_ALERT=true        # SMS alerte livreur
+SMS_MARKETING_RELAUNCH=true     # Relances produits J+3, J+5 et J+7 après annulation
+
+# Le contrôle s'exécute chaque heure à la minute 15 (facultatif)
+MARKETING_RELAUNCH_CRON=15 * * * *
+MARKETING_RELAUNCH_CRON_TZ=Africa/Abidjan
 ```
 
 ## ⚠️ IMPORTANT

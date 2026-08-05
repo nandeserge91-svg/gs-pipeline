@@ -283,6 +283,7 @@ router.get('/config', authorize('ADMIN'), async (req, res) => {
         EXPRESS_REMINDER: process.env.SMS_EXPRESS_REMINDER !== 'false',
         RDV_SCHEDULED: process.env.SMS_RDV_SCHEDULED !== 'false',
         RDV_REMINDER: process.env.SMS_RDV_REMINDER !== 'false',
+        MARKETING_RELAUNCH: process.env.SMS_MARKETING_RELAUNCH === 'true',
         DELIVERER_ALERT: process.env.SMS_DELIVERER_ALERT !== 'false'
       }
     };

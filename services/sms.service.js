@@ -255,6 +255,9 @@ function generateFallbackMessage(templateKey, variables) {
     RDV_REMINDER: `Bonjour ${variables.prenom}, rappel de votre RDV a ${variables.heure}. - AFGestion`,
     ORDER_CANCELLED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete annulee. - AFGestion`,
     PAYMENT_CONFIRMED: `Bonjour ${variables.prenom}, paiement de ${variables.montant} F recu pour ${variables.ref}. - AFGestion`,
+    MARKETING_RELANCE_J3: `Bonjour ${variables.prenom}, ${variables.produit} est toujours disponible. Voir l'offre : ${variables.lien} - AFGestion`,
+    MARKETING_RELANCE_J5: `Bonjour ${variables.prenom}, profitez toujours de ${variables.produit}. Commandez ici : ${variables.lien} - AFGestion`,
+    MARKETING_RELANCE_J7: `Bonjour ${variables.prenom}, derniere relance pour ${variables.produit}. Offre ici : ${variables.lien} - AFGestion`,
   };
   
   return fallbacks[templateKey] || `Notification de AFGestion`;
@@ -350,6 +353,19 @@ export const smsTemplates = {
   orderCancelled: async (clientNom, orderReference) => {
     const prenom = clientNom.split(' ')[0];
     return await generateSmsFromTemplate('ORDER_CANCELLED', { prenom, ref: orderReference });
+  },
+
+  /**
+   * 📣 Relance marketing après annulation par un appelant
+   */
+  marketingRelaunch: async (clientNom, produitNom, marketingFunnelUrl, dayOffset) => {
+    const prenom = clientNom.split(' ')[0];
+    const templateKey = `MARKETING_RELANCE_J${dayOffset}`;
+    return await generateSmsFromTemplate(templateKey, {
+      prenom,
+      produit: produitNom,
+      lien: marketingFunnelUrl
+    });
   },
 
   /**

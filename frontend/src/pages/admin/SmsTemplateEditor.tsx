@@ -68,7 +68,8 @@ const SmsTemplateEditor: React.FC = () => {
       agence: 'Agence Cocody',
       date: '20/12/2024',
       heure: '14:00',
-      jours: '3'
+      jours: '3',
+      lien: 'https://afgestion.net/offre-produit'
     };
 
     const result: Record<string, string> = {};
