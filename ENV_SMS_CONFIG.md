@@ -52,9 +52,9 @@ WASENDER_WEBHOOK_SECRET=une_valeur_secrete_longue_et_unique
 # Dans WaSenderAPI, configurez le webhook de la session avec :
 # https://gs-pipeline-production.up.railway.app/api/whatsapp/wasender/status
 
-# Relances de retrait EXPRESS (24h, 48h, 72h, J+5 et J+7)
+# Relances de retrait EXPRESS à 8h30 (J+1, J+2, J+3, J+5 et J+7)
 EXPRESS_REMINDER_CRON_ENABLED=true
-EXPRESS_REMINDER_CRON=*/15 * * * *
+EXPRESS_REMINDER_CRON=30 8 * * *
 EXPRESS_REMINDER_CRON_TZ=Africa/Abidjan
 
 # Le contrôle s'exécute chaque heure à la minute 15 (facultatif)

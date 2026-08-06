@@ -66,7 +66,7 @@ const SMS_TYPES = [
   { 
     key: 'SMS_EXPRESS_REMINDER', 
     label: 'Rappel retrait EXPRESS', 
-    description: 'SMS et WhatsApp à 24h, 48h, 72h, J+5 et J+7, arrêtés dès le retrait',
+    description: 'SMS et WhatsApp à 8h30 à J+1, J+2, J+3, J+5 et J+7, arrêtés dès le retrait',
     icon: '⏰',
     category: 'Express'
   },
