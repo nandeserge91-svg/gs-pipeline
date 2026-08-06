@@ -25,6 +25,7 @@ import stockAnalysisRoutes from './routes/stock-analysis.routes.js';
 import { scheduleAttendanceJobs } from './jobs/attendanceJobs.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 import { scheduleMarketingRelaunchJobs } from './jobs/marketingRelaunchJobs.js';
+import { scheduleExpressReminderJobs } from './jobs/expressReminderJobs.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -70,6 +71,9 @@ scheduleAttendanceJobs();
 
 // 📣 Relances marketing des commandes annulées par un appelant
 scheduleMarketingRelaunchJobs();
+
+// Relances SMS et WhatsApp pour les colis EXPRESS en attente de retrait
+scheduleExpressReminderJobs();
 
 // Route de test
 app.get('/', (req, res) => {

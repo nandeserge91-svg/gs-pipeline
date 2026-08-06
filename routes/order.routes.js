@@ -8,6 +8,10 @@ import {
   cancelPendingMarketingReminders,
   scheduleMarketingReminders
 } from '../services/marketing-relaunch.service.js';
+import {
+  cancelPendingExpressReminders,
+  scheduleExpressReminders
+} from '../services/express-reminder.service.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
 import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
 
@@ -1546,6 +1550,13 @@ router.put('/:id/express/arrive', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT',
       },
     });
 
+    try {
+      await scheduleExpressReminders(prisma, updatedOrder.id, updatedOrder.arriveAt);
+    } catch (scheduleError) {
+      // Le cron répare également les échéanciers manquants.
+      console.error('Erreur planification relances EXPRESS:', scheduleError.message);
+    }
+
     await prisma.statusHistory.create({
       data: {
         orderId: parseInt(id),
@@ -1773,6 +1784,8 @@ router.post('/:id/express/finaliser', authorize('ADMIN', 'GESTIONNAIRE', 'APPELA
           },
         });
       }
+
+      await cancelPendingExpressReminders(tx, order.id);
 
       return updated;
     });

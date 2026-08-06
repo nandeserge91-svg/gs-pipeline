@@ -107,7 +107,7 @@ function replaceVariables(template, variables) {
  * @param {object} metadata - Métadonnées optionnelles (orderId, type, userId)
  * @returns {Promise<object>} - Résultat de l'envoi
  */
-async function sendSms8Message(phone, message, metadata = {}) {
+export async function sendSms8Message(phone, message, metadata = {}) {
   try {
     if (!CONFIGURED_SMS8_API_KEY) {
       throw new Error('Configuration SMS8 incomplète : SMS8_API_KEY est manquante');
@@ -277,7 +277,7 @@ function generateFallbackMessage(templateKey, variables) {
     ORDER_DELIVERED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete livree avec succes. - AFGestion`,
     EXPEDITION_CONFIRMED: `Bonjour ${variables.prenom}, votre colis a ete expedie vers ${variables.ville}. Code: ${variables.code}. - AFGestion`,
     EXPRESS_ARRIVED: `Bonjour ${variables.prenom}, votre colis est arrive a ${variables.agence}. Code: ${variables.code}. A payer: ${variables.montant} F. - AFGestion`,
-    EXPRESS_REMINDER: `Bonjour ${variables.prenom}, votre colis vous attend a ${variables.agence} depuis ${variables.jours} jours. Code: ${variables.code}. - AFGestion`,
+    EXPRESS_REMINDER: `Bonjour ${variables.prenom}, rappel: votre colis vous attend a ${variables.agence} depuis ${variables.delai || `${variables.jours} jours`}. Code: ${variables.code}. Merci de le retirer. - AFGestion`,
     RDV_SCHEDULED: `Bonjour ${variables.prenom}, RDV programme le ${variables.date} a ${variables.heure}. - AFGestion`,
     RDV_REMINDER: `Bonjour ${variables.prenom}, rappel de votre RDV a ${variables.heure}. - AFGestion`,
     ORDER_CANCELLED: `Bonjour ${variables.prenom}, votre commande ${variables.ref} a ete annulee. - AFGestion`,
@@ -353,9 +353,15 @@ export const smsTemplates = {
   /**
    * 🏢 EXPRESS - Rappel retrait (si client tarde)
    */
-  expressReminder: async (clientNom, agence, codeExpedition, joursAttente) => {
+  expressReminder: async (clientNom, agence, codeExpedition, joursAttente, delai = null) => {
     const prenom = clientNom.split(' ')[0];
-    return await generateSmsFromTemplate('EXPRESS_REMINDER', { prenom, agence, code: codeExpedition, jours: joursAttente });
+    return await generateSmsFromTemplate('EXPRESS_REMINDER', {
+      prenom,
+      agence,
+      code: codeExpedition,
+      jours: joursAttente,
+      delai: delai || `${joursAttente} jours`
+    });
   },
 
   /**
@@ -527,7 +533,7 @@ export async function getSMSHistory(filters = {}) {
 /**
  * ⏰ Fonction pour envoyer des SMS programmés (job cron)
  * - Rappels RDV
- * - Rappels EXPRESS non retirés
+ * Les rappels EXPRESS sont gérés séparément par express-reminder.service.js.
  */
 export async function sendScheduledSMS() {
   try {
@@ -568,53 +574,6 @@ export async function sendScheduledSMS() {
         });
         totalSent++;
       }
-    }
-
-    // 2. Rappels EXPRESS non retirés (après 3 jours)
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
-    const expressToRemind = await prisma.order.findMany({
-      where: {
-        status: 'EXPRESS_ARRIVE',
-        arriveAt: {
-          lte: threeDaysAgo
-        },
-        // Vérifier qu'on n'a pas déjà envoyé de rappel aujourd'hui
-        NOT: {
-          smsLogs: {
-            some: {
-              type: 'EXPRESS_REMINDER',
-              sentAt: {
-                gte: new Date(new Date().setHours(0, 0, 0, 0))
-              }
-            }
-          }
-        }
-      },
-      include: {
-        smsLogs: true
-      }
-    });
-
-    for (const order of expressToRemind) {
-      const joursAttente = Math.floor(
-        (now - new Date(order.arriveAt)) / (1000 * 60 * 60 * 24)
-      );
-
-      const message = await smsTemplates.expressReminder(
-        order.clientNom,
-        order.agenceRetrait || 'notre agence',
-        order.codeExpedition,
-        joursAttente
-      );
-
-      const result = await sendSMS(order.clientTelephone, message, {
-        orderId: order.id,
-        type: 'EXPRESS_REMINDER'
-      });
-
-      if (result.success) totalSent++;
     }
 
     console.log(`✅ ${totalSent} SMS programmés envoyés`);
