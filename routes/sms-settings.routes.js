@@ -4,7 +4,11 @@
 
 import express from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
-import { getWasenderConfiguration } from '../services/wasender.service.js';
+import prisma from '../config/prisma.js';
+import {
+  getWasenderConfiguration,
+  WASENDER_PROVIDER_NAME
+} from '../services/wasender.service.js';
 
 const router = express.Router();
 
@@ -228,6 +232,50 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+/**
+ * GET /api/sms-settings/whatsapp-history
+ * Suivi récent des messages WhatsApp AFGESTION.
+ */
+router.get('/whatsapp-history', authenticate, authorize('ADMIN'), async (req, res) => {
+  try {
+    const [logs, counts] = await Promise.all([
+      prisma.smsLog.findMany({
+        where: { provider: WASENDER_PROVIDER_NAME },
+        orderBy: { sentAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          phoneNumber: true,
+          status: true,
+          providerStatus: true,
+          errorMessage: true,
+          type: true,
+          orderId: true,
+          attempts: true,
+          sentAt: true,
+          deliveredAt: true,
+          readAt: true
+        }
+      }),
+      prisma.smsLog.groupBy({
+        by: ['status'],
+        where: { provider: WASENDER_PROVIDER_NAME },
+        _count: { _all: true }
+      })
+    ]);
+
+    const stats = { PENDING: 0, SENT: 0, DELIVERED: 0, READ: 0, FAILED: 0 };
+    counts.forEach(item => {
+      stats[item.status] = item._count._all;
+    });
+
+    res.json({ success: true, stats, logs });
+  } catch (error) {
+    console.error('Erreur historique WhatsApp:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

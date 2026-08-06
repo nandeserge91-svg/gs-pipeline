@@ -54,6 +54,43 @@ interface WhatsAppConfig {
   sessionScoped: boolean;
 }
 
+type WhatsAppStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+
+interface WhatsAppLog {
+  id: number;
+  phoneNumber: string;
+  status: WhatsAppStatus;
+  type: string;
+  orderId: number | null;
+  attempts: number;
+  errorMessage: string | null;
+  sentAt: string;
+}
+
+const emptyWhatsAppStats: Record<WhatsAppStatus, number> = {
+  PENDING: 0,
+  SENT: 0,
+  DELIVERED: 0,
+  READ: 0,
+  FAILED: 0
+};
+
+const whatsappStatusLabels: Record<WhatsAppStatus, string> = {
+  PENDING: 'En attente',
+  SENT: 'Accepté',
+  DELIVERED: 'Livré',
+  READ: 'Lu',
+  FAILED: 'Échec'
+};
+
+const whatsappStatusStyles: Record<WhatsAppStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  SENT: 'bg-blue-100 text-blue-800',
+  DELIVERED: 'bg-emerald-100 text-emerald-800',
+  READ: 'bg-green-100 text-green-800',
+  FAILED: 'bg-red-100 text-red-800'
+};
+
 export default function SmsSettings() {
   const [activeTab, setActiveTab] = useState<'settings' | 'templates'>('settings');
   const [loading, setLoading] = useState(true);
@@ -73,6 +110,8 @@ export default function SmsSettings() {
     enabled: false,
     sessionScoped: true
   });
+  const [whatsappStats, setWhatsAppStats] = useState(emptyWhatsAppStats);
+  const [whatsappLogs, setWhatsAppLogs] = useState<WhatsAppLog[]>([]);
   const [testPhone, setTestPhone] = useState('');
   const [testingType, setTestingType] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -80,6 +119,9 @@ export default function SmsSettings() {
   useEffect(() => {
     loadSettings();
     loadStats();
+    loadWhatsAppHistory();
+    const refreshTimer = window.setInterval(loadWhatsAppHistory, 30000);
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   const loadSettings = async () => {
@@ -103,6 +145,16 @@ export default function SmsSettings() {
       setStats(response.data.stats);
     } catch (error: any) {
       console.error('Erreur chargement stats SMS:', error);
+    }
+  };
+
+  const loadWhatsAppHistory = async () => {
+    try {
+      const response = await api.get('/sms-settings/whatsapp-history');
+      setWhatsAppStats({ ...emptyWhatsAppStats, ...response.data.stats });
+      setWhatsAppLogs(response.data.logs || []);
+    } catch (error: any) {
+      console.error('Erreur chargement suivi WhatsApp:', error);
     }
   };
 
@@ -287,7 +339,7 @@ export default function SmsSettings() {
               ? 'text-green-600'
               : 'text-amber-600'
           }`} />
-          <div>
+          <div className="flex-1 min-w-0">
             <h3 className={`font-semibold ${
               whatsappConfig.configured && whatsappConfig.enabled
                 ? 'text-green-900'
@@ -304,6 +356,69 @@ export default function SmsSettings() {
                 ? 'Actif : chaque SMS configuré est aussi envoyé sur WhatsApp, y compris les relances marketing.'
                 : 'Inactif : ajoutez la clé de session WaSenderAPI et activez WHATSAPP_ENABLED sur Railway.'}
             </p>
+
+            {whatsappConfig.configured && whatsappConfig.enabled && (
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {(Object.keys(emptyWhatsAppStats) as WhatsAppStatus[]).map(status => (
+                    <div key={status} className="rounded-lg bg-white/80 border border-white px-3 py-2">
+                      <div className="text-lg font-bold text-gray-900">{whatsappStats[status]}</div>
+                      <div className="text-xs text-gray-600">{whatsappStatusLabels[status]}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-white rounded-lg border border-green-100 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Derniers messages WhatsApp</h4>
+                      <p className="text-xs text-gray-500">Mise à jour automatique toutes les 30 secondes</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={loadWhatsAppHistory}
+                      className="text-xs font-medium text-green-700 hover:text-green-900"
+                    >
+                      Actualiser
+                    </button>
+                  </div>
+                  {whatsappLogs.length === 0 ? (
+                    <p className="px-4 py-5 text-sm text-gray-500">Aucun message WhatsApp enregistré.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50 text-left text-xs text-gray-500">
+                          <tr>
+                            <th className="px-4 py-2 font-medium">Date</th>
+                            <th className="px-4 py-2 font-medium">Destinataire</th>
+                            <th className="px-4 py-2 font-medium">Notification</th>
+                            <th className="px-4 py-2 font-medium">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {whatsappLogs.slice(0, 10).map(log => (
+                            <tr key={log.id} title={log.errorMessage || undefined}>
+                              <td className="px-4 py-2 whitespace-nowrap text-gray-600">
+                                {new Date(log.sentAt).toLocaleString('fr-FR')}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-gray-900">{log.phoneNumber}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-gray-600">
+                                {log.type.replaceAll('_', ' ')}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap">
+                                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${whatsappStatusStyles[log.status]}`}>
+                                  {whatsappStatusLabels[log.status]}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

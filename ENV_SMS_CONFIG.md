@@ -45,6 +45,12 @@ WHATSAPP_ENABLED=true
 WASENDER_API_KEY=votre_cle_api_de_session_wasender
 WASENDER_API_URL=https://www.wasenderapi.com/api
 WASENDER_TIMEOUT_MS=15000
+WASENDER_MIN_INTERVAL_MS=5500
+WASENDER_MAX_ATTEMPTS=3
+WASENDER_WEBHOOK_SECRET=une_valeur_secrete_longue_et_unique
+
+# Dans WaSenderAPI, configurez le webhook de la session avec :
+# https://www.afgestion.net/api/whatsapp/wasender/status
 
 # Le contrôle s'exécute chaque heure à la minute 15 (facultatif)
 MARKETING_RELAUNCH_CRON=15 * * * *
