@@ -11,8 +11,22 @@ import {
 export const EXPRESS_REMINDER_DAYS = Object.freeze([1, 2, 3, 5, 7]);
 export const EXPRESS_REMINDER_CHANNELS = Object.freeze(['SMS', 'WHATSAPP']);
 export const EXPRESS_REMINDER_MAX_ATTEMPTS = 3;
+export const EXPRESS_REMINDER_HOUR_UTC = 8;
+export const EXPRESS_REMINDER_MINUTE_UTC = 30;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function buildExpressReminderDueAt(arrivedAt, dayOffset) {
+  const dueAt = new Date(arrivedAt);
+  dueAt.setUTCDate(dueAt.getUTCDate() + dayOffset);
+  dueAt.setUTCHours(
+    EXPRESS_REMINDER_HOUR_UTC,
+    EXPRESS_REMINDER_MINUTE_UTC,
+    0,
+    0
+  );
+  return dueAt;
+}
 
 export function buildExpressReminderSchedule(orderId, arrivedAt) {
   const arrival = new Date(arrivedAt);
@@ -27,7 +41,7 @@ export function buildExpressReminderSchedule(orderId, arrivedAt) {
       arrivedAt: arrival,
       dayOffset,
       channel,
-      dueAt: new Date(arrival.getTime() + dayOffset * DAY_MS)
+      dueAt: buildExpressReminderDueAt(arrival, dayOffset)
     }))
   );
 }
@@ -352,6 +366,9 @@ export async function runExpressReminders(options = {}) {
 export default {
   EXPRESS_REMINDER_DAYS,
   EXPRESS_REMINDER_CHANNELS,
+  EXPRESS_REMINDER_HOUR_UTC,
+  EXPRESS_REMINDER_MINUTE_UTC,
+  buildExpressReminderDueAt,
   buildExpressReminderSchedule,
   scheduleExpressReminders,
   cancelPendingExpressReminders,

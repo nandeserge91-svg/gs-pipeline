@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildExpressReminderDueAt,
   buildExpressReminderSchedule,
   cancelPendingExpressReminders,
   formatExpressReminderDelay,
@@ -24,7 +25,7 @@ function reminderFixture(overrides = {}) {
     arrivedAt,
     dayOffset: 1,
     channel: 'SMS',
-    dueAt: new Date('2026-08-02T10:00:00.000Z'),
+    dueAt: new Date('2026-08-02T08:30:00.000Z'),
     status: 'PENDING',
     attempts: 0,
     order: {
@@ -83,7 +84,7 @@ function createDb(reminders, options = {}) {
   };
 }
 
-test('planifie SMS et WhatsApp à 24h, 48h, 72h, J+5 et J+7', () => {
+test('planifie SMS et WhatsApp à 8h30 à J+1, J+2, J+3, J+5 et J+7', () => {
   const schedule = buildExpressReminderSchedule(42, arrivedAt);
 
   assert.equal(schedule.length, 10);
@@ -95,7 +96,16 @@ test('planifie SMS et WhatsApp à 24h, 48h, 72h, J+5 et J+7', () => {
     schedule.filter(item => item.dayOffset === 1).map(item => item.channel),
     ['SMS', 'WHATSAPP']
   );
-  assert.equal(schedule.at(-1).dueAt.toISOString(), '2026-08-08T10:00:00.000Z');
+  assert.equal(schedule[0].dueAt.toISOString(), '2026-08-02T08:30:00.000Z');
+  assert.equal(schedule.at(-1).dueAt.toISOString(), '2026-08-08T08:30:00.000Z');
+});
+
+test('conserve 8h30 même si le colis arrive après 8h30', () => {
+  const lateArrival = new Date('2026-08-01T20:45:00.000Z');
+  assert.equal(
+    buildExpressReminderDueAt(lateArrival, 1).toISOString(),
+    '2026-08-02T08:30:00.000Z'
+  );
 });
 
 test('formate clairement les cinq délais client', () => {
@@ -164,7 +174,7 @@ test('à J+5, ignore les anciennes échéances et n’envoie que J+5', async () 
   const reminders = [1, 2, 3, 5].map((dayOffset, index) => reminderFixture({
     id: 20 + index,
     dayOffset,
-    dueAt: new Date(arrivedAt.getTime() + dayOffset * 24 * 60 * 60 * 1000)
+    dueAt: buildExpressReminderDueAt(arrivedAt, dayOffset)
   }));
   const db = createDb(reminders);
   const messages = [];
@@ -194,7 +204,7 @@ test('ne planifie aucune relance après le septième jour', () => {
 test('n’envoie plus rien une fois le septième jour terminé', async () => {
   const reminder = reminderFixture({
     dayOffset: 7,
-    dueAt: new Date('2026-08-08T10:00:00.000Z')
+    dueAt: new Date('2026-08-08T08:30:00.000Z')
   });
   const db = createDb([reminder]);
   let sendCount = 0;
