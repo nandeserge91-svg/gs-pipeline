@@ -166,6 +166,7 @@ model Order {
   // SMS envoyés pour cette commande
   smsLogs              SmsLog[]
   marketingReminders   MarketingReminder[]
+  expressReminders     ExpressReminder[]
 
   @@map("orders")
   @@index([status])
@@ -473,6 +474,43 @@ model SmsLog {
   @@index([sentAt])
   @@index([phoneNumber])
   @@index([provider, providerId])
+}
+
+enum ExpressReminderStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+enum ExpressReminderChannel {
+  SMS
+  WHATSAPP
+}
+
+model ExpressReminder {
+  id            Int                    @id @default(autoincrement())
+  orderId       Int
+  order         Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  arrivedAt     DateTime
+  dayOffset     Int
+  channel       ExpressReminderChannel
+  dueAt         DateTime
+  status        ExpressReminderStatus  @default(PENDING)
+  attempts      Int                    @default(0)
+  lastAttemptAt DateTime?
+  sentAt        DateTime?
+  smsLogId      Int?
+  errorMessage  String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([orderId, arrivedAt, dayOffset, channel])
+  @@index([status, dueAt])
+  @@index([orderId])
+  @@map("express_reminders")
 }
 
 // Templates SMS personnalisables

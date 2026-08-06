@@ -66,7 +66,7 @@ const SMS_TYPES = [
   { 
     key: 'SMS_EXPRESS_REMINDER', 
     label: 'Rappel retrait EXPRESS', 
-    description: 'Rappel automatique si le colis n\'est pas retiré après 3 jours',
+    description: 'SMS et WhatsApp à 24h, 48h, 72h, J+5 et J+7, arrêtés dès le retrait',
     icon: '⏰',
     category: 'Express'
   },
