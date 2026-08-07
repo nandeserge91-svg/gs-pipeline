@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   getWasenderConfiguration,
+  isWhatsAppMessageTypeAllowed,
   parseWasenderResponse,
   resetWasenderQueueForTests,
   sendWhatsAppMessage
@@ -42,6 +43,29 @@ test('désactive WhatsApp sans modifier le canal SMS', async () => {
   assert.equal(result.success, true);
   assert.equal(result.skipped, true);
   assert.equal(result.reason, 'WHATSAPP_DISABLED');
+});
+
+test('autorise uniquement le message d’assignation livreur', async () => {
+  assert.equal(isWhatsAppMessageTypeAllowed({ type: 'DELIVERY_ASSIGNED' }), true);
+  assert.equal(isWhatsAppMessageTypeAllowed({ type: 'ORDER_CREATED' }), false);
+  assert.equal(isWhatsAppMessageTypeAllowed({ type: 'EXPRESS_REMINDER' }), false);
+  assert.equal(isWhatsAppMessageTypeAllowed({ type: 'MARKETING_RELANCE_J3' }), false);
+
+  let requestCount = 0;
+  const result = await sendWhatsAppMessage(
+    '+2250700000000',
+    'Commande reçue',
+    { type: 'ORDER_CREATED' },
+    {
+      env: enabledEnv,
+      httpClient: { post: async () => { requestCount += 1; } }
+    }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, 'WHATSAPP_EVENT_DISABLED');
+  assert.equal(requestCount, 0);
 });
 
 test('reconnaît une réponse WaSenderAPI mise en file', () => {
@@ -114,7 +138,7 @@ test('réessaie automatiquement après une limitation WaSenderAPI', async () => 
     }
   };
 
-  const result = await sendWhatsAppMessage('+2250700000001', 'Deuxième essai', {}, {
+  const result = await sendWhatsAppMessage('+2250700000001', 'Deuxième essai', { type: 'DELIVERY_ASSIGNED' }, {
     db,
     httpClient,
     env: enabledEnv,
@@ -151,8 +175,8 @@ test('espace deux envois simultanés de cinq secondes', async () => {
   };
 
   await Promise.all([
-    sendWhatsAppMessage('+2250700000002', 'Premier', {}, options),
-    sendWhatsAppMessage('+2250700000003', 'Deuxième', {}, options)
+    sendWhatsAppMessage('+2250700000002', 'Premier', { type: 'DELIVERY_ASSIGNED' }, options),
+    sendWhatsAppMessage('+2250700000003', 'Deuxième', { type: 'DELIVERY_ASSIGNED' }, options)
   ]);
 
   assert.deepEqual(waits, [5000]);

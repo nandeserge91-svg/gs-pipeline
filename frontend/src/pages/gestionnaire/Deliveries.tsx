@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Truck, Package, Search, Filter, Calendar, Image as ImageIcon, Share2, MessageSquare } from 'lucide-react';
+import { Truck, Package, Search, Filter, Calendar, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { deliveryApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 
@@ -20,47 +20,6 @@ export default function Deliveries() {
     const now = new Date();
     const diffInDays = Math.floor((now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
     return diffInDays >= 7;
-  };
-
-  const generateWhatsAppMessage = (order: any) => {
-    const message = `📦 *Informations d'Expédition*
-
-✅ *Commande :* ${order.orderReference}
-👤 *Client :* ${order.clientNom}
-📞 *Téléphone :* ${order.clientTelephone || 'Non renseigné'}
-📍 *Destination :* ${order.clientVille}
-${order.clientAdresse ? `🏠 *Adresse :* ${order.clientAdresse}` : ''}
-
-📦 *Produit :* ${order.produitNom}
-💰 *Montant :* ${formatCurrency(order.montant)}
-${order.codeExpedition ? `🔖 *Code d'expédition :* ${order.codeExpedition}` : ''}
-${order.status === 'LIVREE' ? `✅ *Statut :* Expédiée` : `⏳ *Statut :* ${getStatusLabel(order.status)}`}
-
-${order.expedieAt ? `📅 *Date d'expédition :* ${formatDate(order.expedieAt)}` : ''}
-
-Merci de votre confiance ! 🙏`;
-
-    return encodeURIComponent(message);
-  };
-
-  const handleWhatsAppShare = (order: any) => {
-    const message = generateWhatsAppMessage(order);
-    const phoneNumber = order.clientTelephone?.replace(/[^0-9]/g, ''); // Enlever les caractères non numériques
-    
-    if (!phoneNumber) {
-      alert('Numéro de téléphone manquant pour ce client');
-      return;
-    }
-
-    // Format ivoirien : si le numéro commence par 0, remplacer par 225
-    const formattedPhone = phoneNumber.startsWith('0') 
-      ? '225' + phoneNumber.substring(1) 
-      : phoneNumber.startsWith('225') 
-        ? phoneNumber 
-        : '225' + phoneNumber;
-
-    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   const { data: listsData, isLoading } = useQuery({
@@ -325,7 +284,6 @@ Merci de votre confiance ! 🙏`;
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Statut</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Code Expédition</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Photo Reçu</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -375,20 +333,6 @@ Merci de votre confiance ! 🙏`;
                             <span className="text-xs text-gray-400 italic">Photo expirée</span>
                           ) : order.deliveryType === 'EXPEDITION' && order.status === 'ASSIGNEE' ? (
                             <span className="text-xs text-gray-400 italic">En attente...</span>
-                          ) : (
-                            <span className="text-xs text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {order.deliveryType === 'EXPEDITION' ? (
-                            <button
-                              onClick={() => handleWhatsAppShare(order)}
-                              className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
-                              title="Partager par WhatsApp"
-                            >
-                              <Share2 className="w-3 h-3" />
-                              WhatsApp
-                            </button>
                           ) : (
                             <span className="text-xs text-gray-300">—</span>
                           )}

@@ -214,7 +214,8 @@ export async function sendSms8Message(phone, message, metadata = {}) {
 }
 
 /**
- * Envoie le SMS historique et, si activé, le même texte sur WhatsApp.
+ * Envoie toujours le SMS historique. Le service WhatsApp n'accepte que
+ * DELIVERY_ASSIGNED ; tous les autres événements restent exclusivement SMS.
  * Le résultat principal reste celui de SMS8 afin de ne modifier aucun flux existant.
  */
 export async function sendSMS(phone, message, metadata = {}) {

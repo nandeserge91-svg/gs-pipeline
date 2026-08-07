@@ -3,13 +3,9 @@ import {
   generateSmsFromTemplate,
   sendSms8Message
 } from './sms.service.js';
-import {
-  sendWhatsAppMessage,
-  WASENDER_PROVIDER_NAME
-} from './wasender.service.js';
 
 export const EXPRESS_REMINDER_DAYS = Object.freeze([1, 2, 3, 5, 7]);
-export const EXPRESS_REMINDER_CHANNELS = Object.freeze(['SMS', 'WHATSAPP']);
+export const EXPRESS_REMINDER_CHANNELS = Object.freeze(['SMS']);
 export const EXPRESS_REMINDER_MAX_ATTEMPTS = 3;
 export const EXPRESS_REMINDER_HOUR_UTC = 8;
 export const EXPRESS_REMINDER_MINUTE_UTC = 30;
@@ -118,18 +114,6 @@ function groupDueReminders(reminders) {
   );
 }
 
-function providerFilter(channel) {
-  return channel === 'WHATSAPP'
-    ? WASENDER_PROVIDER_NAME
-    : { startsWith: 'SMS8' };
-}
-
-function successfulStatuses(channel) {
-  return channel === 'WHATSAPP'
-    ? ['SENT', 'DELIVERED', 'READ']
-    : ['SENT'];
-}
-
 export async function runExpressReminders(options = {}) {
   const db = options.db || prisma;
   const env = options.env || process.env;
@@ -137,7 +121,6 @@ export async function runExpressReminders(options = {}) {
   const logger = options.logger || console;
   const generateMessage = options.generateMessage || generateSmsFromTemplate;
   const sendSms = options.sendSms || sendSms8Message;
-  const sendWhatsapp = options.sendWhatsapp || sendWhatsAppMessage;
 
   const summary = {
     disabled: false,
@@ -233,12 +216,13 @@ export async function runExpressReminders(options = {}) {
       continue;
     }
 
-    if (reminder.channel === 'WHATSAPP' && env.WHATSAPP_ENABLED !== 'true') {
+    // Les anciennes échéances WhatsApp déjà enregistrées sont neutralisées.
+    if (reminder.channel !== 'SMS') {
       await db.expressReminder.update({
         where: { id: reminder.id },
         data: {
           status: 'SKIPPED',
-          errorMessage: 'Canal WhatsApp désactivé'
+          errorMessage: 'Relances EXPRESS conservées uniquement par SMS'
         }
       });
       summary.skipped += 1;
@@ -249,8 +233,8 @@ export async function runExpressReminders(options = {}) {
       where: {
         orderId: order.id,
         type: 'EXPRESS_REMINDER',
-        provider: providerFilter(reminder.channel),
-        status: { in: successfulStatuses(reminder.channel) },
+        provider: { startsWith: 'SMS8' },
+        status: 'SENT',
         sentAt: { gte: reminder.dueAt }
       },
       select: { id: true, sentAt: true }
@@ -319,9 +303,7 @@ export async function runExpressReminders(options = {}) {
         userId: order.callerId || null
       };
 
-      const result = reminder.channel === 'WHATSAPP'
-        ? await sendWhatsapp(order.clientTelephone, message, metadata)
-        : await sendSms(order.clientTelephone, message, metadata);
+      const result = await sendSms(order.clientTelephone, message, metadata);
 
       if (!result.success || result.skipped) {
         throw new Error(result.error || `Canal ${reminder.channel} indisponible`);
@@ -338,8 +320,7 @@ export async function runExpressReminders(options = {}) {
       });
 
       summary.sent += 1;
-      if (reminder.channel === 'SMS') summary.smsSent += 1;
-      if (reminder.channel === 'WHATSAPP') summary.whatsappSent += 1;
+      summary.smsSent += 1;
       logger.log(
         `Relance EXPRESS ${formatExpressReminderDelay(reminder.dayOffset)} `
         + `${reminder.channel} envoyée pour ${order.orderReference}`

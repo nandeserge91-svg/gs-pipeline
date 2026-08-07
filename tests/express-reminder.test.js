@@ -12,8 +12,7 @@ import {
 const arrivedAt = new Date('2026-08-01T10:00:00.000Z');
 const enabledEnv = {
   SMS_ENABLED: 'true',
-  SMS_EXPRESS_REMINDER: 'true',
-  WHATSAPP_ENABLED: 'true'
+  SMS_EXPRESS_REMINDER: 'true'
 };
 
 const silentLogger = { log() {}, error() {} };
@@ -84,18 +83,15 @@ function createDb(reminders, options = {}) {
   };
 }
 
-test('planifie SMS et WhatsApp à 8h30 à J+1, J+2, J+3, J+5 et J+7', () => {
+test('planifie uniquement les SMS à 8h30 à J+1, J+2, J+3, J+5 et J+7', () => {
   const schedule = buildExpressReminderSchedule(42, arrivedAt);
 
-  assert.equal(schedule.length, 10);
+  assert.equal(schedule.length, 5);
   assert.deepEqual(
     [...new Set(schedule.map(item => item.dayOffset))],
     [1, 2, 3, 5, 7]
   );
-  assert.deepEqual(
-    schedule.filter(item => item.dayOffset === 1).map(item => item.channel),
-    ['SMS', 'WHATSAPP']
-  );
+  assert.deepEqual(schedule.map(item => item.channel), ['SMS', 'SMS', 'SMS', 'SMS', 'SMS']);
   assert.equal(schedule[0].dueAt.toISOString(), '2026-08-02T08:30:00.000Z');
   assert.equal(schedule.at(-1).dueAt.toISOString(), '2026-08-08T08:30:00.000Z');
 });
@@ -115,10 +111,9 @@ test('formate clairement les cinq délais client', () => {
   );
 });
 
-test('envoie indépendamment le SMS et WhatsApp après 24 heures', async () => {
+test('envoie uniquement le SMS après 24 heures', async () => {
   const smsReminder = reminderFixture();
-  const whatsappReminder = reminderFixture({ id: 11, channel: 'WHATSAPP' });
-  const db = createDb([smsReminder, whatsappReminder]);
+  const db = createDb([smsReminder]);
   const sent = [];
   const generated = [];
 
@@ -134,16 +129,12 @@ test('envoie indépendamment le SMS et WhatsApp après 24 heures', async () => {
     sendSms: async (phone, message, metadata) => {
       sent.push({ channel: 'SMS', phone, message, metadata });
       return { success: true, smsLogId: 100 };
-    },
-    sendWhatsapp: async (phone, message, metadata) => {
-      sent.push({ channel: 'WHATSAPP', phone, message, metadata });
-      return { success: true, messageLogId: 101 };
     }
   });
 
   assert.equal(result.smsSent, 1);
-  assert.equal(result.whatsappSent, 1);
-  assert.deepEqual(sent.map(item => item.channel), ['SMS', 'WHATSAPP']);
+  assert.equal(result.whatsappSent, 0);
+  assert.deepEqual(sent.map(item => item.channel), ['SMS']);
   assert.equal(generated[0].variables.delai, '24 heures');
   assert.equal(sent[0].metadata.type, 'EXPRESS_REMINDER');
 });
@@ -225,10 +216,10 @@ test('n’envoie plus rien une fois le septième jour terminé', async () => {
   assert.equal(db.updates.at(-1).args.data.status, 'SKIPPED');
 });
 
-test('l’échec WhatsApp ne remet pas le SMS déjà réussi en attente', async () => {
-  const smsReminder = reminderFixture();
+test('neutralise une ancienne échéance WhatsApp sans tenter de l’envoyer', async () => {
   const whatsappReminder = reminderFixture({ id: 11, channel: 'WHATSAPP' });
-  const db = createDb([smsReminder, whatsappReminder]);
+  const db = createDb([whatsappReminder]);
+  let sendCount = 0;
 
   const result = await runExpressReminders({
     db,
@@ -236,17 +227,21 @@ test('l’échec WhatsApp ne remet pas le SMS déjà réussi en attente', async 
     now: new Date('2026-08-02T10:05:00.000Z'),
     logger: silentLogger,
     generateMessage: async () => 'Rappel',
-    sendSms: async () => ({ success: true, smsLogId: 300 }),
-    sendWhatsapp: async () => ({ success: false, error: 'Session indisponible' })
+    sendSms: async () => {
+      sendCount += 1;
+      return { success: true, smsLogId: 300 };
+    }
   });
 
-  assert.equal(result.smsSent, 1);
+  assert.equal(sendCount, 0);
+  assert.equal(result.smsSent, 0);
   assert.equal(result.whatsappSent, 0);
-  assert.equal(result.failed, 1);
+  assert.equal(result.failed, 0);
+  assert.equal(result.skipped, 1);
   const finalStatuses = db.updates
     .filter(update => update.kind === 'one')
     .map(update => update.args.data.status);
-  assert.deepEqual(finalStatuses, ['SENT', 'FAILED']);
+  assert.deepEqual(finalStatuses, ['SKIPPED']);
 });
 
 test('la confirmation de retrait annule toutes les échéances restantes', async () => {
