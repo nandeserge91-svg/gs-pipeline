@@ -353,7 +353,7 @@ export default function SmsSettings() {
                 : 'text-amber-800'
             }`}>
               {whatsappConfig.configured && whatsappConfig.enabled
-                ? 'Actif : chaque SMS configuré est aussi envoyé sur WhatsApp, y compris les relances marketing.'
+                ? 'Actif uniquement pour « Livreur assigné ». Toutes les autres notifications restent envoyées par SMS seulement.'
                 : 'Inactif : ajoutez la clé de session WaSenderAPI et activez WHATSAPP_ENABLED sur Railway.'}
             </p>
 

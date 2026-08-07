@@ -20,7 +20,7 @@ export function scheduleExpressReminderJobs() {
         if (!result.disabled) {
           console.log(
             `[Cron] Relances EXPRESS: ${result.smsSent} SMS, `
-            + `${result.whatsappSent} WhatsApp, ${result.failed} échec(s), `
+            + `${result.failed} échec(s), `
             + `${result.skipped} ignorée(s)`
           );
         }

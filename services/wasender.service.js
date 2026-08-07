@@ -4,6 +4,7 @@ import { cleanPhoneNumber } from '../utils/phone.util.js';
 
 const DEFAULT_API_URL = 'https://www.wasenderapi.com/api';
 export const WASENDER_PROVIDER_NAME = 'WaSenderAPI';
+export const WHATSAPP_ALLOWED_MESSAGE_TYPES = Object.freeze(['DELIVERY_ASSIGNED']);
 
 let queueTail = Promise.resolve();
 let lastRequestStartedAt = 0;
@@ -18,6 +19,10 @@ export function getWasenderConfiguration(env = process.env) {
     enabled: env.WHATSAPP_ENABLED === 'true',
     sessionScoped: true
   };
+}
+
+export function isWhatsAppMessageTypeAllowed(metadata = {}) {
+  return WHATSAPP_ALLOWED_MESSAGE_TYPES.includes(String(metadata.type || '').trim());
 }
 
 function getProviderError(apiResponse, messageData = {}) {
@@ -146,6 +151,10 @@ export async function sendWhatsAppMessage(phone, message, metadata = {}, options
 
   if (!config.enabled) {
     return { success: true, skipped: true, reason: 'WHATSAPP_DISABLED' };
+  }
+
+  if (!isWhatsAppMessageTypeAllowed(metadata)) {
+    return { success: true, skipped: true, reason: 'WHATSAPP_EVENT_DISABLED' };
   }
 
   try {
@@ -282,6 +291,7 @@ export async function sendWhatsAppMessage(phone, message, metadata = {}, options
 
 export default {
   getWasenderConfiguration,
+  isWhatsAppMessageTypeAllowed,
   parseWasenderResponse,
   resetWasenderQueueForTests,
   sendWhatsAppMessage

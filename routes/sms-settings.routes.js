@@ -45,7 +45,7 @@ const SMS_TYPES = [
   { 
     key: 'SMS_DELIVERY_ASSIGNED', 
     label: 'Livreur assigné', 
-    description: 'SMS envoyé au client avec les infos du livreur',
+    description: 'SMS et WhatsApp envoyés au client avec les infos du livreur',
     icon: '🚚',
     category: 'Livraison'
   },
@@ -66,7 +66,7 @@ const SMS_TYPES = [
   { 
     key: 'SMS_EXPRESS_REMINDER', 
     label: 'Rappel retrait EXPRESS', 
-    description: 'SMS et WhatsApp à 8h30 à J+1, J+2, J+3, J+5 et J+7, arrêtés dès le retrait',
+    description: 'SMS à 8h30 à J+1, J+2, J+3, J+5 et J+7, arrêtés dès le retrait',
     icon: '⏰',
     category: 'Express'
   },
