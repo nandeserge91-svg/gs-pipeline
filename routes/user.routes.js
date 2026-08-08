@@ -4,6 +4,10 @@ import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { normalizeUserPhone, UserPhoneValidationError } from '../services/user-phone.service.js';
+import {
+  assertUserUpdateAllowed,
+  UserManagementPermissionError,
+} from '../services/user-management-permissions.service.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -122,8 +126,8 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
   }
 });
 
-// PUT /api/users/:id - Modifier un utilisateur (Admin uniquement)
-router.put('/:id', authorize('ADMIN'), async (req, res) => {
+// PUT /api/users/:id - Admin : tous les comptes ; Gestionnaire : téléphone des livreurs uniquement
+router.put('/:id', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
     const { id } = req.params;
     const { email, nom, prenom, telephone, role, actif, password } = req.body;
@@ -135,6 +139,15 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
 
     if (!existingUser) {
       return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    try {
+      assertUserUpdateAllowed(req.user.role, existingUser.role, req.body);
+    } catch (error) {
+      if (error instanceof UserManagementPermissionError) {
+        return res.status(403).json({ error: error.message });
+      }
+      throw error;
     }
 
     const finalRole = role || existingUser.role;

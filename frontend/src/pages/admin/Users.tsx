@@ -61,7 +61,7 @@ export default function Users() {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isGestionnaire = currentUser?.role === 'GESTIONNAIRE';
   const canCreateUser = isAdmin || isGestionnaire;
-  const canEditUser = isAdmin;
+  const canEditUser = (targetUser: User) => isAdmin || (isGestionnaire && targetUser.role === 'LIVREUR');
   const canDeleteUser = isAdmin;
 
   return (
@@ -135,7 +135,7 @@ export default function Users() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        {canEditUser && (
+                        {canEditUser(user) && (
                           <button
                             onClick={() => {
                               setEditingUser(user);
@@ -156,7 +156,7 @@ export default function Users() {
                             <Trash2 size={18} />
                           </button>
                         )}
-                        {!canEditUser && !canDeleteUser && (
+                        {!canEditUser(user) && !canDeleteUser && (
                           <span className="text-sm text-gray-400">-</span>
                         )}
                       </div>
@@ -243,19 +243,26 @@ export default function Users() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h2 className="text-xl font-bold mb-4">Modifier l'utilisateur</h2>
+            {isGestionnaire && (
+              <p className="text-sm text-gray-600 mb-4">
+                Vous pouvez renseigner ou corriger le numéro de téléphone de ce livreur.
+              </p>
+            )}
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              const updateData: any = {
-                nom: formData.get('nom') as string,
-                prenom: formData.get('prenom') as string,
-                telephone: formData.get('telephone') as string,
-                role: formData.get('role') as any,
-                actif: formData.get('actif') === 'true',
-              };
+              const updateData: any = isGestionnaire
+                ? { telephone: formData.get('telephone') as string }
+                : {
+                    nom: formData.get('nom') as string,
+                    prenom: formData.get('prenom') as string,
+                    telephone: formData.get('telephone') as string,
+                    role: formData.get('role') as any,
+                    actif: formData.get('actif') === 'true',
+                  };
               
-              const newPassword = formData.get('password') as string;
-              if (newPassword && newPassword.trim()) {
+              const newPassword = isAdmin ? formData.get('password') as string : '';
+              if (isAdmin && newPassword && newPassword.trim()) {
                 updateData.password = newPassword;
               }
 
@@ -267,6 +274,7 @@ export default function Users() {
                   placeholder="Prénom" 
                   className="input" 
                   defaultValue={editingUser.prenom}
+                  disabled={isGestionnaire}
                   required 
                 />
                 <input 
@@ -274,6 +282,7 @@ export default function Users() {
                   placeholder="Nom" 
                   className="input" 
                   defaultValue={editingUser.nom}
+                  disabled={isGestionnaire}
                   required 
                 />
                 <input 
@@ -306,35 +315,39 @@ export default function Users() {
                     </p>
                   )}
                 </div>
-                <select
-                  name="role"
-                  className="input"
-                  defaultValue={editingUser.role}
-                  onChange={(event) => setEditingRole(event.target.value as User['role'])}
-                  required
-                >
-                  <option value="ADMIN">Admin</option>
-                  <option value="GESTIONNAIRE">Gestionnaire</option>
-                  <option value="GESTIONNAIRE_STOCK">Gestionnaire de Stock</option>
-                  <option value="APPELANT">Appelant</option>
-                  <option value="LIVREUR">Livreur</option>
-                </select>
-                <select name="actif" className="input" defaultValue={editingUser.actif.toString()} required>
-                  <option value="true">Actif</option>
-                  <option value="false">Désactivé</option>
-                </select>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nouveau mot de passe (optionnel)
-                  </label>
-                  <input 
-                    name="password" 
-                    type="password" 
-                    placeholder="Laisser vide pour ne pas changer" 
-                    className="input" 
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Minimum 6 caractères si vous souhaitez le changer</p>
-                </div>
+                {isAdmin && (
+                  <>
+                    <select
+                      name="role"
+                      className="input"
+                      defaultValue={editingUser.role}
+                      onChange={(event) => setEditingRole(event.target.value as User['role'])}
+                      required
+                    >
+                      <option value="ADMIN">Admin</option>
+                      <option value="GESTIONNAIRE">Gestionnaire</option>
+                      <option value="GESTIONNAIRE_STOCK">Gestionnaire de Stock</option>
+                      <option value="APPELANT">Appelant</option>
+                      <option value="LIVREUR">Livreur</option>
+                    </select>
+                    <select name="actif" className="input" defaultValue={editingUser.actif.toString()} required>
+                      <option value="true">Actif</option>
+                      <option value="false">Désactivé</option>
+                    </select>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nouveau mot de passe (optionnel)
+                      </label>
+                      <input
+                        name="password"
+                        type="password"
+                        placeholder="Laisser vide pour ne pas changer"
+                        className="input"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Minimum 6 caractères si vous souhaitez le changer</p>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-2 mt-6">
                 <button type="submit" className="btn btn-primary flex-1" disabled={updateMutation.isPending}>
