@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 
 import { body, validationResult } from 'express-validator';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { normalizeUserPhone, UserPhoneValidationError } from '../services/user-phone.service.js';
 
 const router = express.Router();
 import prisma from '../config/prisma.js';
@@ -49,15 +50,29 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
   body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
   body('nom').notEmpty().withMessage('Nom requis'),
   body('prenom').notEmpty().withMessage('Prénom requis'),
+  body('telephone').trim().notEmpty().withMessage('Le numéro de téléphone est obligatoire.'),
   body('role').isIn(['ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT', 'LIVREUR']).withMessage('Rôle invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        error: errors.array()[0]?.msg || 'Données utilisateur invalides.',
+        errors: errors.array()
+      });
     }
 
     const { email, password, nom, prenom, telephone, role } = req.body;
+
+    let normalizedPhone;
+    try {
+      normalizedPhone = normalizeUserPhone(telephone, { required: true });
+    } catch (error) {
+      if (error instanceof UserPhoneValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
+      throw error;
+    }
 
     // RESTRICTION : Si l'utilisateur est GESTIONNAIRE, il ne peut créer que des LIVREUR
     if (req.user.role === 'GESTIONNAIRE' && role !== 'LIVREUR') {
@@ -85,7 +100,7 @@ router.post('/', authorize('ADMIN', 'GESTIONNAIRE'), [
         password: hashedPassword,
         nom,
         prenom,
-        telephone,
+        telephone: normalizedPhone,
         role
       },
       select: {
@@ -113,11 +128,39 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
     const { id } = req.params;
     const { email, nom, prenom, telephone, role, actif, password } = req.body;
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, role: true, telephone: true }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    const finalRole = role || existingUser.role;
+    const phoneCandidate = telephone !== undefined ? telephone : existingUser.telephone;
+    let normalizedPhone = existingUser.telephone;
+
+    if (telephone !== undefined || finalRole === 'LIVREUR') {
+      try {
+        normalizedPhone = normalizeUserPhone(phoneCandidate, {
+          required: finalRole === 'LIVREUR'
+        });
+      } catch (error) {
+        if (error instanceof UserPhoneValidationError) {
+          return res.status(400).json({ error: error.message });
+        }
+        throw error;
+      }
+    }
+
     const updateData = {};
     if (email) updateData.email = email.toLowerCase();
     if (nom) updateData.nom = nom;
     if (prenom) updateData.prenom = prenom;
-    if (telephone !== undefined) updateData.telephone = telephone;
+    if (telephone !== undefined || finalRole === 'LIVREUR') {
+      updateData.telephone = normalizedPhone;
+    }
     if (role) updateData.role = role;
     if (actif !== undefined) updateData.actif = actif;
     if (password) updateData.password = await bcrypt.hash(password, 10);
