@@ -9,6 +9,7 @@ import type { User } from '@/types';
 export default function Users() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingRole, setEditingRole] = useState<User['role'] | ''>('');
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
 
@@ -34,6 +35,7 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setEditingUser(null);
+      setEditingRole('');
       toast.success('Utilisateur modifié avec succès');
     },
     onError: (error: any) => {
@@ -135,7 +137,10 @@ export default function Users() {
                       <div className="flex items-center gap-2">
                         {canEditUser && (
                           <button
-                            onClick={() => setEditingUser(user)}
+                            onClick={() => {
+                              setEditingUser(user);
+                              setEditingRole(user.role);
+                            }}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                             title="Modifier"
                           >
@@ -185,7 +190,24 @@ export default function Users() {
                 <input name="prenom" placeholder="Prénom" className="input" required />
                 <input name="nom" placeholder="Nom" className="input" required />
                 <input name="email" type="email" placeholder="Email" className="input" required />
-                <input name="telephone" placeholder="Téléphone" className="input" />
+                <div>
+                  <label htmlFor="create-user-telephone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Téléphone <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="create-user-telephone"
+                    name="telephone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="Ex. 0712345678"
+                    className="input"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Obligatoire pour contacter l’utilisateur et informer les clients du numéro du livreur.
+                  </p>
+                </div>
                 <select name="role" className="input" required>
                   <option value="">Sélectionner un rôle</option>
                   {isAdmin && (
@@ -263,13 +285,34 @@ export default function Users() {
                   disabled
                   title="L'email ne peut pas être modifié"
                 />
-                <input 
-                  name="telephone" 
-                  placeholder="Téléphone" 
-                  className="input" 
-                  defaultValue={editingUser.telephone || ''}
-                />
-                <select name="role" className="input" defaultValue={editingUser.role} required>
+                <div>
+                  <label htmlFor="edit-user-telephone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Téléphone {editingRole === 'LIVREUR' && <span className="text-red-600">*</span>}
+                  </label>
+                  <input
+                    id="edit-user-telephone"
+                    name="telephone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="Ex. 0712345678"
+                    className="input"
+                    defaultValue={editingUser.telephone || ''}
+                    required={editingRole === 'LIVREUR'}
+                  />
+                  {editingRole === 'LIVREUR' && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Obligatoire pour envoyer au client le contact du livreur.
+                    </p>
+                  )}
+                </div>
+                <select
+                  name="role"
+                  className="input"
+                  defaultValue={editingUser.role}
+                  onChange={(event) => setEditingRole(event.target.value as User['role'])}
+                  required
+                >
                   <option value="ADMIN">Admin</option>
                   <option value="GESTIONNAIRE">Gestionnaire</option>
                   <option value="GESTIONNAIRE_STOCK">Gestionnaire de Stock</option>
@@ -297,7 +340,16 @@ export default function Users() {
                 <button type="submit" className="btn btn-primary flex-1" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? 'Modification...' : 'Modifier'}
                 </button>
-                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-secondary flex-1">Annuler</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null);
+                    setEditingRole('');
+                  }}
+                  className="btn btn-secondary flex-1"
+                >
+                  Annuler
+                </button>
               </div>
             </form>
           </div>
