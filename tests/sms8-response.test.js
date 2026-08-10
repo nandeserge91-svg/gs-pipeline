@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSmsDeviceParam, generateSmsFromTemplate, parseSms8Response } from '../services/sms.service.js';
+import {
+  buildSmsDeviceParam,
+  formatSmsDisplayPhone,
+  generateSmsFromTemplate,
+  makeSmsCarrierSafe,
+  parseSms8Response
+} from '../services/sms.service.js';
 
 test('sélectionne SIM 1 par son emplacement, sans numéro de SIM', () => {
   assert.equal(buildSmsDeviceParam('12286', '0'), '12286|0');
@@ -52,5 +58,17 @@ test('rend un texte Marketing propre au produit sans charger le modèle global',
     'Bonjour {prenom}, offre {produit}: {lien}'
   );
 
-  assert.equal(message, 'Bonjour Awa, offre Produit A: https://example.com/a');
+  assert.equal(message, 'Bonjour Awa, offre Produit A https://example.com/a');
+});
+
+test('retire les deux-points sans casser les liens', () => {
+  assert.equal(
+    makeSmsCarrierSafe('AFGestion : offre ici : https://example.com/a'),
+    'AFGestion offre ici https://example.com/a'
+  );
+});
+
+test('espace le contact du livreur uniquement dans le message', () => {
+  assert.equal(formatSmsDisplayPhone('+2250708091011'), '07 08 09 10 11');
+  assert.equal(formatSmsDisplayPhone('0506070809'), '05 06 07 08 09');
 });

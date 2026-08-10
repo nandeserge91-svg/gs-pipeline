@@ -100,6 +100,36 @@ function replaceVariables(template, variables) {
   return result;
 }
 
+export function formatSmsDisplayPhone(phone) {
+  const normalized = cleanPhoneNumber(phone);
+  if (!normalized) return '';
+
+  let digits = String(normalized).replace(/\D/g, '');
+  if (digits.startsWith('225') && digits.length === 13) digits = digits.slice(3);
+  if (digits.length === 10) return digits.match(/.{1,2}/g).join(' ');
+  return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+}
+
+export function makeSmsCarrierSafe(message) {
+  const preservedUrls = [];
+  let safeMessage = String(message || '').replace(/https?:\/\/\S+/gi, (url) => {
+    const token = `__SMS_URL_${preservedUrls.length}__`;
+    preservedUrls.push(url);
+    return token;
+  });
+
+  safeMessage = safeMessage
+    .replace(/\s*:\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  preservedUrls.forEach((url, index) => {
+    safeMessage = safeMessage.replace(`__SMS_URL_${index}__`, url);
+  });
+
+  return safeMessage;
+}
+
 /**
  * 📤 Fonction principale d'envoi de SMS
  * @param {string} phone - Numéro de téléphone (format : +225XXXXXXXXXX ou 225XXXXXXXXXX)
@@ -245,7 +275,7 @@ export async function generateSmsFromTemplate(templateKey, variables, customTemp
     // Les relances marketing peuvent fournir un texte propre au produit.
     // Dans ce cas, ne jamais consulter le template global de la base.
     if (typeof customTemplate === 'string' && customTemplate.trim()) {
-      return replaceVariables(customTemplate.trim(), variables);
+      return makeSmsCarrierSafe(replaceVariables(customTemplate.trim(), variables));
     }
 
     // Charger le template depuis la DB
@@ -259,7 +289,7 @@ export async function generateSmsFromTemplate(templateKey, variables, customTemp
     // Remplacer les variables dans le template
     const message = replaceVariables(template.template, variables);
     
-    return message;
+    return makeSmsCarrierSafe(message);
     
   } catch (error) {
     console.error(`❌ Erreur génération SMS ${templateKey}:`, error.message);
@@ -288,7 +318,7 @@ function generateFallbackMessage(templateKey, variables) {
     MARKETING_RELANCE_J7: `Bonjour ${variables.prenom}, derniere relance pour ${variables.produit}. Offre ici : ${variables.lien} - AFGestion`,
   };
   
-  return fallbacks[templateKey] || `Notification de AFGestion`;
+  return makeSmsCarrierSafe(fallbacks[templateKey] || `Notification de AFGestion`);
 }
 
 /**
@@ -324,7 +354,12 @@ export const smsTemplates = {
    */
   deliveryAssigned: async (clientNom, livreurNom, telephone) => {
     const prenom = clientNom.split(' ')[0];
-    return await generateSmsFromTemplate('DELIVERY_ASSIGNED', { prenom, livreur: livreurNom, telephone });
+    const telephoneAffiche = formatSmsDisplayPhone(telephone);
+    return await generateSmsFromTemplate('DELIVERY_ASSIGNED', {
+      prenom,
+      livreur: livreurNom,
+      telephone: telephoneAffiche
+    });
   },
 
   /**
