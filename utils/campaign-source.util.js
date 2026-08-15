@@ -17,30 +17,23 @@ export function parseTaggedProductSource(value) {
       : 'Facebook Ads';
   }
 
-  // Le tunnel Scar Gel historique, sans suffixe, est le tunnel Facebook.
-  if (!campaignSource && productKey.toUpperCase() === 'SCARGEL') {
+  // Règle métier : toute commande sans balise TikTok vient de Facebook.
+  if (!campaignSource) {
     campaignSource = 'Facebook Ads';
   }
 
   return { originalTag, productKey, campaignSource };
 }
 
-export function classifyOrderTrafficSource({ campaignSource, sourcePage, productCode }) {
+export function classifyOrderTrafficSource({ campaignSource, sourcePage }) {
   const campaign = String(campaignSource || '').toLowerCase();
   const page = String(sourcePage || '').toLowerCase();
 
-  if (campaign.includes('tiktok') || /-tik(?:tok)?$/.test(page)) {
+  if (campaign.includes('tiktok') || /-(?:tik|tiktk|tiktok)$/.test(page)) {
     return 'tiktok';
   }
 
-  if (campaign.includes('facebook') || /-(?:fb|facebook)$/.test(page)) {
-    return 'facebook';
-  }
-
-  // Toutes les anciennes commandes SCARGEL venaient du tunnel Facebook.
-  if (String(productCode || '').toUpperCase() === 'SCARGEL') {
-    return 'facebook';
-  }
-
-  return 'other';
+  // Toute commande qui n'est pas explicitement TikTok est Facebook,
+  // y compris les anciennes commandes sans source enregistrée.
+  return 'facebook';
 }
