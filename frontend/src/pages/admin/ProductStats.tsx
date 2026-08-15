@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { Package, TrendingUp, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 
+type TrafficSourceFilter = 'all' | 'facebook' | 'tiktok';
+
+interface SourceBreakdown {
+  facebook: number;
+  tiktok: number;
+  other: number;
+}
+
 interface ProductStat {
   productId: number | null;
   productCode: string;
@@ -68,6 +76,12 @@ export default function ProductStats() {
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [trafficSource, setTrafficSource] = useState<TrafficSourceFilter>('all');
+  const [sourceBreakdown, setSourceBreakdown] = useState<SourceBreakdown>({
+    facebook: 0,
+    tiktok: 0,
+    other: 0
+  });
 
   const fetchProductStats = async () => {
     try {
@@ -75,11 +89,17 @@ export default function ProductStats() {
       const response = await api.get('/stats/products-by-date', {
         params: { 
           startDate: startDate,
-          endDate: endDate
+          endDate: endDate,
+          source: trafficSource
         }
       });
       setProducts(response.data.products);
       setTotals(response.data.totals);
+      setSourceBreakdown(response.data.sourceBreakdown || {
+        facebook: response.data.totals.totalFacebook,
+        tiktok: response.data.totals.totalTikTok,
+        other: response.data.totals.totalAutresSources
+      });
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Erreur lors de la récupération des statistiques:', error);
@@ -91,7 +111,7 @@ export default function ProductStats() {
   // Charger les données au montage et quand les dates changent
   useEffect(() => {
     fetchProductStats();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, trafficSource]);
 
   // Auto-refresh toutes les 30 secondes si activé
   useEffect(() => {
@@ -102,7 +122,7 @@ export default function ProductStats() {
     }, 30000); // 30 secondes
 
     return () => clearInterval(interval);
-  }, [autoRefresh, startDate, endDate]);
+  }, [autoRefresh, startDate, endDate, trafficSource]);
 
   const getTauxValidation = (totalCommandes: number, valides: number): string => {
     if (totalCommandes === 0) return '0.00';
@@ -113,6 +133,12 @@ export default function ProductStats() {
     if (valides === 0) return '0.00';
     return ((livres / valides) * 100).toFixed(2);
   };
+
+  const activeSourceLabel = trafficSource === 'facebook'
+    ? 'Facebook'
+    : trafficSource === 'tiktok'
+      ? 'TikTok'
+      : 'Toutes les sources';
 
   return (
     <div className="space-y-6">
@@ -170,6 +196,57 @@ export default function ProductStats() {
           >
             {autoRefresh ? '🔄 Auto ON' : '⏸️ Auto OFF'}
           </button>
+        </div>
+      </div>
+
+      {/* Filtre par source publicitaire */}
+      <div className="card">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Afficher les commandes de</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Le résumé et le tableau s'adaptent automatiquement à la source choisie.
+            </p>
+          </div>
+
+          <div className="inline-flex flex-wrap gap-2 rounded-xl bg-gray-100 p-1.5" role="group" aria-label="Filtrer par source publicitaire">
+            <button
+              type="button"
+              aria-pressed={trafficSource === 'all'}
+              onClick={() => setTrafficSource('all')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                trafficSource === 'all'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'
+              }`}
+            >
+              Toutes
+            </button>
+            <button
+              type="button"
+              aria-pressed={trafficSource === 'facebook'}
+              onClick={() => setTrafficSource('facebook')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                trafficSource === 'facebook'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              Facebook ({sourceBreakdown.facebook})
+            </button>
+            <button
+              type="button"
+              aria-pressed={trafficSource === 'tiktok'}
+              onClick={() => setTrafficSource('tiktok')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                trafficSource === 'tiktok'
+                  ? 'bg-gray-900 text-white shadow-sm'
+                  : 'text-pink-700 hover:bg-pink-50'
+              }`}
+            >
+              TikTok ({sourceBreakdown.tiktok})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -272,6 +349,9 @@ export default function ProductStats() {
           <span className="text-gray-500 ml-2">
             • Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')}
           </span>
+          <span className="ml-2 inline-flex rounded-full bg-white px-2.5 py-1 font-semibold text-blue-700">
+            {activeSourceLabel}
+          </span>
         </div>
       </div>
 
@@ -280,7 +360,9 @@ export default function ProductStats() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Commandes</p>
+              <p className="text-sm text-gray-600">
+                {trafficSource === 'all' ? 'Total Commandes' : `Total ${activeSourceLabel}`}
+              </p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{totals.totalCommandes}</p>
               <p className="text-xs text-gray-500 mt-1">
                 Qté : {totals.quantiteTotale}
@@ -381,7 +463,7 @@ export default function ProductStats() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-700">Facebook</p>
-                <p className="text-3xl font-bold text-blue-900 mt-2">{totals.totalFacebook}</p>
+                <p className="text-3xl font-bold text-blue-900 mt-2">{sourceBreakdown.facebook}</p>
                 <p className="text-xs text-blue-600 mt-1">commandes</p>
               </div>
               <div className="h-11 w-11 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">f</div>
@@ -392,7 +474,7 @@ export default function ProductStats() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-pink-700">TikTok</p>
-                <p className="text-3xl font-bold text-pink-900 mt-2">{totals.totalTikTok}</p>
+                <p className="text-3xl font-bold text-pink-900 mt-2">{sourceBreakdown.tiktok}</p>
                 <p className="text-xs text-pink-600 mt-1">commandes</p>
               </div>
               <div className="h-11 w-11 rounded-full bg-gray-900 text-white flex items-center justify-center text-2xl font-bold">♪</div>
@@ -403,7 +485,7 @@ export default function ProductStats() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-700">Autres sources</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{totals.totalAutresSources}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{sourceBreakdown.other}</p>
                 <p className="text-xs text-gray-500 mt-1">commandes non balisées</p>
               </div>
               <div className="h-11 w-11 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-xl font-bold">…</div>
@@ -417,7 +499,7 @@ export default function ProductStats() {
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Détails par Produit</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Statistiques détaillées pour chaque produit
+            Statistiques détaillées pour chaque produit — {activeSourceLabel}
           </p>
         </div>
         
@@ -427,7 +509,7 @@ export default function ProductStats() {
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            Aucune donnée pour cette date
+            Aucune commande {trafficSource === 'all' ? '' : activeSourceLabel} pour cette période
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -438,9 +520,15 @@ export default function ProductStats() {
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Produit</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock Express</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Total</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-blue-700 bg-blue-50">Facebook</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-pink-700 bg-pink-50">TikTok</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">
+                    {trafficSource === 'all' ? 'Total' : 'Commandes'}
+                  </th>
+                  {trafficSource === 'all' && (
+                    <>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-blue-700 bg-blue-50">Facebook</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-pink-700 bg-pink-50">TikTok</th>
+                    </>
+                  )}
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-orange-50">En attente</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Validés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Livrés</th>
@@ -483,12 +571,16 @@ export default function ProductStats() {
                           Qté: {product.quantiteTotale}
                         </div>
                       </td>
-                      <td className="text-center py-3 px-4 bg-blue-50">
-                        <span className="font-semibold text-sm text-blue-700">{product.totalFacebook}</span>
-                      </td>
-                      <td className="text-center py-3 px-4 bg-pink-50">
-                        <span className="font-semibold text-sm text-pink-700">{product.totalTikTok}</span>
-                      </td>
+                      {trafficSource === 'all' && (
+                        <>
+                          <td className="text-center py-3 px-4 bg-blue-50">
+                            <span className="font-semibold text-sm text-blue-700">{product.totalFacebook}</span>
+                          </td>
+                          <td className="text-center py-3 px-4 bg-pink-50">
+                            <span className="font-semibold text-sm text-pink-700">{product.totalTikTok}</span>
+                          </td>
+                        </>
+                      )}
                       <td className="text-center py-3 px-4 bg-orange-50">
                         <div className="font-semibold text-sm text-orange-500">{product.totalEnAttente}</div>
                         <div className="text-xs text-gray-500">
