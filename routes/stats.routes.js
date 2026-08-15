@@ -498,7 +498,11 @@ router.get('/my-stats', authorize('APPELANT', 'LIVREUR'), async (req, res) => {
 // GET /api/stats/products-by-date - Statistiques par produit et par date
 router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'APPELANT'), async (req, res) => {
   try {
-    const { date, startDate, endDate } = req.query;
+    const { date, startDate, endDate, source } = req.query;
+    const requestedSource = typeof source === 'string' ? source.toLowerCase() : 'all';
+    const sourceFilter = ['all', 'facebook', 'tiktok'].includes(requestedSource)
+      ? requestedSource
+      : 'all';
 
     // Filtre de date
     const dateFilter = {};
@@ -544,10 +548,34 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       }
     });
 
+    const ordersWithTrafficSource = orders.map(order => {
+      const productCode = order.product?.code || 'N/A';
+      return {
+        ...order,
+        trafficSource: classifyOrderTrafficSource({
+          campaignSource: order.sourceCampagne,
+          sourcePage: order.sourcePage,
+          productCode,
+        })
+      };
+    });
+
+    // Les compteurs des boutons restent visibles même lorsqu'une source est filtrée.
+    const sourceBreakdown = ordersWithTrafficSource.reduce((acc, order) => {
+      if (order.trafficSource === 'facebook') acc.facebook++;
+      else if (order.trafficSource === 'tiktok') acc.tiktok++;
+      else acc.other++;
+      return acc;
+    }, { facebook: 0, tiktok: 0, other: 0 });
+
+    const filteredOrders = sourceFilter === 'all'
+      ? ordersWithTrafficSource
+      : ordersWithTrafficSource.filter(order => order.trafficSource === sourceFilter);
+
     // Grouper par produit et calculer les statistiques
     const productStats = {};
 
-    orders.forEach(order => {
+    filteredOrders.forEach(order => {
       // Utiliser productId si disponible, sinon produitNom
       const key = order.productId || order.produitNom;
       const productName = order.product?.nom || order.produitNom;
@@ -582,14 +610,9 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       stats.totalCommandes++;
       stats.quantiteTotale += order.quantite;
 
-      const trafficSource = classifyOrderTrafficSource({
-        campaignSource: order.sourceCampagne,
-        sourcePage: order.sourcePage,
-        productCode,
-      });
-      if (trafficSource === 'tiktok') {
+      if (order.trafficSource === 'tiktok') {
         stats.totalTikTok++;
-      } else if (trafficSource === 'facebook') {
+      } else if (order.trafficSource === 'facebook') {
         stats.totalFacebook++;
       } else {
         stats.totalAutresSources++;
@@ -663,6 +686,8 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
     res.json({ 
       products: result,
       totals,
+      sourceBreakdown,
+      source: sourceFilter,
       startDate: startDate || date || null,
       endDate: endDate || date || null,
       count: result.length
