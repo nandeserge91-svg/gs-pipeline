@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 import prisma from '../config/prisma.js';
 import { startOfAppDay, endOfAppDay, startOfTodayAppDay } from '../utils/appDayBounds.js';
+import { classifyOrderTrafficSource } from '../utils/campaign-source.util.js';
 
 router.use(authenticate);
 
@@ -528,6 +529,8 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
         productId: true,
         quantite: true,
         status: true,
+        sourceCampagne: true,
+        sourcePage: true,
         createdAt: true,
         product: {
           select: {
@@ -558,6 +561,9 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
           stockActuel: order.product?.stockActuel || 0,
           stockExpress: order.product?.stockExpress || 0,
           totalCommandes: 0,
+          totalFacebook: 0,
+          totalTikTok: 0,
+          totalAutresSources: 0,
           totalEnAttente: 0,
           totalValides: 0,
           totalLivres: 0,
@@ -575,6 +581,19 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
       
       stats.totalCommandes++;
       stats.quantiteTotale += order.quantite;
+
+      const trafficSource = classifyOrderTrafficSource({
+        campaignSource: order.sourceCampagne,
+        sourcePage: order.sourcePage,
+        productCode,
+      });
+      if (trafficSource === 'tiktok') {
+        stats.totalTikTok++;
+      } else if (trafficSource === 'facebook') {
+        stats.totalFacebook++;
+      } else {
+        stats.totalAutresSources++;
+      }
       
       if (order.status === 'NOUVELLE' || order.status === 'A_APPELER') {
         stats.totalEnAttente++;
@@ -626,6 +645,9 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
 
     const totals = {
       totalCommandes: result.reduce((sum, p) => sum + p.totalCommandes, 0),
+      totalFacebook: result.reduce((sum, p) => sum + p.totalFacebook, 0),
+      totalTikTok: result.reduce((sum, p) => sum + p.totalTikTok, 0),
+      totalAutresSources: result.reduce((sum, p) => sum + p.totalAutresSources, 0),
       totalEnAttente: result.reduce((sum, p) => sum + p.totalEnAttente, 0),
       totalValides: result.reduce((sum, p) => sum + p.totalValides, 0),
       totalLivres: result.reduce((sum, p) => sum + p.totalLivres, 0),

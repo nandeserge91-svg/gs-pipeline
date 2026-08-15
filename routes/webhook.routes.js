@@ -2,6 +2,7 @@ import express from 'express';
 
 import { body, validationResult } from 'express-validator';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
+import { parseTaggedProductSource } from '../utils/campaign-source.util.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
 
 const router = express.Router();
@@ -299,6 +300,11 @@ router.post('/google-sheet', [
       
       // Supprimer les underscores multiples
       cleanedSearchTerm = cleanedSearchTerm.replace(/_+/g, '_');
+
+      // Retirer uniquement la balise publicitaire avant la recherche produit.
+      // SCARGEL-TIK trouve donc le produit SCARGEL, sans produit ni stock séparé.
+      const sourceAttribution = parseTaggedProductSource(cleanedSearchTerm);
+      cleanedSearchTerm = sourceAttribution.productKey;
       
       console.log('📥 Tag reçu:', searchTerm);
       console.log('🧹 Tag nettoyé:', cleanedSearchTerm);
@@ -395,7 +401,7 @@ router.post('/google-sheet', [
         ...productData,
         
         // Source
-        sourceCampagne: 'Google Sheet - Bee Venom',
+        sourceCampagne: parseTaggedProductSource(tag || offre).campaignSource || 'Google Sheet - Bee Venom',
         sourcePage: tag || offre || null,
         
         // 🆕 Notes (taille, code, etc.)

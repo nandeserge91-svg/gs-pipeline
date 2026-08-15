@@ -9,6 +9,9 @@ interface ProductStat {
   stockActuel: number;
   stockExpress: number;
   totalCommandes: number;
+  totalFacebook: number;
+  totalTikTok: number;
+  totalAutresSources: number;
   totalEnAttente: number;
   totalValides: number;
   totalLivres: number;
@@ -23,6 +26,9 @@ interface ProductStat {
 
 interface ProductStatsTotals {
   totalCommandes: number;
+  totalFacebook: number;
+  totalTikTok: number;
+  totalAutresSources: number;
   totalEnAttente: number;
   totalValides: number;
   totalLivres: number;
@@ -45,6 +51,9 @@ export default function ProductStats() {
   const [products, setProducts] = useState<ProductStat[]>([]);
   const [totals, setTotals] = useState<ProductStatsTotals>({
     totalCommandes: 0,
+    totalFacebook: 0,
+    totalTikTok: 0,
+    totalAutresSources: 0,
     totalEnAttente: 0,
     totalValides: 0,
     totalLivres: 0,
@@ -359,6 +368,50 @@ export default function ProductStats() {
         </div>
       </div>
 
+      {/* Origine publicitaire des commandes */}
+      <div className="card">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Commandes par source publicitaire</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Répartition Facebook / TikTok sur la période sélectionnée
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-700">Facebook</p>
+                <p className="text-3xl font-bold text-blue-900 mt-2">{totals.totalFacebook}</p>
+                <p className="text-xs text-blue-600 mt-1">commandes</p>
+              </div>
+              <div className="h-11 w-11 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">f</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-pink-200 bg-pink-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-pink-700">TikTok</p>
+                <p className="text-3xl font-bold text-pink-900 mt-2">{totals.totalTikTok}</p>
+                <p className="text-xs text-pink-600 mt-1">commandes</p>
+              </div>
+              <div className="h-11 w-11 rounded-full bg-gray-900 text-white flex items-center justify-center text-2xl font-bold">♪</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Autres sources</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{totals.totalAutresSources}</p>
+                <p className="text-xs text-gray-500 mt-1">commandes non balisées</p>
+              </div>
+              <div className="h-11 w-11 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-xl font-bold">…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tableau des produits */}
       <div className="card">
         <div className="mb-4">
@@ -386,6 +439,8 @@ export default function ProductStats() {
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Stock Express</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Total</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-blue-700 bg-blue-50">Facebook</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-pink-700 bg-pink-50">TikTok</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600 bg-orange-50">En attente</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Validés</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Livrés</th>
@@ -427,6 +482,12 @@ export default function ProductStats() {
                         <div className="text-xs text-gray-500">
                           Qté: {product.quantiteTotale}
                         </div>
+                      </td>
+                      <td className="text-center py-3 px-4 bg-blue-50">
+                        <span className="font-semibold text-sm text-blue-700">{product.totalFacebook}</span>
+                      </td>
+                      <td className="text-center py-3 px-4 bg-pink-50">
+                        <span className="font-semibold text-sm text-pink-700">{product.totalTikTok}</span>
                       </td>
                       <td className="text-center py-3 px-4 bg-orange-50">
                         <div className="font-semibold text-sm text-orange-500">{product.totalEnAttente}</div>
