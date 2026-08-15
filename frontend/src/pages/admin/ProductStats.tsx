@@ -7,7 +7,6 @@ type TrafficSourceFilter = 'all' | 'facebook' | 'tiktok';
 interface SourceBreakdown {
   facebook: number;
   tiktok: number;
-  other: number;
 }
 
 interface ProductStat {
@@ -79,8 +78,7 @@ export default function ProductStats() {
   const [trafficSource, setTrafficSource] = useState<TrafficSourceFilter>('all');
   const [sourceBreakdown, setSourceBreakdown] = useState<SourceBreakdown>({
     facebook: 0,
-    tiktok: 0,
-    other: 0
+    tiktok: 0
   });
 
   const fetchProductStats = async () => {
@@ -97,8 +95,7 @@ export default function ProductStats() {
       setTotals(response.data.totals);
       setSourceBreakdown(response.data.sourceBreakdown || {
         facebook: response.data.totals.totalFacebook,
-        tiktok: response.data.totals.totalTikTok,
-        other: response.data.totals.totalAutresSources
+        tiktok: response.data.totals.totalTikTok
       });
       setLastUpdate(new Date());
     } catch (error) {
@@ -458,7 +455,7 @@ export default function ProductStats() {
             Répartition Facebook / TikTok sur la période sélectionnée
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -481,16 +478,6 @@ export default function ProductStats() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Autres sources</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{sourceBreakdown.other}</p>
-                <p className="text-xs text-gray-500 mt-1">commandes non balisées</p>
-              </div>
-              <div className="h-11 w-11 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-xl font-bold">…</div>
-            </div>
-          </div>
         </div>
       </div>
 
