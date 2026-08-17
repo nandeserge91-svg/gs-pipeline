@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, CheckCircle, Truck, Calendar, Search, Filter, User, Clock, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Package, CheckCircle, Truck, Calendar, Search, Filter, User, Clock, AlertTriangle, AlertCircle, BellRing, X, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
@@ -15,9 +15,78 @@ const RAISONS_RETOUR = {
   AUTRE: 'Autre raison'
 };
 
+type CompactDeliveryType = 'LOCAL' | 'EXPEDITION' | 'EXPRESS';
+
+const compactDeliveryTypes: Array<{ value: CompactDeliveryType; label: string; icon: string }> = [
+  { value: 'LOCAL', label: 'Livraison', icon: '🏠' },
+  { value: 'EXPEDITION', label: 'Expédition', icon: '✈️' },
+  { value: 'EXPRESS', label: 'Express', icon: '⚡' },
+];
+
+const compactCardPalettes = [
+  {
+    card: 'border-sky-200/90 bg-gradient-to-br from-white via-sky-50/90 to-blue-100/70 shadow-sky-200/50 hover:border-sky-400',
+    icon: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-200',
+    accent: 'from-sky-500 via-blue-500 to-indigo-500',
+  },
+  {
+    card: 'border-violet-200/90 bg-gradient-to-br from-white via-violet-50/90 to-fuchsia-100/60 shadow-violet-200/50 hover:border-violet-400',
+    icon: 'bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-200',
+    accent: 'from-violet-500 via-fuchsia-500 to-pink-500',
+  },
+  {
+    card: 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/90 to-cyan-100/60 shadow-emerald-200/50 hover:border-emerald-400',
+    icon: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200',
+    accent: 'from-emerald-500 via-teal-500 to-cyan-500',
+  },
+];
+
+function orderHasDeliveryType(order: any, type: CompactDeliveryType) {
+  return (order.deliveryType || 'LOCAL') === type;
+}
+
+function getOrdersForDeliveryType(orders: any[], type: CompactDeliveryType) {
+  const uniqueOrders = new Map<number | string, any>();
+  orders.forEach((order: any) => {
+    if (orderHasDeliveryType(order, type)) uniqueOrders.set(order.id, order);
+  });
+  return Array.from(uniqueOrders.values());
+}
+
+function isTourneeRefusedStatus(status: string) {
+  return ['REFUSEE', 'ANNULEE_LIVRAISON'].includes(status);
+}
+
+function getTourneeOrderStatusLabel(status: string) {
+  return isTourneeRefusedStatus(status)
+    ? 'Refusée'
+    : getStatusLabel(status as Parameters<typeof getStatusLabel>[0]);
+}
+
+function getTourneeOrderStatusColor(status: string) {
+  return isTourneeRefusedStatus(status)
+    ? 'bg-rose-100 text-rose-700'
+    : getStatusColor(status as Parameters<typeof getStatusColor>[0]);
+}
+
+const appDayKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Abidjan',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const appDayLabelFormatter = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Africa/Abidjan',
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
 export default function Tournees() {
   const { user } = useAuthStore();
-  const today = new Date().toISOString().split('T')[0];
+  const today = appDayKeyFormatter.format(new Date());
   const [dateDebut, setDateDebut] = useState(today);
   const [dateFin, setDateFin] = useState(today);
   const [selectedTournee, setSelectedTournee] = useState<any>(null);
@@ -33,6 +102,12 @@ export default function Tournees() {
   const [delivererFilter, setDelivererFilter] = useState('');
   const [deliveryTypeFilter, setDeliveryTypeFilter] = useState<'all' | 'LOCAL' | 'EXPEDITION'>('all');
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
+  const [selectedCompactGroup, setSelectedCompactGroup] = useState<any>(null);
+  const [compactGroupType, setCompactGroupType] = useState<CompactDeliveryType>('LOCAL');
+  const [compactRemiseConfirmationOpen, setCompactRemiseConfirmationOpen] = useState(false);
+  const [selectedRefusedOrderIds, setSelectedRefusedOrderIds] = useState<number[]>([]);
+  const [unreturnedAlertsOpen, setUnreturnedAlertsOpen] = useState(false);
+  const canSeeUnreturnedAlerts = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
   
   const queryClient = useQueryClient();
 
@@ -40,15 +115,15 @@ export default function Tournees() {
   const setYesterday = () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = appDayKeyFormatter.format(yesterday);
     setDateDebut(yesterdayStr);
     setDateFin(yesterdayStr);
   };
 
   const setToday = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setDateDebut(today);
-    setDateFin(today);
+    const todayStr = appDayKeyFormatter.format(new Date());
+    setDateDebut(todayStr);
+    setDateFin(todayStr);
   };
 
   const setThisWeek = () => {
@@ -59,27 +134,24 @@ export default function Tournees() {
     monday.setDate(now.getDate() + mondayOffset);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
-    
-    setDateDebut(monday.toISOString().split('T')[0]);
-    setDateFin(sunday.toISOString().split('T')[0]);
+    setDateDebut(appDayKeyFormatter.format(monday));
+    setDateFin(appDayKeyFormatter.format(sunday));
   };
 
   const setThisMonth = () => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
-    setDateDebut(firstDay.toISOString().split('T')[0]);
-    setDateFin(lastDay.toISOString().split('T')[0]);
+    setDateDebut(appDayKeyFormatter.format(firstDay));
+    setDateFin(appDayKeyFormatter.format(lastDay));
   };
 
   const setThisYear = () => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), 0, 1);
     const lastDay = new Date(now.getFullYear(), 11, 31);
-    
-    setDateDebut(firstDay.toISOString().split('T')[0]);
-    setDateFin(lastDay.toISOString().split('T')[0]);
+    setDateDebut(appDayKeyFormatter.format(firstDay));
+    setDateFin(appDayKeyFormatter.format(lastDay));
   };
 
   const { data: tourneesData, isLoading } = useQuery({
@@ -156,6 +228,150 @@ export default function Tournees() {
       });
   }, [tourneesData, searchTerm, statusFilter, delivererFilter, deliveryTypeFilter]);
 
+  // En vue compacte, les enregistrements techniques restent intacts mais sont
+  // présentés dans un seul bloc par jour et par livreur, tous types confondus.
+  const compactGroups = useMemo(() => {
+    const groups = new Map<string, any>();
+
+    filteredTournees.forEach((tournee: any) => {
+      const rawDate = tournee.date || tournee.createdAt;
+      const parsedDate = new Date(rawDate);
+      const dayKey = Number.isNaN(parsedDate.getTime())
+        ? String(rawDate)
+        : appDayKeyFormatter.format(parsedDate);
+      const dayLabel = Number.isNaN(parsedDate.getTime())
+        ? String(rawDate)
+        : appDayLabelFormatter.format(parsedDate);
+      const groupKey = `${dayKey}-${tournee.deliverer.id}`;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          key: groupKey,
+          dayKey,
+          dayLabel,
+          deliverer: tournee.deliverer,
+          tournees: [],
+          orders: [],
+          stats: {
+            totalOrders: 0,
+            colisRemis: 0,
+            livrees: 0,
+            colisRestants: 0,
+            remisConfirme: true,
+            remisesConfirmees: 0,
+            remisesEnAttente: 0,
+            colisEnAttenteRemise: 0,
+            retourConfirme: true,
+            joursChezLivreur: 0,
+            alerteRetard: false,
+            alerteCritique: false,
+          },
+        });
+      }
+
+      const group = groups.get(groupKey);
+      group.tournees.push(tournee);
+      group.orders.push(...(tournee.orders || []));
+      group.stats.totalOrders += tournee.stats.totalOrders || 0;
+      group.stats.colisRemis += tournee.stats.colisRemis || 0;
+      group.stats.livrees += tournee.stats.livrees || 0;
+      group.stats.colisRestants += tournee.stats.colisRestants || 0;
+      group.stats.remisConfirme = group.stats.remisConfirme && tournee.stats.remisConfirme;
+      if (tournee.stats.remisConfirme) {
+        group.stats.remisesConfirmees += 1;
+      } else {
+        group.stats.remisesEnAttente += 1;
+        group.stats.colisEnAttenteRemise += tournee.stats.totalOrders || 0;
+      }
+      group.stats.retourConfirme = group.stats.retourConfirme && tournee.stats.retourConfirme;
+      group.stats.joursChezLivreur = Math.max(
+        group.stats.joursChezLivreur,
+        tournee.stats.joursChezLivreur || 0
+      );
+      group.stats.alerteRetard = group.stats.alerteRetard || tournee.stats.alerteRetard;
+      group.stats.alerteCritique = group.stats.alerteCritique || tournee.stats.alerteCritique;
+    });
+
+    return Array.from(groups.values())
+      .sort((a: any, b: any) => {
+        const dayOrder = b.dayKey.localeCompare(a.dayKey);
+        if (dayOrder !== 0) return dayOrder;
+        return a.deliverer.id - b.deliverer.id;
+      });
+  }, [filteredTournees]);
+
+  const selectedCompactGroupOrders = useMemo(() => {
+    if (!selectedCompactGroup) return [];
+    return getOrdersForDeliveryType(selectedCompactGroup.orders, compactGroupType);
+  }, [selectedCompactGroup, compactGroupType]);
+
+  const refusedCompactGroupOrders = useMemo(
+    () => selectedCompactGroupOrders.filter((order: any) => isTourneeRefusedStatus(order.status)),
+    [selectedCompactGroupOrders]
+  );
+
+  const selectedCompactGroupSummary = useMemo(() => {
+    const deliveredStatuses = new Set(['LIVREE', 'EXPRESS_LIVRE']);
+    const returnedStatuses = new Set(['REFUSEE', 'ANNULEE_LIVRAISON', 'RETOURNE']);
+
+    let delivered = 0;
+    let refused = 0;
+    let returned = 0;
+    let pending = 0;
+    let totalAmount = 0;
+    let deliveredAmount = 0;
+
+    selectedCompactGroupOrders.forEach((order: any) => {
+      const amount = Number(order.montant) || 0;
+      const isDelivered = deliveredStatuses.has(order.status);
+      const isReturned = returnedStatuses.has(order.status);
+
+      totalAmount += amount;
+      if (isDelivered) {
+        delivered += 1;
+        deliveredAmount += amount;
+      } else if (!isReturned) {
+        pending += 1;
+      }
+
+      if (isTourneeRefusedStatus(order.status)) refused += 1;
+      if (order.status === 'RETOURNE') returned += 1;
+    });
+
+    return {
+      total: selectedCompactGroupOrders.length,
+      delivered,
+      refused,
+      pending,
+      remaining: Math.max(0, selectedCompactGroupOrders.length - delivered - returned),
+      totalAmount,
+      deliveredAmount,
+      undeliveredAmount: Math.max(0, totalAmount - deliveredAmount),
+    };
+  }, [selectedCompactGroupOrders]);
+
+  const selectedCompactGroupPendingRemise = useMemo(() => {
+    const pendingTournees = selectedCompactGroup?.tournees?.filter(
+      (tournee: any) => !tournee.stats.remisConfirme
+    ) || [];
+    const confirmedTournees = selectedCompactGroup?.tournees?.filter(
+      (tournee: any) => tournee.stats.remisConfirme
+    ) || [];
+
+    return {
+      tournees: pendingTournees,
+      confirmedTournees,
+      totalColis: pendingTournees.reduce(
+        (sum: number, tournee: any) => sum + (tournee.stats.totalOrders || 0),
+        0
+      ),
+      confirmedColis: confirmedTournees.reduce(
+        (sum: number, tournee: any) => sum + (tournee.stats.totalOrders || 0),
+        0
+      ),
+    };
+  }, [selectedCompactGroup]);
+
   const confirmRemiseMutation = useMutation({
     mutationFn: async ({ tourneeId, colisRemis }: any) => {
       const { data } = await api.post(`/stock/tournees/${tourneeId}/confirm-remise`, {
@@ -175,6 +391,38 @@ export default function Tournees() {
     },
   });
 
+  const confirmCompactGroupRemiseMutation = useMutation({
+    mutationFn: async (group: any) => {
+      const tournees = group.tournees
+        .filter((tournee: any) => !tournee.stats.remisConfirme)
+        .map((tournee: any) => ({
+          id: tournee.id,
+          colisRemis: tournee.stats.totalOrders || 0,
+        }));
+      const { data } = await api.post('/stock/tournees/confirm-remise-group', { tournees });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['stock-tournees'] });
+      setCompactRemiseConfirmationOpen(false);
+      setSelectedCompactGroup(null);
+      toast.success(data.message || 'Remise des colis confirmée');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors de la confirmation de la remise');
+    },
+  });
+
+  const { data: unreturnedAlerts } = useQuery({
+    queryKey: ['stock-unreturned-alerts'],
+    queryFn: async () => {
+      const { data } = await api.get('/stock/tournees/alerts');
+      return data;
+    },
+    enabled: canSeeUnreturnedAlerts,
+    refetchInterval: 5 * 60 * 1000,
+  });
+
   const confirmRetourMutation = useMutation({
     mutationFn: async ({ tourneeId, colisRetour, ecartMotif, raisonsRetour }: any) => {
       const { data } = await api.post(`/stock/tournees/${tourneeId}/confirm-retour`, {
@@ -188,6 +436,7 @@ export default function Tournees() {
       queryClient.invalidateQueries({ queryKey: ['stock-tournees'] });
       queryClient.invalidateQueries({ queryKey: ['stock-stats'] });
       queryClient.invalidateQueries({ queryKey: ['returned-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-unreturned-alerts'] });
       setModalType(null);
       setSelectedTournee(null);
       setColisRetour('');
@@ -210,6 +459,7 @@ export default function Tournees() {
       queryClient.invalidateQueries({ queryKey: ['stock-tournee-detail'] });
       queryClient.invalidateQueries({ queryKey: ['validated-orders'] });
       queryClient.invalidateQueries({ queryKey: ['validated-orders-count'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-unreturned-alerts'] });
       toast.success(data.message || 'Commande retournée dans "Commandes validées".');
     },
     onError: (error: any) => {
@@ -217,7 +467,28 @@ export default function Tournees() {
     },
   });
 
+  const returnRefusedToStoreMutation = useMutation({
+    mutationFn: async (orderIds: number[]) => {
+      const { data } = await api.post('/stock/orders/return-to-store', { orderIds });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['stock-tournees'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-tournee-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['returned-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-unreturned-alerts'] });
+      setSelectedRefusedOrderIds([]);
+      setSelectedCompactGroup(null);
+      toast.success(data.message || 'Retour en magasin enregistré.');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Erreur lors du retour en magasin');
+    },
+  });
+
   const canReturnToValidated = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE';
+  const canConfirmStock = user?.role === 'ADMIN' || user?.role === 'GESTIONNAIRE' || user?.role === 'GESTIONNAIRE_STOCK';
 
   const handleConfirmRemise = () => {
     if (!selectedTournee || !colisRemis) return;
@@ -279,6 +550,9 @@ export default function Tournees() {
   };
 
   const getStatusBadge = (tournee: any) => {
+    if (tournee.stats.remisesConfirmees > 0 && tournee.stats.remisesEnAttente > 0) {
+      return <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">📦 Nouvelle remise</span>;
+    }
     if (tournee.stats.remisConfirme && tournee.stats.retourConfirme) {
       return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✓ Terminée</span>;
     } else if (tournee.stats.remisConfirme) {
@@ -322,11 +596,19 @@ export default function Tournees() {
     // Compter les types de livraison dans la tournée
     const localCount = tournee.orders?.filter((o: any) => o.deliveryType === 'LOCAL').length || 0;
     const expeditionCount = tournee.orders?.filter((o: any) => o.deliveryType === 'EXPEDITION').length || 0;
+    const expressCount = tournee.orders?.filter((o: any) => o.deliveryType === 'EXPRESS').length || 0;
+    const typeCount = [localCount, expeditionCount, expressCount].filter((count) => count > 0).length;
     
-    if (localCount > 0 && expeditionCount > 0) {
+    if (typeCount > 1) {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded flex items-center gap-1">
           🏠✈️ Mixte
+        </span>
+      );
+    } else if (expressCount > 0) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded flex items-center gap-1">
+          ⚡ Express
         </span>
       );
     } else if (expeditionCount > 0) {
@@ -362,35 +644,63 @@ export default function Tournees() {
   }, [filteredTournees]);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-full space-y-6 rounded-[2rem] bg-gradient-to-br from-slate-50 via-sky-50/70 to-violet-50/80 p-4 sm:p-6">
       {/* En-tête */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Tournées</h1>
-          <p className="text-gray-600 mt-1">Remise et retour des colis</p>
+      <div className="flex flex-col items-start justify-between gap-5 rounded-3xl border border-white/80 bg-white/85 p-5 shadow-xl shadow-slate-200/50 backdrop-blur-xl md:flex-row md:items-center">
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-3 text-white shadow-lg shadow-indigo-200">
+            <Sparkles size={28} />
+          </div>
+          <div>
+            <h1 className="bg-gradient-to-r from-slate-900 via-blue-800 to-violet-700 bg-clip-text text-3xl font-bold text-transparent">
+              Gestion des Tournées
+            </h1>
+            <p className="mt-1 text-gray-600">Remise et retour des colis</p>
+          </div>
         </div>
         
-        {/* Statistiques rapides */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="bg-orange-50 px-4 py-2 rounded-lg border border-orange-200">
+        <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
+          {canSeeUnreturnedAlerts && (unreturnedAlerts?.totalColis || 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setUnreturnedAlertsOpen(true)}
+              className="inline-flex w-fit items-center gap-2 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-orange-50 px-4 py-2.5 text-left text-rose-800 shadow-lg shadow-rose-100 transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-xl"
+              aria-label={`Ouvrir les alertes : ${unreturnedAlerts.totalColis} colis non retournés`}
+            >
+              <span className="relative rounded-xl bg-rose-100 p-2 text-rose-700">
+                <BellRing size={20} className="animate-bounce motion-reduce:animate-none" />
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white motion-reduce:animate-none">
+                  {unreturnedAlerts.totalLivreurs}
+                </span>
+              </span>
+              <span>
+                <span className="block text-xs font-medium text-rose-600">Retours en retard</span>
+                <span className="block font-bold">{unreturnedAlerts.totalColis} colis chez les livreurs</span>
+              </span>
+            </button>
+          )}
+
+          {/* Statistiques rapides */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="rounded-xl border border-orange-200/80 bg-gradient-to-br from-orange-50 to-amber-100/70 px-4 py-2 shadow-sm shadow-orange-100">
             <p className="text-xs text-gray-600">⏳ En attente</p>
             <p className="text-xl font-bold text-orange-600">
               {filteredTournees.filter((t: any) => !t.stats.remisConfirme).length}
             </p>
           </div>
-          <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
+          <div className="rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-50 to-cyan-100/70 px-4 py-2 shadow-sm shadow-blue-100">
             <p className="text-xs text-gray-600">🚚 En livraison</p>
             <p className="text-xl font-bold text-blue-600">
               {filteredTournees.filter((t: any) => t.stats.remisConfirme && !t.stats.retourConfirme).length}
             </p>
           </div>
-          <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+          <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-teal-100/70 px-4 py-2 shadow-sm shadow-emerald-100">
             <p className="text-xs text-gray-600">✓ Terminées</p>
             <p className="text-xl font-bold text-green-600">
               {filteredTournees.filter((t: any) => t.stats.retourConfirme).length}
             </p>
           </div>
-          <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200">
+          <div className="rounded-xl border border-yellow-200/80 bg-gradient-to-br from-yellow-50 to-lime-100/70 px-4 py-2 shadow-sm shadow-yellow-100">
             <p className="text-xs text-gray-600 flex items-center gap-1">
               <AlertTriangle size={12} /> Retards
             </p>
@@ -398,7 +708,7 @@ export default function Tournees() {
               {filteredTournees.filter((t: any) => t.stats.alerteRetard).length}
             </p>
           </div>
-          <div className="bg-red-50 px-4 py-2 rounded-lg border border-red-200 animate-pulse">
+          <div className="rounded-xl border border-rose-200/80 bg-gradient-to-br from-rose-50 to-pink-100/70 px-4 py-2 shadow-sm shadow-rose-100">
             <p className="text-xs text-gray-600 flex items-center gap-1">
               <AlertCircle size={12} /> Critiques
             </p>
@@ -406,35 +716,96 @@ export default function Tournees() {
               {filteredTournees.filter((t: any) => t.stats.alerteCritique).length}
             </p>
           </div>
+          </div>
         </div>
       </div>
 
+      {unreturnedAlertsOpen && unreturnedAlerts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm"
+          onClick={() => setUnreturnedAlertsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unreturned-alerts-title"
+            className="max-h-[85dvh] w-full max-w-lg overflow-hidden rounded-3xl border border-white/50 bg-white shadow-2xl shadow-rose-950/30"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 bg-gradient-to-r from-rose-700 via-red-600 to-orange-600 p-5 text-white">
+              <div className="flex items-start gap-3">
+                <span className="rounded-xl bg-white/15 p-2"><BellRing size={24} /></span>
+                <div>
+                  <h2 id="unreturned-alerts-title" className="text-xl font-bold">Colis non retournés</h2>
+                  <p className="mt-1 text-sm text-rose-50">
+                    {unreturnedAlerts.totalColis} colis chez {unreturnedAlerts.totalLivreurs} livreur(s)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnreturnedAlertsOpen(false)}
+                className="rounded-xl border border-white/20 bg-white/10 p-2 text-white hover:bg-white/20"
+                aria-label="Fermer les alertes"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(85dvh-130px)] space-y-3 overflow-y-auto p-4 sm:p-5">
+              {unreturnedAlerts.alertes.map((alerte: any) => (
+                <div key={alerte.deliverer.id} className="flex items-center justify-between gap-4 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50/80 to-orange-50/60 p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="rounded-xl bg-white p-2 text-rose-700 shadow-sm"><User size={20} /></span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-900">
+                        {alerte.deliverer.prenom} {alerte.deliverer.nom}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {alerte.tourneesConcernees} tournée(s) • jusqu’à {alerte.joursMax} jours
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-2xl font-bold text-rose-700">{alerte.colisNonRetournes}</p>
+                    <p className="text-xs font-medium text-rose-600">colis</p>
+                  </div>
+                </div>
+              ))}
+              <p className="rounded-xl bg-slate-50 p-3 text-center text-xs text-gray-500">
+                L’alerte apparaît à partir de {unreturnedAlerts.seuilJours} jours chez le livreur.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard KPIs Globaux */}
       {kpis && (
-        <div className="card bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200">
+        <div className="card overflow-hidden border border-blue-200/70 bg-gradient-to-r from-blue-100/90 via-white to-violet-100/80 shadow-xl shadow-blue-200/40">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Package size={24} className="text-primary-600" />
             📊 Vue d'ensemble - {dateDebut === dateFin ? formatDate(dateDebut) : `${formatDate(dateDebut)} → ${formatDate(dateFin)}`}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-blue-100/60 backdrop-blur">
               <p className="text-xs text-gray-600 mb-1">📦 Total Remis</p>
               <p className="text-3xl font-bold text-blue-600">{kpis.totalColisRemis}</p>
               <p className="text-xs text-gray-500 mt-1">colis confiés aux livreurs</p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur">
               <p className="text-xs text-gray-600 mb-1">✅ Total Livrés</p>
               <p className="text-3xl font-bold text-green-600">{kpis.totalColisLivres}</p>
               <p className="text-xs text-gray-500 mt-1">colis livrés aux clients</p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-orange-100/60 backdrop-blur">
               <p className="text-xs text-gray-600 mb-1">⏳ Total Restants</p>
               <p className={`text-3xl font-bold ${kpis.totalColisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
                 {kpis.totalColisRestants}
               </p>
               <p className="text-xs text-gray-500 mt-1">colis encore en circulation</p>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-violet-100/60 backdrop-blur">
               <p className="text-xs text-gray-600 mb-1">📈 Taux de Livraison</p>
               <p className={`text-3xl font-bold ${parseFloat(kpis.tauxLivraison as string) >= 80 ? 'text-green-600' : parseFloat(kpis.tauxLivraison as string) >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
                 {kpis.tauxLivraison}%
@@ -451,7 +822,7 @@ export default function Tournees() {
       )}
 
       {/* Filtres et recherche */}
-      <div className="card relative z-10">
+      <div className="card relative z-10 border border-white/80 bg-white/85 shadow-xl shadow-slate-200/50 backdrop-blur-xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Recherche */}
           <div className="relative md:col-span-2">
@@ -576,7 +947,11 @@ export default function Tournees() {
             </button>
             <button
               onClick={setToday}
-              className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+              className={`px-3 py-1 text-sm rounded-lg transition-colors border ${
+                dateDebut === today
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
+              }`}
             >
               📅 Aujourd'hui
             </button>
@@ -605,7 +980,7 @@ export default function Tournees() {
         {searchTerm || statusFilter !== 'all' || delivererFilter || deliveryTypeFilter !== 'all' ? (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
-              <strong>{filteredTournees.length}</strong> tournée(s) trouvée(s)
+              <strong>{compactGroups.length}</strong> bloc(s) journalier(s) • {filteredTournees.length} assignation(s)
               {searchTerm && ` pour "${searchTerm}"`}
               {deliveryTypeFilter !== 'all' && ` • Type: ${deliveryTypeFilter === 'LOCAL' ? '🏠 Locales' : '✈️ Expéditions'}`}
             </p>
@@ -641,99 +1016,96 @@ export default function Tournees() {
           )}
         </div>
       ) : viewMode === 'compact' ? (
-        /* MODE COMPACT - Tableau */
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm" style={{ minWidth: '1100px' }}>
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '25%' }}>Tournée</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Livreur</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Remis</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Livrés</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Restants</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Durée</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Statut</th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredTournees.map((tournee: any) => (
-                <tr key={tournee.id} className={`hover:bg-gray-50 ${tournee.stats.alerteCritique ? 'bg-red-50' : tournee.stats.alerteRetard ? 'bg-orange-50' : ''}`}>
-                  <td className="px-3 py-3" style={{ maxWidth: '280px' }}>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-medium text-gray-900 truncate" style={{ maxWidth: '180px' }} title={tournee.nom}>{tournee.nom}</p>
-                        {getDeliveryTypeBadge(tournee)}
-                      </div>
-                      {tournee.zone && (
-                        <p className="text-xs text-gray-500 truncate" title={tournee.zone}>Zone: {tournee.zone}</p>
-                      )}
-                      {tournee.stats.dateRemise && (
-                        <p className="text-xs text-gray-400 truncate">
-                          📅 Remise: {formatDate(tournee.stats.dateRemise)}
-                        </p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3" style={{ maxWidth: '150px' }}>
-                    <p className="text-sm text-gray-900 truncate" title={`${tournee.deliverer.prenom} ${tournee.deliverer.nom}`}>
-                      {tournee.deliverer.prenom} {tournee.deliverer.nom}
-                    </p>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="font-semibold text-blue-600">{tournee.stats.colisRemis}</span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="font-semibold text-green-600">{tournee.stats.livrees}</span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-semibold ${tournee.stats.colisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
-                      {tournee.stats.colisRestants}
+        /* MODE COMPACT - Cartes journalières */
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 capitalize">
+                {dateDebut === dateFin
+                  ? `Blocs du ${formatDate(dateDebut)}`
+                  : `Blocs du ${formatDate(dateDebut)} au ${formatDate(dateFin)}`}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {compactGroups.length} bloc(s) • {filteredTournees.length} assignation(s)
+              </p>
+            </div>
+            {dateDebut === today && dateFin === today && (
+              <span className="inline-flex w-fit items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                <Calendar size={14} /> Aujourd'hui
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {compactGroups.map((group: any, index: number) => {
+              const palette = compactCardPalettes[index % compactCardPalettes.length];
+              return (
+              <button
+                type="button"
+                key={group.key}
+                onClick={() => {
+                  setCompactGroupType('LOCAL');
+                  setCompactRemiseConfirmationOpen(false);
+                  setSelectedRefusedOrderIds([]);
+                  setSelectedCompactGroup(group);
+                }}
+                className={`relative w-full overflow-hidden rounded-3xl border p-5 text-left shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${palette.card} ${
+                  group.stats.alerteCritique
+                    ? 'border-red-400'
+                    : group.stats.alerteRetard
+                      ? 'border-orange-300'
+                      : ''
+                }`}
+                aria-label={`Ouvrir les détails de ${group.deliverer.prenom} ${group.deliverer.nom} pour ${group.dayLabel}`}
+              >
+                <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${palette.accent}`} aria-hidden="true"></span>
+                <span className="flex items-start justify-between gap-3">
+                  <span className="flex min-w-0 items-start gap-3">
+                    <span className={`rounded-2xl p-3 ${palette.icon}`}>
+                      <Truck size={22} />
                     </span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <div className="flex justify-center">
-                      {getAlerteBadge(tournee)}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {getStatusBadge(tournee)}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      {!tournee.stats.remisConfirme ? (
-                        <button
-                          onClick={() => openRemiseModal(tournee)}
-                          className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                          title="Confirmer la remise"
-                        >
-                          Remise
-                        </button>
-                      ) : !tournee.stats.retourConfirme ? (
-                        <button
-                          onClick={() => openRetourModal(tournee)}
-                          className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                          title="Confirmer le retour"
-                        >
-                          Retour
-                        </button>
-                      ) : null}
-                      <button
-                        onClick={() => {
-                          setSelectedTournee(tournee);
-                          setModalType('detail');
-                        }}
-                        className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors whitespace-nowrap"
-                        title="Voir détails"
-                      >
-                        Détails
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-gray-900">
+                            {group.deliverer.prenom} {group.deliverer.nom}
+                          </span>
+                          {getDeliveryTypeBadge(group)}
+                        </span>
+                        <span className="mt-1 block text-sm capitalize text-gray-500">{group.dayLabel}</span>
+                    </span>
+                  </span>
+                  <span className="shrink-0">{getStatusBadge(group)}</span>
+                </span>
+
+                <span className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-800">
+                    <Package size={15} /> {group.tournees.length} assignation(s)
+                  </span>
+                  <span>•</span>
+                  <span>{group.stats.totalOrders} colis</span>
+                </span>
+
+                <span className="mt-4 grid grid-cols-3 gap-3">
+                  <span className="rounded-2xl border border-white/80 bg-white/80 p-3 text-center shadow-sm backdrop-blur">
+                    <span className="block text-xs text-gray-500">Remis</span>
+                    <span className="block text-2xl font-bold text-blue-600">{group.stats.colisRemis}</span>
+                  </span>
+                  <span className="rounded-2xl border border-white/80 bg-emerald-50/90 p-3 text-center shadow-sm backdrop-blur">
+                    <span className="block text-xs text-gray-500">Livrés</span>
+                    <span className="block text-2xl font-bold text-green-600">{group.stats.livrees}</span>
+                  </span>
+                  <span className="rounded-2xl border border-white/80 bg-orange-50/90 p-3 text-center shadow-sm backdrop-blur">
+                    <span className="block text-xs text-gray-500">Restants</span>
+                    <span className={`block text-2xl font-bold ${group.stats.colisRestants > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                      {group.stats.colisRestants}
+                    </span>
+                  </span>
+                </span>
+
+              </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
         /* MODE DÉTAILLÉ - Cartes */
@@ -777,7 +1149,7 @@ export default function Tournees() {
               </div>
 
               {/* Statut de la tournée */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                 <div className="p-3 bg-blue-50 rounded-lg text-center">
                   <p className="text-xs text-gray-600">Remis</p>
                   <p className="text-xl font-bold text-blue-600">{tournee.stats.colisRemis}</p>
@@ -798,11 +1170,7 @@ export default function Tournees() {
                 </div>
                 <div className="p-3 bg-red-50 rounded-lg text-center">
                   <p className="text-xs text-gray-600">Refusés</p>
-                  <p className="text-xl font-bold text-red-600">{tournee.stats.refusees}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg text-center">
-                  <p className="text-xs text-gray-600">Annulés</p>
-                  <p className="text-xl font-bold text-gray-600">{tournee.stats.annulees}</p>
+                  <p className="text-xl font-bold text-red-600">{tournee.stats.refusees + tournee.stats.annulees}</p>
                 </div>
               </div>
 
@@ -841,6 +1209,330 @@ export default function Tournees() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Fenêtre de détail d'un bloc journalier */}
+      {selectedCompactGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-slate-950/60 p-2 backdrop-blur-sm sm:p-4"
+          onClick={() => {
+            setCompactRemiseConfirmationOpen(false);
+            setSelectedRefusedOrderIds([]);
+            setSelectedCompactGroup(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="compact-group-title"
+            className="flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] border border-white/40 bg-white/95 shadow-2xl shadow-blue-950/30 sm:max-h-[90dvh]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="z-10 flex shrink-0 items-start justify-between gap-4 border-b border-white/10 bg-gradient-to-r from-slate-950 via-blue-900 to-violet-900 p-4 text-white sm:p-6">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 id="compact-group-title" className="text-xl font-bold text-white">
+                    {selectedCompactGroup.deliverer.prenom} {selectedCompactGroup.deliverer.nom}
+                  </h2>
+                  {getDeliveryTypeBadge(selectedCompactGroup)}
+                </div>
+                <p className="mt-1 text-sm capitalize text-blue-100">{selectedCompactGroup.dayLabel}</p>
+                <p className="mt-1 text-sm text-slate-200">
+                  {selectedCompactGroup.tournees.length} assignation(s) • {selectedCompactGroup.stats.totalOrders} colis
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCompactRemiseConfirmationOpen(false);
+                  setSelectedRefusedOrderIds([]);
+                  setSelectedCompactGroup(null);
+                }}
+                className="rounded-xl border border-white/20 bg-white/10 p-2 text-white hover:bg-white/20"
+                aria-label="Fermer"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="grid shrink-0 grid-cols-3 gap-2 border-b border-white/70 bg-gradient-to-r from-sky-50 via-violet-50 to-orange-50 p-3 sm:p-4" role="tablist" aria-label="Type de livraison">
+              {compactDeliveryTypes.map((type) => {
+                const typeCount = getOrdersForDeliveryType(selectedCompactGroup.orders, type.value).length;
+                const isActive = compactGroupType === type.value;
+                const activeTypeClass = type.value === 'LOCAL'
+                  ? 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
+                  : type.value === 'EXPEDITION'
+                    ? 'border-blue-500 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200'
+                    : 'border-orange-500 bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-lg shadow-orange-200';
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      setCompactGroupType(type.value);
+                      setSelectedRefusedOrderIds([]);
+                    }}
+                    className={`flex min-w-0 flex-col items-center justify-center rounded-2xl border px-2 py-3 text-center transition-all duration-200 sm:flex-row sm:gap-2 ${
+                      isActive
+                        ? activeTypeClass
+                        : 'border-white bg-white/85 text-gray-700 shadow-sm hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white'
+                    }`}
+                  >
+                    <span aria-hidden="true">{type.icon}</span>
+                    <span className="font-medium">{type.label}</span>
+                    <span className={`text-xs ${isActive ? 'text-blue-100' : 'text-gray-500'}`}>({typeCount})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
+              <div className={`mb-6 rounded-2xl border p-4 ${
+                selectedCompactGroupPendingRemise.tournees.length > 0
+                  ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50'
+                  : 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50'
+              }`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-xl p-2 ${
+                      selectedCompactGroupPendingRemise.tournees.length > 0
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {selectedCompactGroupPendingRemise.tournees.length > 0 ? <Package size={22} /> : <CheckCircle size={22} />}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {selectedCompactGroupPendingRemise.tournees.length > 0 && selectedCompactGroupPendingRemise.confirmedTournees.length > 0
+                          ? 'Nouvelle remise à confirmer'
+                          : 'Remise des colis'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {selectedCompactGroupPendingRemise.tournees.length > 0
+                          ? `${selectedCompactGroupPendingRemise.totalColis} ${selectedCompactGroupPendingRemise.totalColis > 1 ? 'nouveaux colis' : 'nouveau colis'} dans ${selectedCompactGroupPendingRemise.tournees.length} ${selectedCompactGroupPendingRemise.tournees.length > 1 ? 'nouvelles assignations' : 'nouvelle assignation'} à remettre${
+                              selectedCompactGroupPendingRemise.confirmedTournees.length > 0
+                                ? ` • ${selectedCompactGroupPendingRemise.confirmedColis} colis déjà remis`
+                                : ''
+                            }`
+                          : 'Tous les colis de ce bloc ont été remis au livreur'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canConfirmStock && selectedCompactGroupPendingRemise.tournees.length > 0 && !compactRemiseConfirmationOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setCompactRemiseConfirmationOpen(true)}
+                      className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-purple-800"
+                    >
+                      {selectedCompactGroupPendingRemise.confirmedTournees.length > 0 ? 'Confirmer la nouvelle remise' : 'Marquer « Remise »'}
+                    </button>
+                  )}
+                </div>
+
+                {compactRemiseConfirmationOpen && selectedCompactGroupPendingRemise.tournees.length > 0 && (
+                  <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-white/90 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-700">
+                      Confirmer la remise de <strong>{selectedCompactGroupPendingRemise.totalColis} colis</strong> à {selectedCompactGroup.deliverer.prenom} {selectedCompactGroup.deliverer.nom} ?
+                    </p>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCompactRemiseConfirmationOpen(false)}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirmCompactGroupRemiseMutation.mutate(selectedCompactGroup)}
+                        disabled={confirmCompactGroupRemiseMutation.isPending}
+                        className="rounded-lg bg-gradient-to-r from-violet-600 to-purple-700 px-3 py-2 text-sm font-semibold text-white hover:from-violet-700 hover:to-purple-800 disabled:opacity-60"
+                      >
+                        {confirmCompactGroupRemiseMutation.isPending ? 'Confirmation…' : 'Confirmer la remise'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                {[
+                  { label: 'Total colis', value: selectedCompactGroupSummary.total, className: 'border-blue-200 bg-blue-50 text-blue-700' },
+                  { label: 'Livrés', value: selectedCompactGroupSummary.delivered, className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+                  { label: 'Refusés', value: selectedCompactGroupSummary.refused, className: 'border-rose-200 bg-rose-50 text-rose-700' },
+                  { label: 'En attente', value: selectedCompactGroupSummary.pending, className: 'border-amber-200 bg-amber-50 text-amber-700' },
+                  { label: 'Restants', value: selectedCompactGroupSummary.remaining, className: 'border-orange-200 bg-orange-50 text-orange-700' },
+                ].map((stat) => (
+                  <div key={stat.label} className={`rounded-2xl border p-3 ${stat.className}`}>
+                    <p className="text-xs font-medium opacity-80">{stat.label}</p>
+                    <p className="mt-1 text-2xl font-bold">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="mb-3 font-semibold text-gray-900">
+                Commandes — {compactDeliveryTypes.find((type) => type.value === compactGroupType)?.label} ({selectedCompactGroupOrders.length})
+              </h3>
+
+              {canConfirmStock && refusedCompactGroupOrders.length > 0 && (
+                <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 via-white to-orange-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-rose-900">
+                      {refusedCompactGroupOrders.length} colis refusé(s) disponible(s)
+                    </p>
+                    <p className="text-sm text-rose-700">Cochez les colis reçus physiquement au magasin.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedRefusedOrderIds.length === 0) return;
+                      const confirm = window.confirm(
+                        `Confirmer le retour en magasin de ${selectedRefusedOrderIds.length} colis refusé(s) ?`
+                      );
+                      if (!confirm) return;
+                      returnRefusedToStoreMutation.mutate(selectedRefusedOrderIds);
+                    }}
+                    disabled={selectedRefusedOrderIds.length === 0 || returnRefusedToStoreMutation.isPending}
+                    className="rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-200 hover:from-rose-700 hover:to-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {returnRefusedToStoreMutation.isPending
+                      ? 'Enregistrement…'
+                      : `Retour en magasin (${selectedRefusedOrderIds.length})`}
+                  </button>
+                </div>
+              )}
+
+              {selectedCompactGroupOrders.length > 0 ? (
+                <div className="overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-lg shadow-blue-100/50">
+                  <table className="w-full text-sm" style={{ minWidth: '900px' }}>
+                    <thead className="bg-gradient-to-r from-slate-50 via-blue-50 to-violet-50">
+                      <tr>
+                        <th className="px-3 py-3 text-center">
+                          {canConfirmStock && refusedCompactGroupOrders.length > 0 ? (
+                            <input
+                              type="checkbox"
+                              aria-label="Sélectionner tous les colis refusés"
+                              checked={refusedCompactGroupOrders.every((order: any) => selectedRefusedOrderIds.includes(order.id))}
+                              onChange={(event) => {
+                                const refusedIds = refusedCompactGroupOrders.map((order: any) => order.id);
+                                setSelectedRefusedOrderIds(event.target.checked ? refusedIds : []);
+                              }}
+                              className="h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                            />
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </th>
+                        <th className="px-3 py-3 text-left">Client</th>
+                        <th className="px-3 py-3 text-left">Produit</th>
+                        <th className="px-3 py-3 text-center">Qté</th>
+                        <th className="px-3 py-3 text-right">Montant</th>
+                        <th className="px-3 py-3 text-left">Note</th>
+                        <th className="px-3 py-3 text-center">Statut</th>
+                        <th className="px-3 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {selectedCompactGroupOrders.map((order: any) => (
+                        <tr
+                          key={order.id}
+                          className={`transition-colors ${
+                            ['LIVREE', 'EXPRESS_LIVRE'].includes(order.status)
+                              ? 'bg-emerald-50/70 hover:bg-emerald-100/70'
+                              : isTourneeRefusedStatus(order.status)
+                                ? 'bg-rose-50/70 hover:bg-rose-100/70'
+                                : 'hover:bg-blue-50/60'
+                          }`}
+                        >
+                          <td className="px-3 py-3 text-center">
+                            {canConfirmStock && isTourneeRefusedStatus(order.status) ? (
+                              <input
+                                type="checkbox"
+                                aria-label={`Sélectionner le colis refusé de ${order.clientNom}`}
+                                checked={selectedRefusedOrderIds.includes(order.id)}
+                                onChange={(event) => {
+                                  setSelectedRefusedOrderIds((current) => (
+                                    event.target.checked
+                                      ? Array.from(new Set([...current, order.id]))
+                                      : current.filter((id) => id !== order.id)
+                                  ));
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                              />
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <p className="font-medium text-gray-900">{order.clientNom}</p>
+                            <p className="text-xs text-gray-500">{order.clientVille}</p>
+                          </td>
+                          <td className="px-3 py-3">
+                            <p className="max-w-[160px] truncate" title={order.produitNom}>{order.produitNom}</p>
+                          </td>
+                          <td className="px-3 py-3 text-center font-semibold text-blue-600">×{order.quantite}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right font-medium">{formatCurrency(order.montant)}</td>
+                          <td className="px-3 py-3 text-xs">
+                            <p className="max-w-[200px] truncate text-gray-600" title={order.noteGestionnaire || order.noteAppelant || ''}>
+                              {order.noteGestionnaire || order.noteAppelant || '—'}
+                            </p>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`whitespace-nowrap rounded px-2 py-1 text-xs ${getTourneeOrderStatusColor(order.status)}`}>
+                              {getTourneeOrderStatusLabel(order.status)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {canReturnToValidated && order.status === 'ASSIGNEE' && (order.deliveryType || 'LOCAL') === 'LOCAL' ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const confirm = window.confirm('Retourner cette commande dans "Commandes validées" pour réassignation ?');
+                                  if (!confirm) return;
+                                  returnToValidatedMutation.mutate({ orderId: order.id });
+                                }}
+                                disabled={returnToValidatedMutation.isPending}
+                                className="rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm shadow-orange-200 hover:from-orange-600 hover:to-rose-600 disabled:opacity-60"
+                              >
+                                Retourner
+                              </button>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                  <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">
+                    Aucune commande dans cette catégorie pour ce livreur.
+                  </div>
+              )}
+
+              {selectedCompactGroupOrders.length > 0 && (
+                <div className="mt-6 grid grid-cols-1 gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-violet-50 p-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Montant total</p>
+                    <p className="mt-1 text-lg font-bold text-blue-700">{formatCurrency(selectedCompactGroupSummary.totalAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Montant livré</p>
+                    <p className="mt-1 text-lg font-bold text-emerald-700">{formatCurrency(selectedCompactGroupSummary.deliveredAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Montant non livré</p>
+                    <p className="mt-1 text-lg font-bold text-orange-700">{formatCurrency(selectedCompactGroupSummary.undeliveredAmount)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -972,7 +1664,7 @@ export default function Tournees() {
                             {order.clientNom} - {order.clientVille}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Statut: {order.status === 'REFUSEE' ? 'Refusé par client' : 'Annulé'}
+                            Statut: Refusé / non livré
                           </p>
                           {order.noteLivreur && (
                             <p className="text-xs text-gray-500 italic mt-1">
@@ -1137,11 +1829,7 @@ export default function Tournees() {
                       </div>
                       <div className="flex justify-between">
                         <span>Refusés:</span>
-                        <span className="font-semibold text-red-600">{selectedTournee.stats.refusees}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Annulés:</span>
-                        <span className="font-semibold text-gray-600">{selectedTournee.stats.annulees}</span>
+                        <span className="font-semibold text-red-600">{selectedTournee.stats.refusees + selectedTournee.stats.annulees}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>En attente:</span>
@@ -1250,8 +1938,8 @@ export default function Tournees() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-center">
-                              <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${getStatusColor(order.status)}`}>
-                                {getStatusLabel(order.status)}
+                              <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${getTourneeOrderStatusColor(order.status)}`}>
+                                {getTourneeOrderStatusLabel(order.status)}
                               </span>
                             </td>
                             <td className="px-3 py-2 text-center">
