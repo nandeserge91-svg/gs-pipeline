@@ -514,7 +514,7 @@ export default function Orders() {
                   : order.sourcePage === 'WhatsApp'
                   ? 'border-pink-400 bg-gradient-to-br from-pink-100 via-fuchsia-50 to-rose-100 shadow-pink-200/80 hover:shadow-pink-300/70'
                   : order.enAttentePaiement
-                  ? 'border-amber-400 bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100 shadow-amber-200/80 hover:shadow-amber-300/70'
+                  ? 'border-amber-500 bg-gradient-to-br from-yellow-200 via-amber-100 to-yellow-200 shadow-amber-300/80 hover:shadow-amber-400/70'
                   : (order as any).renvoyeAAppelerAt 
                   ? 'border-emerald-400 bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 shadow-emerald-200/80 hover:shadow-emerald-300/70'
                   : order.status === 'A_APPELER'
