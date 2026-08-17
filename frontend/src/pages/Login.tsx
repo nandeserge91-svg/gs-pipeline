@@ -33,7 +33,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 text-white rounded-full mb-4">
             <LogIn size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">GS Pipeline</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">AFGestion</h1>
           <p className="text-gray-600">Back-office de gestion des commandes</p>
         </div>
 

@@ -117,15 +117,36 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const navigationItems = getNavigationItems();
+  const roleLabel =
+    user?.role === 'ADMIN' ? 'Administration' :
+    user?.role === 'GESTIONNAIRE' ? 'Gestion' :
+    user?.role === 'GESTIONNAIRE_STOCK' ? 'Gestion de Stock' :
+    user?.role === 'APPELANT' ? 'Appels' :
+    user?.role === 'LIVREUR' ? 'Livraisons' : '';
+  const navIconTones = [
+    'from-sky-500/25 to-cyan-400/10 text-sky-300',
+    'from-violet-500/25 to-fuchsia-400/10 text-violet-300',
+    'from-amber-500/25 to-orange-400/10 text-amber-300',
+    'from-emerald-500/25 to-teal-400/10 text-emerald-300',
+    'from-rose-500/25 to-pink-400/10 text-rose-300',
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-violet-100/70">
       {/* Mobile Header with Burger Menu */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-30">
-        <h1 className="text-xl font-bold text-primary-600">GS Pipeline</h1>
+      <div className="fixed left-0 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 shadow-xl shadow-slate-950/15 backdrop-blur-xl lg:hidden">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-violet-600 text-white shadow-lg shadow-blue-500/30">
+            <Zap size={18} fill="currentColor" />
+          </span>
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-white">AFGestion</h1>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-sky-300">{roleLabel}</p>
+          </div>
+        </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="rounded-xl border border-white/10 bg-white/10 p-2 text-white shadow-sm transition hover:bg-white/20"
           aria-label="Toggle menu"
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -135,33 +156,35 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-50 transition-transform duration-300
+        fixed left-0 top-0 z-50 flex h-full w-64 flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 shadow-2xl shadow-slate-950/30 transition-transform duration-300
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
       `}>
-        <div className="p-6 border-b border-gray-200">
+        <div className="relative border-b border-white/10 p-5">
+          <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-blue-500/20 blur-2xl" />
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-primary-600">GS Pipeline</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {user?.role === 'ADMIN' && 'Administration'}
-                {user?.role === 'GESTIONNAIRE' && 'Gestion'}
-                {user?.role === 'GESTIONNAIRE_STOCK' && 'Gestion de Stock'}
-                {user?.role === 'APPELANT' && 'Appels'}
-                {user?.role === 'LIVREUR' && 'Livraisons'}
-              </p>
+            <div className="relative flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-blue-500 to-violet-600 text-white shadow-xl shadow-blue-500/25 ring-1 ring-white/25">
+                <Zap size={21} fill="currentColor" />
+              </span>
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-white">AFGestion</h1>
+                <span className="mt-1 inline-flex rounded-full border border-sky-400/20 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300">
+                  {roleLabel}
+                </span>
+              </div>
             </div>
             {/* Close button for mobile */}
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="rounded-xl p-2 text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
               aria-label="Close menu"
             >
               <X size={20} />
@@ -169,8 +192,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navigationItems.map((item) => {
+        <nav className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3">
+          <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Navigation</p>
+          {navigationItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -179,34 +203,38 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2.5 transition-all duration-300 ${
                   isActive
-                    ? 'bg-primary-50 text-primary-600 font-medium'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 font-semibold text-white shadow-lg shadow-indigo-950/40 ring-1 ring-white/15'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Icon size={20} />
-                <span>{item.label}</span>
+                {isActive && <span className="absolute -right-4 -top-7 h-16 w-16 rounded-full bg-white/15 blur-xl" />}
+                <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${isActive ? 'from-white/25 to-white/10 text-white' : navIconTones[index % navIconTones.length]} transition-transform duration-300 group-hover:scale-105`}>
+                  <Icon size={18} />
+                </span>
+                <span className="relative text-[13px] leading-tight">{item.label}</span>
+                {isActive && <span className="relative ml-auto h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]" />}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold">
+        <div className="border-t border-white/10 bg-black/10 p-3">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-inner">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500 font-bold text-white shadow-lg shadow-violet-950/30">
               {user?.prenom?.[0]}{user?.nom?.[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="truncate text-sm font-semibold text-white">
                 {user?.prenom} {user?.nom}
               </p>
-              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200"
           >
             <LogOut size={20} />
             <span>Déconnexion</span>
@@ -215,7 +243,7 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="pt-16 lg:pt-0 lg:ml-64 p-4 sm:p-6 lg:p-8">
+      <main className="min-h-screen p-4 pt-20 sm:p-6 sm:pt-20 lg:ml-64 lg:p-8 lg:pt-8">
         {children}
       </main>
     </div>
