@@ -9,9 +9,11 @@ import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBo
 
 router.use(authenticate);
 
-/** Colis encore concernés par la tournée (hors commandes repassées en VALIDEE sans détachement DB historique). */
+const TOURNEE_REFUSED_STATUSES = ['REFUSEE', 'ANNULEE_LIVRAISON'];
+
+/** Colis encore concernés par la tournée (hors commandes annulées avant tournée ou repassées en VALIDEE). */
 function ordersPourComptageTournee(orders) {
-  return orders.filter((o) => o.status !== 'VALIDEE');
+  return orders.filter((o) => !['VALIDEE', 'ANNULEE'].includes(o.status));
 }
 
 // GET /api/stock/tournees - Liste des tournées pour gestion stock
@@ -104,6 +106,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
 
       return {
         ...list,
+        orders: ordresTournee,
         stats: {
           totalOrders,
           livrees,
@@ -128,6 +131,83 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
   } catch (error) {
     console.error('Erreur récupération tournées:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des tournées.' });
+  }
+});
+
+// GET /api/stock/tournees/alerts - Colis encore chez les livreurs depuis au moins 3 jours.
+// Cette alerte est globale et ne dépend pas de la plage de dates affichée dans l'interface.
+router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
+  try {
+    const seuilJours = 3;
+    const now = new Date();
+    const tourneesActives = await prisma.tourneeStock.findMany({
+      where: {
+        colisRemisConfirme: true,
+        colisRetourConfirme: false
+      },
+      include: {
+        deliveryList: {
+          include: {
+            deliverer: {
+              select: { id: true, nom: true, prenom: true, telephone: true }
+            },
+            orders: {
+              select: { id: true, status: true }
+            }
+          }
+        }
+      }
+    });
+
+    const alertesParLivreur = new Map();
+    for (const tourneeStock of tourneesActives) {
+      const deliveryList = tourneeStock.deliveryList;
+      const ordresTournee = ordersPourComptageTournee(deliveryList.orders);
+      const totalOrders = ordresTournee.length;
+      const colisRemis = Math.min(tourneeStock.colisRemis || totalOrders, totalOrders);
+      const colisLivres = ordresTournee.filter((order) =>
+        ['LIVREE', 'EXPRESS_LIVRE'].includes(order.status)
+      ).length;
+      const colisRetournes = ordresTournee.filter((order) => order.status === 'RETOURNE').length;
+      const colisNonRetournes = Math.max(0, colisRemis - colisLivres - colisRetournes);
+      const dateRemise = tourneeStock.colisRemisAt || deliveryList.createdAt || deliveryList.date;
+      const joursChezLivreur = Math.max(
+        0,
+        Math.floor((now.getTime() - new Date(dateRemise).getTime()) / (1000 * 60 * 60 * 24))
+      );
+
+      if (colisNonRetournes === 0 || joursChezLivreur < seuilJours) continue;
+
+      const deliverer = deliveryList.deliverer;
+      const current = alertesParLivreur.get(deliverer.id) || {
+        deliverer,
+        colisNonRetournes: 0,
+        tourneesConcernees: 0,
+        joursMax: 0,
+        plusAncienneRemise: dateRemise
+      };
+      current.colisNonRetournes += colisNonRetournes;
+      current.tourneesConcernees += 1;
+      current.joursMax = Math.max(current.joursMax, joursChezLivreur);
+      if (new Date(dateRemise) < new Date(current.plusAncienneRemise)) {
+        current.plusAncienneRemise = dateRemise;
+      }
+      alertesParLivreur.set(deliverer.id, current);
+    }
+
+    const alertes = Array.from(alertesParLivreur.values()).sort(
+      (a, b) => b.joursMax - a.joursMax || b.colisNonRetournes - a.colisNonRetournes
+    );
+
+    res.json({
+      seuilJours,
+      totalLivreurs: alertes.length,
+      totalColis: alertes.reduce((sum, alerte) => sum + alerte.colisNonRetournes, 0),
+      alertes
+    });
+  } catch (error) {
+    console.error('Erreur récupération alertes de retours:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des alertes de retours.' });
   }
 });
 
@@ -232,7 +312,10 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
       : Math.max(0, colisRemis - colisLivres - colisRetournes);
     
     res.json({ 
-      tournee: deliveryList,
+      tournee: {
+        ...deliveryList,
+        orders: ordresTournee
+      },
       produitsSummary: Object.values(produitsSummary),
       stats: {
         colisRemis,
@@ -299,6 +382,163 @@ router.post('/tournees/:id/confirm-remise', authorize('ADMIN', 'GESTIONNAIRE', '
   } catch (error) {
     console.error('Erreur confirmation remise:', error);
     res.status(500).json({ error: 'Erreur lors de la confirmation de remise.' });
+  }
+});
+
+// POST /api/stock/tournees/confirm-remise-group - Confirmer en une fois les
+// remises encore en attente d'un bloc journalier regroupé.
+router.post('/tournees/confirm-remise-group', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), [
+  body('tournees').isArray({ min: 1 }).withMessage('Aucune remise à confirmer'),
+  body('tournees.*.id').isInt({ min: 1 }).withMessage('Tournée invalide'),
+  body('tournees.*.colisRemis').isInt({ min: 0 }).withMessage('Nombre de colis invalide')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const tournees = Array.from(
+      new Map(
+        req.body.tournees.map((tournee) => [
+          parseInt(tournee.id),
+          {
+            id: parseInt(tournee.id),
+            colisRemis: parseInt(tournee.colisRemis)
+          }
+        ])
+      ).values()
+    );
+    const tourneeIds = tournees.map((tournee) => tournee.id);
+
+    const existingTournees = await prisma.deliveryList.findMany({
+      where: { id: { in: tourneeIds } },
+      select: { id: true }
+    });
+
+    if (existingTournees.length !== tournees.length) {
+      return res.status(404).json({ error: 'Une ou plusieurs tournées sont introuvables.' });
+    }
+
+    const confirmedAt = new Date();
+    const confirmations = await prisma.$transaction(
+      tournees.map((tournee) => prisma.tourneeStock.upsert({
+        where: { deliveryListId: tournee.id },
+        create: {
+          deliveryListId: tournee.id,
+          colisRemis: tournee.colisRemis,
+          colisRemisConfirme: true,
+          colisRemisAt: confirmedAt,
+          colisRemisBy: req.user.id
+        },
+        update: {
+          colisRemis: tournee.colisRemis,
+          colisRemisConfirme: true,
+          colisRemisAt: confirmedAt,
+          colisRemisBy: req.user.id
+        }
+      }))
+    );
+    const totalColis = tournees.reduce((sum, tournee) => sum + tournee.colisRemis, 0);
+
+    res.json({
+      confirmations,
+      totalColis,
+      totalTournees: tournees.length,
+      message: `${totalColis} colis confirmés dans ${tournees.length} assignation(s).`
+    });
+  } catch (error) {
+    console.error('Erreur confirmation groupée des remises:', error);
+    res.status(500).json({ error: 'Erreur lors de la confirmation groupée des remises.' });
+  }
+});
+
+// POST /api/stock/orders/return-to-store - Enregistrer la réception physique
+// de commandes refusées/non livrées sélectionnées dans le détail d'un bloc journalier.
+router.post('/orders/return-to-store', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), [
+  body('orderIds').isArray({ min: 1 }).withMessage('Aucun colis refusé/non livré sélectionné'),
+  body('orderIds.*').isInt({ min: 1 }).withMessage('Commande invalide')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const orderIds = [...new Set(req.body.orderIds.map((id) => parseInt(id)))];
+    const orders = await prisma.order.findMany({
+      where: { id: { in: orderIds } },
+      select: { id: true, status: true, deliveryListId: true, raisonRetour: true }
+    });
+
+    if (orders.length !== orderIds.length) {
+      return res.status(404).json({ error: 'Un ou plusieurs colis sont introuvables.' });
+    }
+    if (orders.some((order) => !TOURNEE_REFUSED_STATUSES.includes(order.status))) {
+      return res.status(400).json({ error: 'Seuls les colis refusés/non livrés peuvent être retournés en magasin.' });
+    }
+
+    const returnedAt = new Date();
+    const result = await prisma.$transaction(async (tx) => {
+      for (const order of orders) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'RETOURNE',
+            raisonRetour: order.raisonRetour || 'CLIENT_REFUSE',
+            retourneAt: returnedAt
+          }
+        });
+        await tx.statusHistory.create({
+          data: {
+            orderId: order.id,
+            oldStatus: order.status,
+            newStatus: 'RETOURNE',
+            changedBy: req.user.id,
+            comment: 'Colis refusé/non livré réceptionné physiquement et retourné en magasin'
+          }
+        });
+      }
+
+      const deliveryListIds = [...new Set(
+        orders.map((order) => order.deliveryListId).filter((id) => id !== null)
+      )];
+      for (const deliveryListId of deliveryListIds) {
+        const tourneeStock = await tx.tourneeStock.findUnique({
+          where: { deliveryListId }
+        });
+        if (!tourneeStock) continue;
+
+        const deliveryOrders = ordersPourComptageTournee(await tx.order.findMany({
+          where: { deliveryListId }
+        }));
+        const colisLivres = deliveryOrders.filter((order) => order.status === 'LIVREE').length;
+        const colisRetour = deliveryOrders.filter((order) => order.status === 'RETOURNE').length;
+        const colisRemis = tourneeStock.colisRemis || deliveryOrders.length;
+        const retourComplet = colisRetour >= Math.max(0, colisRemis - colisLivres);
+
+        await tx.tourneeStock.update({
+          where: { deliveryListId },
+          data: {
+            colisLivres,
+            colisRetour,
+            colisRetourConfirme: tourneeStock.colisRetourConfirme || retourComplet,
+            colisRetourAt: retourComplet ? returnedAt : tourneeStock.colisRetourAt,
+            colisRetourBy: req.user.id
+          }
+        });
+      }
+
+      return { totalReturned: orders.length };
+    });
+
+    res.json({
+      ...result,
+      message: `${result.totalReturned} colis refusé(s)/non livré(s) retourné(s) en magasin.`
+    });
+  } catch (error) {
+    console.error('Erreur retour en magasin des colis refusés/non livrés:', error);
+    res.status(500).json({ error: 'Erreur lors du retour en magasin.' });
   }
 });
 
