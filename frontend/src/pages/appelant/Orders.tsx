@@ -519,7 +519,7 @@ export default function Orders() {
                   ? 'border-emerald-400 bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 shadow-emerald-200/80 hover:shadow-emerald-300/70'
                   : order.status === 'A_APPELER'
                   ? 'border-violet-400 bg-gradient-to-br from-violet-100 via-purple-50 to-indigo-100 shadow-violet-200/80 hover:shadow-violet-300/70'
-                  : 'border-sky-400 bg-gradient-to-br from-cyan-100 via-sky-50 to-blue-100 shadow-sky-200/80 hover:shadow-sky-300/70'
+                  : 'border-white/80 bg-white/90 shadow-slate-200/60 hover:shadow-indigo-200/60'
               }`}
             >
               <div className={`absolute inset-x-0 top-0 h-1.5 ${
