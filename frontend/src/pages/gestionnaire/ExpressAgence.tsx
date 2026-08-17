@@ -159,60 +159,79 @@ export default function ExpressAgence() {
   return (
     <div className="space-y-6">
       {/* En-tête avec stats */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">📦 EXPRESS - En agence</h1>
-        <p className="text-gray-600">Gestion des colis en attente de retrait</p>
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-gradient-to-br from-slate-950 via-violet-950 to-orange-950 p-5 text-white shadow-2xl shadow-orange-950/20 sm:p-7">
+        <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full bg-orange-400/25 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-fuchsia-500/20 blur-3xl" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 via-amber-500 to-rose-600 text-white shadow-xl shadow-orange-950/30 ring-1 ring-white/25">
+              <Package size={24} />
+            </span>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight sm:text-3xl">EXPRESS – En agence</h1>
+              <p className="mt-1 text-sm text-orange-100/80">Suivi des colis jusqu’au retrait client</p>
+            </div>
+          </div>
+          <div className="flex w-fit items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 backdrop-blur-md">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.9)]" />
+            Suivi actif
+          </div>
+        </div>
       </div>
 
       {/* Stats rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card bg-blue-50 border-blue-200">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="group relative overflow-hidden rounded-[1.6rem] border border-blue-100 bg-gradient-to-br from-white to-blue-50 p-5 shadow-xl shadow-blue-100/60 transition hover:-translate-y-1 hover:shadow-2xl">
+          <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-blue-400/10 blur-2xl" />
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total en agence</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.total || 0}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-blue-700/70">Total en agence</p>
+              <p className="mt-1 text-3xl font-black text-blue-700">{stats.total || 0}</p>
             </div>
-            <Package className="text-blue-600" size={32} />
+            <span className="rounded-2xl bg-blue-600 p-3 text-white shadow-lg shadow-blue-500/25"><Package size={24} /></span>
           </div>
         </div>
 
-        <div className="card bg-orange-50 border-orange-200">
+        <div className="group relative overflow-hidden rounded-[1.6rem] border border-orange-100 bg-gradient-to-br from-white to-orange-50 p-5 shadow-xl shadow-orange-100/60 transition hover:-translate-y-1 hover:shadow-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Non retirés</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.nonRetires || 0}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-orange-700/70">Non retirés</p>
+              <p className="mt-1 text-3xl font-black text-orange-600">{stats.nonRetires || 0}</p>
             </div>
-            <AlertCircle className="text-orange-600" size={32} />
+            <span className="rounded-2xl bg-orange-500 p-3 text-white shadow-lg shadow-orange-500/25"><AlertCircle size={24} /></span>
           </div>
         </div>
 
-        <div className="card bg-green-50 border-green-200">
+        <div className="group relative overflow-hidden rounded-[1.6rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-5 shadow-xl shadow-emerald-100/60 transition hover:-translate-y-1 hover:shadow-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Retirés</p>
-              <p className="text-2xl font-bold text-green-600">{stats.retires || 0}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700/70">Retirés</p>
+              <p className="mt-1 text-3xl font-black text-emerald-600">{stats.retires || 0}</p>
             </div>
-            <CheckCircle2 className="text-green-600" size={32} />
+            <span className="rounded-2xl bg-emerald-500 p-3 text-white shadow-lg shadow-emerald-500/25"><CheckCircle2 size={24} /></span>
           </div>
         </div>
 
-        <div className="card bg-purple-50 border-purple-200">
+        <div className="group relative overflow-hidden rounded-[1.6rem] border border-violet-100 bg-gradient-to-br from-white to-violet-50 p-5 shadow-xl shadow-violet-100/60 transition hover:-translate-y-1 hover:shadow-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Notifications totales</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.nombreNotificationsTotal || 0}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-violet-700/70">Notifications totales</p>
+              <p className="mt-1 text-3xl font-black text-violet-600">{stats.nombreNotificationsTotal || 0}</p>
             </div>
-            <Bell className="text-purple-600" size={32} />
+            <span className="rounded-2xl bg-violet-600 p-3 text-white shadow-lg shadow-violet-500/25"><Bell size={24} /></span>
           </div>
         </div>
       </div>
 
       {/* Filtres */}
-      <div className="card">
+      <div className="rounded-[2rem] border border-orange-100/80 bg-white/90 p-4 shadow-xl shadow-orange-100/40 backdrop-blur-xl sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Filter className="text-primary-600" size={20} />
-            <h2 className="text-lg font-semibold">Filtres de recherche</h2>
+            <span className="rounded-xl bg-gradient-to-br from-orange-100 to-violet-100 p-2 text-violet-700"><Filter size={19} /></span>
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Filtres de recherche</h2>
+              <p className="text-xs text-slate-500">Affinez la file EXPRESS en quelques secondes</p>
+            </div>
           </div>
           <button
             onClick={() => {
@@ -223,29 +242,29 @@ export default function ExpressAgence() {
               setStartDate('');
               setEndDate('');
             }}
-            className="btn btn-secondary btn-sm"
+            className="btn border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
           >
             Réinitialiser
           </button>
         </div>
 
         {/* Raccourcis de dates */}
-        <div className="mb-4 pb-4 border-b">
+        <div className="mb-4 border-b border-slate-100 pb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">📅 Filtrer par période :</p>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setDateRaccourci('aujourdhui')} className="btn btn-sm btn-secondary">
+            <button onClick={() => setDateRaccourci('aujourdhui')} className="rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 px-3 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:-translate-y-0.5">
               Aujourd'hui
             </button>
-            <button onClick={() => setDateRaccourci('hier')} className="btn btn-sm btn-secondary">
+            <button onClick={() => setDateRaccourci('hier')} className="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-100">
               Hier
             </button>
-            <button onClick={() => setDateRaccourci('semaine')} className="btn btn-sm btn-secondary">
+            <button onClick={() => setDateRaccourci('semaine')} className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100">
               7 derniers jours
             </button>
-            <button onClick={() => setDateRaccourci('mois')} className="btn btn-sm btn-secondary">
+            <button onClick={() => setDateRaccourci('mois')} className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
               30 derniers jours
             </button>
-            <button onClick={() => setDateRaccourci('tout')} className="btn btn-sm btn-secondary">
+            <button onClick={() => setDateRaccourci('tout')} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
               Tout afficher
             </button>
           </div>
@@ -265,7 +284,7 @@ export default function ExpressAgence() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Nom, téléphone, référence, produit..."
-                className="input pl-10 w-full"
+                className="input w-full border-orange-100 bg-slate-50/80 pl-10 hover:border-orange-200"
               />
             </div>
           </div>
@@ -278,7 +297,7 @@ export default function ExpressAgence() {
             <select
               value={dateType}
               onChange={(e) => setDateType(e.target.value as 'arrive' | 'retrait')}
-              className="input w-full"
+              className="input w-full border-orange-100 bg-slate-50/80"
             >
               <option value="arrive">Date d'arrivée en agence</option>
               <option value="retrait">Date de retrait par client</option>
@@ -294,7 +313,7 @@ export default function ExpressAgence() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="input w-full"
+              className="input w-full border-orange-100 bg-slate-50/80"
             />
           </div>
 
@@ -307,7 +326,7 @@ export default function ExpressAgence() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="input w-full"
+              className="input w-full border-orange-100 bg-slate-50/80"
             />
           </div>
 
@@ -319,7 +338,7 @@ export default function ExpressAgence() {
             <select
               value={triPar}
               onChange={(e) => setTriPar(e.target.value as any)}
-              className="input w-full"
+              className="input w-full border-violet-100 bg-slate-50/80"
             >
               <option value="jours">Date d'arrivée (récent en premier)</option>
               <option value="notifications">Notifications (à relancer)</option>
@@ -336,7 +355,7 @@ export default function ExpressAgence() {
             <select
               value={agenceFilter}
               onChange={(e) => setAgenceFilter(e.target.value)}
-              className="input w-full"
+              className="input w-full border-violet-100 bg-slate-50/80"
             >
               <option value="all">Toutes les agences</option>
               {stats.agences?.map((agence: string) => (
@@ -353,7 +372,7 @@ export default function ExpressAgence() {
             <select
               value={statutFilter}
               onChange={(e) => setStatutFilter(e.target.value)}
-              className="input w-full"
+              className="input w-full border-violet-100 bg-slate-50/80"
             >
               <option value="all">Tous les statuts</option>
               <option value="EXPRESS_ARRIVE">En attente de retrait</option>
@@ -363,7 +382,7 @@ export default function ExpressAgence() {
 
           {/* Non retirés */}
           <div className="flex items-end">
-            <label className="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-lg w-full hover:bg-gray-50 transition-colors">
+            <label className="flex w-full cursor-pointer items-center gap-2 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 p-3 transition hover:border-orange-200 hover:shadow-md">
               <input
                 type="checkbox"
                 checked={nonRetiresOnly}
@@ -431,7 +450,7 @@ export default function ExpressAgence() {
       ) : (
         <>
           {/* En-tête de la liste */}
-          <div className="card bg-gray-50 border-2 border-gray-200">
+          <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-lg shadow-slate-200/40 backdrop-blur-md">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-700">
                 📋 {sortedOrders.length} colis {sortedOrders.length !== orders.length && `sur ${orders.length}`}
@@ -454,13 +473,14 @@ export default function ExpressAgence() {
               const isTropNotifie = order.nombreNotifications > 5;
 
               return (
-                <div key={order.id} className={`card hover:shadow-lg transition-shadow ${
-                  isUrgent ? 'border-l-4 border-red-500 bg-red-50' :
-                  isTropNotifie ? 'border-l-4 border-orange-500 bg-orange-50' :
-                  isAttention ? 'border-l-4 border-yellow-500 bg-yellow-50' :
-                  order.nombreNotifications > 0 ? 'border-l-4 border-blue-500' :
-                  'border-l-4 border-gray-300'
+                <div key={order.id} className={`relative overflow-hidden rounded-[1.75rem] border p-4 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl sm:p-5 ${
+                  isUrgent ? 'border-red-200 bg-gradient-to-br from-white to-red-50/90' :
+                  isTropNotifie ? 'border-orange-200 bg-gradient-to-br from-white to-orange-50/90' :
+                  isAttention ? 'border-amber-200 bg-gradient-to-br from-white to-amber-50/80' :
+                  order.nombreNotifications > 0 ? 'border-blue-100 bg-gradient-to-br from-white to-blue-50/50' :
+                  'border-slate-100 bg-white/90'
                 }`}>
+              <div className={`absolute inset-y-0 left-0 w-1.5 ${isUrgent ? 'bg-red-500' : isTropNotifie ? 'bg-orange-500' : isAttention ? 'bg-amber-400' : order.nombreNotifications > 0 ? 'bg-blue-500' : 'bg-slate-300'}`} />
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Informations client - 4 colonnes */}
                 <div className="lg:col-span-4">
@@ -531,7 +551,7 @@ export default function ExpressAgence() {
                 </div>
 
                 {/* Stats de suivi - 3 colonnes */}
-                <div className="lg:col-span-3 border-l pl-4">
+                <div className="border-slate-100 lg:col-span-3 lg:border-l lg:pl-4">
                   <p className="text-xs font-medium text-gray-500 uppercase mb-2">Suivi</p>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -579,7 +599,7 @@ export default function ExpressAgence() {
                 </div>
 
                 {/* Dernière note - 3 colonnes */}
-                <div className="lg:col-span-3 border-l pl-4">
+                <div className="border-slate-100 lg:col-span-3 lg:border-l lg:pl-4">
                   <p className="text-xs font-medium text-gray-500 uppercase mb-2">Dernière note</p>
                   {order.derniereNotification?.note ? (
                     <div className="bg-gray-50 p-2 rounded text-sm italic">
@@ -606,7 +626,7 @@ export default function ExpressAgence() {
                     <>
                       <button
                         onClick={() => handleNotifier(order)}
-                        className="btn btn-primary btn-sm flex items-center justify-center gap-2"
+                        className="btn flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-fuchsia-700"
                       >
                         <Bell size={16} />
                         Notifier
@@ -614,7 +634,7 @@ export default function ExpressAgence() {
                       <button
                         onClick={() => handleConfirmerRetrait(order.id)}
                         disabled={confirmerRetraitMutation.isPending}
-                        className="btn btn-success btn-sm flex items-center justify-center gap-2"
+                        className="btn flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-600 hover:to-teal-700"
                       >
                         <CheckCircle2 size={16} />
                         Client a retiré
@@ -662,14 +682,17 @@ export default function ExpressAgence() {
 
       {/* Modal de notification */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Bell className="text-primary-600" />
-              Notifier le client
-            </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/60 bg-white p-5 shadow-2xl shadow-slate-950/30 sm:p-6">
+            <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 p-4 text-white shadow-lg shadow-rose-500/20">
+              <span className="rounded-xl bg-white/15 p-2"><Bell size={20} /></span>
+              <div>
+                <h2 className="text-xl font-black">Notifier le client</h2>
+                <p className="text-xs text-orange-50">Ajoutez une note de suivi si nécessaire</p>
+              </div>
+            </div>
 
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="mb-4 rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/80 to-violet-50/60 p-4">
               <p className="font-semibold">{selectedOrder.clientNom}</p>
               <div className="flex items-center gap-2 mt-1">
                 <Phone size={16} className="text-primary-400" />

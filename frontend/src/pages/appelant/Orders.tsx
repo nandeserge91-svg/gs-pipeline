@@ -340,24 +340,29 @@ export default function Orders() {
   }, [totalOrders, previousCount]);
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+    <div className="space-y-4 px-1 sm:space-y-6 sm:px-0">
       {/* Header responsive */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 truncate">
-            📞 À appeler
+      <div className="relative flex flex-col gap-4 overflow-hidden rounded-[2rem] border border-white/20 bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-900 p-5 text-white shadow-2xl shadow-indigo-950/20 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-violet-500/25 blur-3xl" />
+        <div className="relative min-w-0 flex-1">
+          <h1 className="flex items-center gap-3 text-xl font-black tracking-tight sm:text-2xl md:text-3xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-950/30 ring-1 ring-white/25">
+              <Phone size={22} />
+            </span>
+            <span className="truncate">À appeler</span>
           </h1>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">Commandes en attente</p>
+          <p className="ml-14 mt-1 text-xs text-sky-100/80 sm:text-sm">Votre file d’appels, claire et priorisée</p>
         </div>
         
         {/* Compteur et actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="relative flex items-center gap-3 sm:gap-4">
           {ordersData && (
-            <div className="text-center sm:text-right flex-shrink-0">
-              <p className="text-lg sm:text-2xl font-bold text-primary-600">{totalOrders}</p>
-              <p className="text-[10px] sm:text-sm text-gray-600 whitespace-nowrap">commande(s)</p>
+            <div className="flex-shrink-0 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-center shadow-inner backdrop-blur-md sm:text-right">
+              <p className="text-lg font-black text-white sm:text-2xl">{totalOrders}</p>
+              <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-sky-100/75 sm:text-xs">commande(s)</p>
               {(canPrioritize || canDeleteOrders) && selectedOrderIds.length > 0 && (
-                <p className="text-[10px] sm:text-sm text-green-600 font-medium mt-0.5">
+                <p className="mt-0.5 text-[10px] font-semibold text-emerald-300 sm:text-xs">
                   {selectedOrderIds.length} sélect.
                 </p>
               )}
@@ -367,12 +372,12 @@ export default function Orders() {
           {/* Actions - Plus compactes sur mobile */}
           <div className="flex flex-col items-end gap-1.5 sm:gap-2">
             {isFetching ? (
-              <span className="text-[10px] sm:text-sm text-gray-500 flex items-center gap-1">
+              <span className="flex items-center gap-1 text-[10px] text-sky-100/80 sm:text-sm">
                 <RefreshCw size={14} className="animate-spin" />
                 <span className="hidden sm:inline">Actualisation...</span>
               </span>
             ) : (
-              <span className="text-[10px] sm:text-xs text-gray-400">
+              <span className="text-[10px] text-sky-100/60 sm:text-xs">
                 {secondsSinceUpdate}s
               </span>
             )}
@@ -381,7 +386,7 @@ export default function Orders() {
             <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-end">
               <button
                 onClick={() => setShowCreateOrderModal(true)}
-                className="btn bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 shadow-md"
+                className="btn flex items-center gap-1 bg-white px-2 py-1.5 text-xs font-bold text-indigo-700 shadow-lg shadow-indigo-950/20 hover:bg-cyan-50 sm:px-4 sm:py-2 sm:text-sm"
                 title="Créer une commande"
               >
                 <Plus size={14} className="sm:w-4 sm:h-4" />
@@ -392,7 +397,7 @@ export default function Orders() {
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
-                className="btn btn-secondary flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                className="btn flex items-center gap-1 border border-white/15 bg-white/10 px-2 py-1.5 text-xs text-white shadow-sm backdrop-blur-md hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm"
                 title="Actualiser"
               >
                 <RefreshCw size={14} className={`sm:w-4 sm:h-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -442,7 +447,7 @@ export default function Orders() {
       </div>
 
       {/* Filtres - Version mobile optimisée */}
-      <div className="card p-3 sm:p-4 md:p-6">
+      <div className="rounded-[1.75rem] border border-indigo-100/80 bg-white/90 p-3 shadow-xl shadow-indigo-100/50 backdrop-blur-xl sm:p-4 md:p-5">
         <div className="flex flex-col gap-3">
           {/* Checkbox + Recherche sur une ligne sur mobile */}
           <div className="flex flex-col sm:flex-row gap-3">
@@ -463,13 +468,13 @@ export default function Orders() {
             
             {/* Recherche */}
             <div className="flex-1 relative min-w-0">
-              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400" size={17} />
               <input
                 type="text"
                 placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-8 sm:pl-10 text-sm pr-2"
+                className="input border-indigo-100 bg-slate-50/80 pl-9 pr-2 text-sm hover:border-indigo-200"
               />
             </div>
             
@@ -477,7 +482,7 @@ export default function Orders() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input text-sm w-full sm:w-auto sm:min-w-[140px]"
+              className="input w-full border-indigo-100 bg-slate-50/80 text-sm sm:w-auto sm:min-w-[150px]"
             >
               <option value="">📋 Tous</option>
               <option value="NOUVELLE">🆕 Nouvelle</option>
@@ -501,22 +506,23 @@ export default function Orders() {
           {/* Grid responsive - 1 colonne sur mobile, 2 sur tablette, 3 sur desktop */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {orders?.map((order: Order) => (
-            <div 
+            <div
               key={order.id} 
-              className={`card p-3 sm:p-4 hover:shadow-xl transition-all duration-300 ${
+              className={`group relative overflow-hidden rounded-[1.75rem] border bg-white/90 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-200/60 sm:p-4 ${
                 selectedOrderIds.includes(order.id) 
-                  ? 'ring-2 ring-primary-500 bg-primary-50/50 scale-[0.98]' 
+                  ? 'border-indigo-400 bg-indigo-50/90 ring-2 ring-indigo-400/60'
                   : order.sourcePage === 'WhatsApp'
-                  ? 'border-l-4 border-pink-500 bg-pink-50/40'
+                  ? 'border-pink-200 bg-gradient-to-br from-white to-pink-50/80'
                   : order.enAttentePaiement
-                  ? 'border-l-4 border-yellow-500 bg-yellow-50/30'
+                  ? 'border-amber-200 bg-gradient-to-br from-white to-amber-50/80'
                   : (order as any).renvoyeAAppelerAt 
-                  ? 'border-l-4 border-success-500 bg-success-50/30' 
-                  : ''
+                  ? 'border-emerald-200 bg-gradient-to-br from-white to-emerald-50/80'
+                  : 'border-white/80'
               }`}
             >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 opacity-90" />
               {/* Header compacte */}
-              <div className="flex items-start justify-between mb-2 sm:mb-3">
+              <div className="mb-2 flex items-start justify-between pt-1 sm:mb-3">
                 <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
                   {(canPrioritize || canDeleteOrders) && (
                     <input
@@ -528,7 +534,7 @@ export default function Orders() {
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-base sm:text-lg text-gray-900 truncate">{order.clientNom}</h3>
+                    <h3 className="truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">{order.clientNom}</h3>
                     <p className="text-xs sm:text-sm text-gray-600 truncate">{order.clientVille}</p>
                   </div>
                 </div>
@@ -569,9 +575,9 @@ export default function Orders() {
 
               {/* Infos - Version compacte */}
               <div className="space-y-1.5 sm:space-y-2 mb-3">
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                  <Phone size={14} className="text-gray-400 flex-shrink-0 sm:w-4 sm:h-4" />
-                  <a href={`tel:${order.clientTelephone}`} className="text-primary-600 hover:underline font-medium truncate">
+                <div className="flex items-center gap-1.5 rounded-xl bg-sky-50 px-2.5 py-2 text-xs sm:gap-2 sm:text-sm">
+                  <Phone size={14} className="flex-shrink-0 text-sky-500 sm:h-4 sm:w-4" />
+                  <a href={`tel:${order.clientTelephone}`} className="truncate font-semibold text-sky-700 hover:underline">
                     {order.clientTelephone}
                   </a>
                 </div>
@@ -581,7 +587,7 @@ export default function Orders() {
                   <span className="line-clamp-2">{order.produitNom}</span>
                 </div>
                 
-                <div className="flex items-center gap-4 text-xs sm:text-sm">
+                <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-xs sm:text-sm">
                   <div className="text-gray-700">
                     <span className="font-semibold">Qté:</span> <span className="text-primary-600 font-bold">{order.quantite}</span>
                   </div>
@@ -609,14 +615,14 @@ export default function Orders() {
               <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setSelectedOrder(order)}
-                  className="btn btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                  className="btn flex items-center justify-center gap-1 bg-gradient-to-r from-sky-500 to-blue-600 px-2 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/20 hover:from-sky-600 hover:to-blue-700 sm:gap-2 sm:px-4 sm:text-sm"
                 >
                   <Phone size={14} className="sm:w-[18px] sm:h-[18px]" />
                   <span>Traiter</span>
                 </button>
                 <button
                   onClick={() => handleProgrammerRdv(order)}
-                  className="btn bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                  className="btn flex items-center justify-center gap-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-2 py-2 text-xs font-bold text-white shadow-lg shadow-fuchsia-500/20 hover:from-violet-700 hover:to-fuchsia-700 sm:gap-2 sm:px-4 sm:text-sm"
                 >
                   <Calendar size={14} className="sm:w-[18px] sm:h-[18px]" />
                   <span>RDV</span>
@@ -635,7 +641,7 @@ export default function Orders() {
 
       {/* 🚀 PAGINATION - Responsive optimisée */}
       {totalOrders > 0 && (
-        <div className="mt-4 sm:mt-6 flex flex-col gap-3 p-3 sm:p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-elegant border border-gray-200">
+        <div className="mt-4 flex flex-col gap-3 rounded-[1.75rem] border border-indigo-100 bg-white/90 p-3 shadow-xl shadow-indigo-100/40 backdrop-blur-xl sm:mt-6 sm:p-4">
           {/* Compteur */}
           <div className="text-xs sm:text-sm text-center sm:text-left text-gray-600">
             <span className="font-semibold text-primary-600">{startIndex + 1}</span> à{' '}
@@ -695,11 +701,17 @@ export default function Orders() {
 
       {/* Modal de traitement */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full">
-            <h2 className="text-xl font-bold mb-4">Traiter l'appel</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-white/60 bg-white p-5 shadow-2xl shadow-slate-950/30 sm:p-6">
+            <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 p-4 text-white shadow-lg shadow-blue-500/20">
+              <span className="rounded-xl bg-white/15 p-2"><Phone size={20} /></span>
+              <div>
+                <h2 className="text-xl font-black">Traiter l'appel</h2>
+                <p className="text-xs text-sky-100">Choisissez la prochaine étape</p>
+              </div>
+            </div>
             
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
               <h3 className="font-semibold text-lg">{selectedOrder.clientNom}</h3>
               <p className="text-gray-600">{selectedOrder.clientVille}</p>
               <a href={`tel:${selectedOrder.clientTelephone}`} className="text-primary-600 text-lg font-medium">
