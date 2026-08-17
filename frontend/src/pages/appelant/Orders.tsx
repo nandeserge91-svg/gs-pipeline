@@ -508,19 +508,33 @@ export default function Orders() {
           {orders?.map((order: Order) => (
             <div
               key={order.id} 
-              className={`group relative overflow-hidden rounded-[1.75rem] border bg-white/90 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-200/60 sm:p-4 ${
+              className={`group relative overflow-hidden rounded-[1.75rem] border p-3 shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-4 ${
                 selectedOrderIds.includes(order.id) 
-                  ? 'border-indigo-400 bg-indigo-50/90 ring-2 ring-indigo-400/60'
+                  ? 'border-indigo-500 bg-gradient-to-br from-indigo-100 via-violet-50 to-blue-100 shadow-indigo-300/70 ring-2 ring-indigo-500/70'
                   : order.sourcePage === 'WhatsApp'
-                  ? 'border-pink-200 bg-gradient-to-br from-white to-pink-50/80'
+                  ? 'border-pink-400 bg-gradient-to-br from-pink-100 via-fuchsia-50 to-rose-100 shadow-pink-200/80 hover:shadow-pink-300/70'
                   : order.enAttentePaiement
-                  ? 'border-amber-200 bg-gradient-to-br from-white to-amber-50/80'
+                  ? 'border-amber-600 bg-gradient-to-br from-yellow-300 via-amber-200 to-yellow-400 shadow-amber-300/90 hover:shadow-amber-400/80'
                   : (order as any).renvoyeAAppelerAt 
-                  ? 'border-emerald-200 bg-gradient-to-br from-white to-emerald-50/80'
-                  : 'border-white/80'
+                  ? 'border-emerald-400 bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 shadow-emerald-200/80 hover:shadow-emerald-300/70'
+                  : order.status === 'A_APPELER'
+                  ? 'border-violet-400 bg-gradient-to-br from-violet-100 via-purple-50 to-indigo-100 shadow-violet-200/80 hover:shadow-violet-300/70'
+                  : 'border-sky-400 bg-gradient-to-br from-cyan-100 via-sky-50 to-blue-100 shadow-sky-200/80 hover:shadow-sky-300/70'
               }`}
             >
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 opacity-90" />
+              <div className={`absolute inset-x-0 top-0 h-1.5 ${
+                selectedOrderIds.includes(order.id)
+                  ? 'bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-500'
+                  : order.sourcePage === 'WhatsApp'
+                  ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-rose-500'
+                  : order.enAttentePaiement
+                  ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600'
+                  : (order as any).renvoyeAAppelerAt
+                  ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500'
+                  : order.status === 'A_APPELER'
+                  ? 'bg-gradient-to-r from-violet-500 via-purple-600 to-indigo-500'
+                  : 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600'
+              }`} />
               {/* Header compacte */}
               <div className="mb-2 flex items-start justify-between pt-1 sm:mb-3">
                 <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
@@ -575,7 +589,7 @@ export default function Orders() {
 
               {/* Infos - Version compacte */}
               <div className="space-y-1.5 sm:space-y-2 mb-3">
-                <div className="flex items-center gap-1.5 rounded-xl bg-sky-50 px-2.5 py-2 text-xs sm:gap-2 sm:text-sm">
+                <div className="flex items-center gap-1.5 rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-xs shadow-sm sm:gap-2 sm:text-sm">
                   <Phone size={14} className="flex-shrink-0 text-sky-500 sm:h-4 sm:w-4" />
                   <a href={`tel:${order.clientTelephone}`} className="truncate font-semibold text-sky-700 hover:underline">
                     {order.clientTelephone}
@@ -587,7 +601,7 @@ export default function Orders() {
                   <span className="line-clamp-2">{order.produitNom}</span>
                 </div>
                 
-                <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-xs sm:text-sm">
+                <div className="flex items-center gap-4 rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-xs shadow-sm sm:text-sm">
                   <div className="text-gray-700">
                     <span className="font-semibold">Qté:</span> <span className="text-primary-600 font-bold">{order.quantite}</span>
                   </div>
