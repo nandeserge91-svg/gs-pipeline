@@ -773,7 +773,7 @@ export default function Tournees() {
                 </div>
               ))}
               <p className="rounded-xl bg-slate-50 p-3 text-center text-xs text-gray-500">
-                Seules les livraisons locales sont concernées à partir de {unreturnedAlerts.seuilJours} jours chez le livreur.
+                Seules les livraisons locales remises depuis le {formatDate(unreturnedAlerts.dateDebutComptage)} sont concernées après {unreturnedAlerts.seuilJours} jours chez le livreur.
               </p>
             </div>
           </div>

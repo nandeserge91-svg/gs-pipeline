@@ -10,6 +10,8 @@ import { startOfAppDay, endOfAppDay, startOfNextAppDay } from '../utils/appDayBo
 router.use(authenticate);
 
 const TOURNEE_REFUSED_STATUSES = ['REFUSEE', 'ANNULEE_LIVRAISON'];
+const TOURNEE_ALERTS_START_YMD = '2026-08-03';
+const TOURNEE_ALERTS_START_DATE = startOfAppDay(TOURNEE_ALERTS_START_YMD);
 
 /** Colis encore concernés par la tournée (hors commandes annulées avant tournée ou repassées en VALIDEE). */
 function ordersPourComptageTournee(orders) {
@@ -100,6 +102,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
         const diffTime = now.getTime() - new Date(dateRemise).getTime();
         joursChezLivreur = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       }
+      const remiseEligibleAlerte = dateRemise && new Date(dateRemise) >= TOURNEE_ALERTS_START_DATE;
       
       // Colis restants (non livrés et non retournés)
       const colisRestants = list.tourneeStock?.colisRetourConfirme 
@@ -114,8 +117,8 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
         : Math.max(0, colisLocauxRemis - colisLocauxLivres - colisLocauxRetournes);
       
       // Alertes : uniquement les livraisons locales encore chez le livreur.
-      const alerteRetard = joursChezLivreur > 2 && colisLocauxRestants > 0; // Plus de 2 jours
-      const alerteCritique = joursChezLivreur > 5 && colisLocauxRestants > 0; // Plus de 5 jours
+      const alerteRetard = remiseEligibleAlerte && joursChezLivreur > 2 && colisLocauxRestants > 0; // Plus de 2 jours
+      const alerteCritique = remiseEligibleAlerte && joursChezLivreur > 5 && colisLocauxRestants > 0; // Plus de 5 jours
 
       return {
         ...list,
@@ -189,7 +192,11 @@ router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
         Math.floor((now.getTime() - new Date(dateRemise).getTime()) / (1000 * 60 * 60 * 24))
       );
 
-      if (colisNonRetournes === 0 || joursChezLivreur < seuilJours) continue;
+      if (
+        new Date(dateRemise) < TOURNEE_ALERTS_START_DATE
+        || colisNonRetournes === 0
+        || joursChezLivreur < seuilJours
+      ) continue;
 
       const deliverer = deliveryList.deliverer;
       const current = alertesParLivreur.get(deliverer.id) || {
@@ -214,6 +221,7 @@ router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
 
     res.json({
       seuilJours,
+      dateDebutComptage: TOURNEE_ALERTS_START_YMD,
       totalLivreurs: alertes.length,
       totalColis: alertes.reduce((sum, alerte) => sum + alerte.colisNonRetournes, 0),
       alertes
@@ -331,6 +339,7 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
     const colisLocauxRestants = dateRetour
       ? 0
       : Math.max(0, colisLocauxRemis - colisLocauxLivres - colisLocauxRetournes);
+    const remiseEligibleAlerte = dateRemise && new Date(dateRemise) >= TOURNEE_ALERTS_START_DATE;
     
     res.json({ 
       tournee: {
@@ -346,8 +355,8 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
         dateRemise,
         dateRetour,
         joursChezLivreur,
-        alerteRetard: joursChezLivreur > 2 && colisLocauxRestants > 0,
-        alerteCritique: joursChezLivreur > 5 && colisLocauxRestants > 0
+        alerteRetard: remiseEligibleAlerte && joursChezLivreur > 2 && colisLocauxRestants > 0,
+        alerteCritique: remiseEligibleAlerte && joursChezLivreur > 5 && colisLocauxRestants > 0
       }
     });
   } catch (error) {
