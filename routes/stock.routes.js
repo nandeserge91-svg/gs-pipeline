@@ -16,6 +16,11 @@ function ordersPourComptageTournee(orders) {
   return orders.filter((o) => !['VALIDEE', 'ANNULEE'].includes(o.status));
 }
 
+/** Seules les livraisons locales doivent alimenter les alertes de retour magasin. */
+function ordersLocalesPourAlerte(orders) {
+  return ordersPourComptageTournee(orders).filter((o) => o.deliveryType === 'LOCAL');
+}
+
 // GET /api/stock/tournees - Liste des tournées pour gestion stock
 router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK'), async (req, res) => {
   try {
@@ -78,6 +83,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
     const now = new Date();
     const tourneesWithStats = deliveryLists.map(list => {
       const ordresTournee = ordersPourComptageTournee(list.orders);
+      const ordresLocauxAlerte = ordersLocalesPourAlerte(list.orders);
       const totalOrders = ordresTournee.length;
       const livrees = ordresTournee.filter(o => o.status === 'LIVREE').length;
       const refusees = ordresTournee.filter(o => o.status === 'REFUSEE').length;
@@ -99,10 +105,17 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
       const colisRestants = list.tourneeStock?.colisRetourConfirme 
         ? 0 
         : Math.max(0, colisRemis - livrees - retournes);
+
+      const colisLocauxRemis = Math.min(colisRemisBrut, ordresLocauxAlerte.length);
+      const colisLocauxLivres = ordresLocauxAlerte.filter(o => o.status === 'LIVREE').length;
+      const colisLocauxRetournes = ordresLocauxAlerte.filter(o => o.status === 'RETOURNE').length;
+      const colisLocauxRestants = list.tourneeStock?.colisRetourConfirme
+        ? 0
+        : Math.max(0, colisLocauxRemis - colisLocauxLivres - colisLocauxRetournes);
       
-      // Alertes
-      const alerteRetard = joursChezLivreur > 2 && colisRestants > 0; // Plus de 2 jours
-      const alerteCritique = joursChezLivreur > 5 && colisRestants > 0; // Plus de 5 jours
+      // Alertes : uniquement les livraisons locales encore chez le livreur.
+      const alerteRetard = joursChezLivreur > 2 && colisLocauxRestants > 0; // Plus de 2 jours
+      const alerteCritique = joursChezLivreur > 5 && colisLocauxRestants > 0; // Plus de 5 jours
 
       return {
         ...list,
@@ -134,7 +147,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
   }
 });
 
-// GET /api/stock/tournees/alerts - Colis encore chez les livreurs depuis au moins 3 jours.
+// GET /api/stock/tournees/alerts - Colis locaux encore chez les livreurs depuis au moins 3 jours.
 // Cette alerte est globale et ne dépend pas de la plage de dates affichée dans l'interface.
 router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, res) => {
   try {
@@ -152,7 +165,7 @@ router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
               select: { id: true, nom: true, prenom: true, telephone: true }
             },
             orders: {
-              select: { id: true, status: true }
+              select: { id: true, status: true, deliveryType: true }
             }
           }
         }
@@ -162,7 +175,7 @@ router.get('/tournees/alerts', authorize('ADMIN', 'GESTIONNAIRE'), async (req, r
     const alertesParLivreur = new Map();
     for (const tourneeStock of tourneesActives) {
       const deliveryList = tourneeStock.deliveryList;
-      const ordresTournee = ordersPourComptageTournee(deliveryList.orders);
+      const ordresTournee = ordersLocalesPourAlerte(deliveryList.orders);
       const totalOrders = ordresTournee.length;
       const colisRemis = Math.min(tourneeStock.colisRemis || totalOrders, totalOrders);
       const colisLivres = ordresTournee.filter((order) =>
@@ -267,6 +280,7 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
     }
 
     const ordresTournee = ordersPourComptageTournee(deliveryList.orders);
+    const ordresLocauxAlerte = ordersLocalesPourAlerte(deliveryList.orders);
 
     // Calculer les produits par tournée
     const produitsSummary = {};
@@ -310,6 +324,13 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
     const colisRestants = dateRetour
       ? 0
       : Math.max(0, colisRemis - colisLivres - colisRetournes);
+
+    const colisLocauxRemis = Math.min(colisRemisBrut, ordresLocauxAlerte.length);
+    const colisLocauxLivres = ordresLocauxAlerte.filter(o => o.status === 'LIVREE').length;
+    const colisLocauxRetournes = ordresLocauxAlerte.filter(o => o.status === 'RETOURNE').length;
+    const colisLocauxRestants = dateRetour
+      ? 0
+      : Math.max(0, colisLocauxRemis - colisLocauxLivres - colisLocauxRetournes);
     
     res.json({ 
       tournee: {
@@ -325,8 +346,8 @@ router.get('/tournees/:id', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STO
         dateRemise,
         dateRetour,
         joursChezLivreur,
-        alerteRetard: joursChezLivreur > 2 && colisRestants > 0,
-        alerteCritique: joursChezLivreur > 5 && colisRestants > 0
+        alerteRetard: joursChezLivreur > 2 && colisLocauxRestants > 0,
+        alerteCritique: joursChezLivreur > 5 && colisLocauxRestants > 0
       }
     });
   } catch (error) {
