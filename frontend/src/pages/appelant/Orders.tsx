@@ -514,7 +514,7 @@ export default function Orders() {
                   : order.sourcePage === 'WhatsApp'
                   ? 'border-pink-400 bg-gradient-to-br from-pink-100 via-fuchsia-50 to-rose-100 shadow-pink-200/80 hover:shadow-pink-300/70'
                   : order.enAttentePaiement
-                  ? 'border-amber-600 bg-gradient-to-br from-yellow-300 via-amber-200 to-yellow-400 shadow-amber-300/90 hover:shadow-amber-400/80'
+                  ? 'border-amber-400 bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100 shadow-amber-200/80 hover:shadow-amber-300/70'
                   : (order as any).renvoyeAAppelerAt 
                   ? 'border-emerald-400 bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 shadow-emerald-200/80 hover:shadow-emerald-300/70'
                   : order.status === 'A_APPELER'
@@ -528,7 +528,7 @@ export default function Orders() {
                   : order.sourcePage === 'WhatsApp'
                   ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-rose-500'
                   : order.enAttentePaiement
-                  ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600'
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400'
                   : (order as any).renvoyeAAppelerAt
                   ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500'
                   : order.status === 'A_APPELER'
