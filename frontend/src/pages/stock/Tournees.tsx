@@ -665,7 +665,7 @@ export default function Tournees() {
               type="button"
               onClick={() => setUnreturnedAlertsOpen(true)}
               className="inline-flex w-fit items-center gap-2 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-orange-50 px-4 py-2.5 text-left text-rose-800 shadow-lg shadow-rose-100 transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-xl"
-              aria-label={`Ouvrir les alertes : ${unreturnedAlerts.totalColis} colis non retournés`}
+              aria-label={`Ouvrir les alertes : ${unreturnedAlerts.totalColis} colis locaux non retournés`}
             >
               <span className="relative rounded-xl bg-rose-100 p-2 text-rose-700">
                 <BellRing size={20} className="animate-bounce motion-reduce:animate-none" />
@@ -674,8 +674,8 @@ export default function Tournees() {
                 </span>
               </span>
               <span>
-                <span className="block text-xs font-medium text-rose-600">Retours en retard</span>
-                <span className="block font-bold">{unreturnedAlerts.totalColis} colis chez les livreurs</span>
+                <span className="block text-xs font-medium text-rose-600">Retours locaux en retard</span>
+                <span className="block font-bold">{unreturnedAlerts.totalColis} colis locaux chez les livreurs</span>
               </span>
             </button>
           )}
@@ -702,7 +702,7 @@ export default function Tournees() {
           </div>
           <div className="rounded-xl border border-yellow-200/80 bg-gradient-to-br from-yellow-50 to-lime-100/70 px-4 py-2 shadow-sm shadow-yellow-100">
             <p className="text-xs text-gray-600 flex items-center gap-1">
-              <AlertTriangle size={12} /> Retards
+              <AlertTriangle size={12} /> Retards locaux
             </p>
             <p className="text-xl font-bold text-yellow-600">
               {filteredTournees.filter((t: any) => t.stats.alerteRetard).length}
@@ -710,7 +710,7 @@ export default function Tournees() {
           </div>
           <div className="rounded-xl border border-rose-200/80 bg-gradient-to-br from-rose-50 to-pink-100/70 px-4 py-2 shadow-sm shadow-rose-100">
             <p className="text-xs text-gray-600 flex items-center gap-1">
-              <AlertCircle size={12} /> Critiques
+              <AlertCircle size={12} /> Critiques locales
             </p>
             <p className="text-xl font-bold text-red-600">
               {filteredTournees.filter((t: any) => t.stats.alerteCritique).length}
@@ -736,9 +736,9 @@ export default function Tournees() {
               <div className="flex items-start gap-3">
                 <span className="rounded-xl bg-white/15 p-2"><BellRing size={24} /></span>
                 <div>
-                  <h2 id="unreturned-alerts-title" className="text-xl font-bold">Colis non retournés</h2>
+                  <h2 id="unreturned-alerts-title" className="text-xl font-bold">Colis locaux non retournés</h2>
                   <p className="mt-1 text-sm text-rose-50">
-                    {unreturnedAlerts.totalColis} colis chez {unreturnedAlerts.totalLivreurs} livreur(s)
+                    {unreturnedAlerts.totalColis} colis locaux chez {unreturnedAlerts.totalLivreurs} livreur(s)
                   </p>
                 </div>
               </div>
@@ -773,7 +773,7 @@ export default function Tournees() {
                 </div>
               ))}
               <p className="rounded-xl bg-slate-50 p-3 text-center text-xs text-gray-500">
-                L’alerte apparaît à partir de {unreturnedAlerts.seuilJours} jours chez le livreur.
+                Seules les livraisons locales remises depuis le {formatDate(unreturnedAlerts.dateDebutComptage)} sont concernées après {unreturnedAlerts.seuilJours} jours chez le livreur.
               </p>
             </div>
           </div>
