@@ -140,7 +140,7 @@ export default function Layout({ children }: LayoutProps) {
             <Zap size={18} fill="currentColor" />
           </span>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-white">GS Pipeline</h1>
+            <h1 className="text-lg font-black tracking-tight text-white">AFGestion</h1>
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-sky-300">{roleLabel}</p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Zap size={21} fill="currentColor" />
               </span>
               <div>
-                <h1 className="text-xl font-black tracking-tight text-white">GS Pipeline</h1>
+                <h1 className="text-xl font-black tracking-tight text-white">AFGestion</h1>
                 <span className="mt-1 inline-flex rounded-full border border-sky-400/20 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300">
                   {roleLabel}
                 </span>
