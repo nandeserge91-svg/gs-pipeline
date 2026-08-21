@@ -512,7 +512,7 @@ export default function Orders() {
                 selectedOrderIds.includes(order.id) 
                   ? 'border-indigo-500 bg-gradient-to-br from-indigo-100 via-violet-50 to-blue-100 shadow-indigo-300/70 ring-2 ring-indigo-500/70'
                   : isRetargetingOrder(order)
-                  ? 'border-rose-400 bg-gradient-to-br from-rose-100 via-pink-50 to-fuchsia-100 shadow-rose-200/80 ring-1 ring-rose-200/70 hover:shadow-rose-300/70'
+                  ? 'border-rose-500 bg-gradient-to-br from-rose-200 via-pink-100 to-fuchsia-100 shadow-rose-300/80 ring-2 ring-rose-300/70 hover:shadow-rose-400/70'
                   : order.sourcePage === 'WhatsApp'
                   ? 'border-pink-400 bg-gradient-to-br from-pink-100 via-fuchsia-50 to-rose-100 shadow-pink-200/80 hover:shadow-pink-300/70'
                   : order.enAttentePaiement
@@ -598,7 +598,11 @@ export default function Orders() {
 
               {/* Infos - Version compacte */}
               <div className="space-y-1.5 sm:space-y-2 mb-3">
-                <div className="flex items-center gap-1.5 rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-xs shadow-sm sm:gap-2 sm:text-sm">
+                <div className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs shadow-sm sm:gap-2 sm:text-sm ${
+                  isRetargetingOrder(order)
+                    ? 'border-rose-300 bg-rose-100/90'
+                    : 'border-white/80 bg-white/65'
+                }`}>
                   <Phone size={14} className="flex-shrink-0 text-sky-500 sm:h-4 sm:w-4" />
                   <a href={`tel:${order.clientTelephone}`} className="truncate font-semibold text-sky-700 hover:underline">
                     {order.clientTelephone}
@@ -610,7 +614,11 @@ export default function Orders() {
                   <span className="line-clamp-2">{order.produitNom}</span>
                 </div>
                 
-                <div className="flex items-center gap-4 rounded-xl border border-white/80 bg-white/65 px-2.5 py-2 text-xs shadow-sm sm:text-sm">
+                <div className={`flex items-center gap-4 rounded-xl border px-2.5 py-2 text-xs shadow-sm sm:text-sm ${
+                  isRetargetingOrder(order)
+                    ? 'border-rose-300 bg-rose-100/90'
+                    : 'border-white/80 bg-white/65'
+                }`}>
                   <div className="text-gray-700">
                     <span className="font-semibold">Qté:</span> <span className="text-primary-600 font-bold">{order.quantite}</span>
                   </div>
