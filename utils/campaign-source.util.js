@@ -1,5 +1,7 @@
 const TAG_SUFFIX_PATTERN = /-(TIK|TIKTOK|FB|FACEBOOK|RET|RETARGETING)$/i;
 
+export const RETARGETING_DISCOUNT_AMOUNT = 1000;
+
 /**
  * Sépare la balise publicitaire du code produit utilisé pour le stock.
  * Exemple : SCARGEL-TIK reste traçable comme TikTok, mais recherche SCARGEL.
@@ -33,15 +35,32 @@ export function classifyOrderTrafficSource({ campaignSource, sourcePage }) {
   const campaign = String(campaignSource || '').toLowerCase();
   const page = String(sourcePage || '').toLowerCase();
 
-  if (campaign.includes('retarget') || /-(?:ret|retargeting)\/?$/.test(page)) {
+  if (campaign.includes('retarget') || /-(?:ret|retargeting)(?:\/|[?#\s]|$)/.test(page)) {
     return 'retargeting';
   }
 
-  if (campaign.includes('tiktok') || /-(?:tik|tiktk|tiktok)$/.test(page)) {
+  if (campaign.includes('tiktok') || /-(?:tik|tiktk|tiktok)(?:\/|[?#\s]|$)/.test(page)) {
     return 'tiktok';
   }
 
   // Toute commande sans balise spécifique est Facebook normal,
   // y compris les anciennes commandes sans source enregistrée.
   return 'facebook';
+}
+
+/**
+ * Applique la remise Retargeting une seule fois sur le montant total de la commande.
+ */
+export function applyRetargetingDiscount(amount, campaignSource) {
+  const numericAmount = Number(amount);
+
+  if (!Number.isFinite(numericAmount)) {
+    return 0;
+  }
+
+  if (String(campaignSource || '').toLowerCase().includes('retarget')) {
+    return Math.max(0, numericAmount - RETARGETING_DISCOUNT_AMOUNT);
+  }
+
+  return numericAmount;
 }

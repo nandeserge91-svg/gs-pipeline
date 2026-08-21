@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Filter, Trash2, Calendar, Package, X, RefreshCw, RotateCcw, MessageSquare, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
 import { ordersApi, productsApi, usersApi } from '@/lib/api';
-import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
+import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor, isRetargetingOrder } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -401,6 +401,11 @@ export default function Orders() {
                           {order.sourcePage === 'WhatsApp' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800" title="Commande WhatsApp">
                               💬 WhatsApp
+                            </span>
+                          )}
+                          {isRetargetingOrder(order) && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-violet-300 bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800" title="Commande Retargeting : remise automatique de 1 000 F">
+                              🏷️ RET −1 000 F
                             </span>
                           )}
                           {order.enAttentePaiement && (
