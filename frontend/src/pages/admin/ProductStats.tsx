@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Package, TrendingUp, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 
-type TrafficSourceFilter = 'all' | 'facebook' | 'tiktok';
+type TrafficSourceFilter = 'all' | 'facebook' | 'retargeting' | 'tiktok';
 
 interface SourceBreakdown {
   facebook: number;
+  retargeting: number;
   tiktok: number;
 }
 
@@ -17,6 +18,7 @@ interface ProductStat {
   stockExpress: number;
   totalCommandes: number;
   totalFacebook: number;
+  totalRetargeting: number;
   totalTikTok: number;
   totalAutresSources: number;
   totalEnAttente: number;
@@ -34,6 +36,7 @@ interface ProductStat {
 interface ProductStatsTotals {
   totalCommandes: number;
   totalFacebook: number;
+  totalRetargeting: number;
   totalTikTok: number;
   totalAutresSources: number;
   totalEnAttente: number;
@@ -59,6 +62,7 @@ export default function ProductStats() {
   const [totals, setTotals] = useState<ProductStatsTotals>({
     totalCommandes: 0,
     totalFacebook: 0,
+    totalRetargeting: 0,
     totalTikTok: 0,
     totalAutresSources: 0,
     totalEnAttente: 0,
@@ -78,6 +82,7 @@ export default function ProductStats() {
   const [trafficSource, setTrafficSource] = useState<TrafficSourceFilter>('all');
   const [sourceBreakdown, setSourceBreakdown] = useState<SourceBreakdown>({
     facebook: 0,
+    retargeting: 0,
     tiktok: 0
   });
 
@@ -95,6 +100,7 @@ export default function ProductStats() {
       setTotals(response.data.totals);
       setSourceBreakdown(response.data.sourceBreakdown || {
         facebook: response.data.totals.totalFacebook,
+        retargeting: response.data.totals.totalRetargeting,
         tiktok: response.data.totals.totalTikTok
       });
       setLastUpdate(new Date());
@@ -132,7 +138,9 @@ export default function ProductStats() {
   };
 
   const activeSourceLabel = trafficSource === 'facebook'
-    ? 'Facebook'
+    ? 'Facebook normal'
+    : trafficSource === 'retargeting'
+      ? 'Facebook Retargeting'
     : trafficSource === 'tiktok'
       ? 'TikTok'
       : 'Toutes les sources';
@@ -229,7 +237,19 @@ export default function ProductStats() {
                   : 'text-blue-700 hover:bg-blue-50'
               }`}
             >
-              Facebook ({sourceBreakdown.facebook})
+              Facebook normal ({sourceBreakdown.facebook})
+            </button>
+            <button
+              type="button"
+              aria-pressed={trafficSource === 'retargeting'}
+              onClick={() => setTrafficSource('retargeting')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                trafficSource === 'retargeting'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-amber-700 hover:bg-amber-50'
+              }`}
+            >
+              Facebook Retargeting ({sourceBreakdown.retargeting})
             </button>
             <button
               type="button"
@@ -452,18 +472,29 @@ export default function ProductStats() {
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Commandes par source publicitaire</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Répartition Facebook / TikTok sur la période sélectionnée
+            Répartition Facebook normal / Facebook Retargeting / TikTok sur la période sélectionnée
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Facebook</p>
+                <p className="text-sm font-medium text-blue-700">Facebook normal</p>
                 <p className="text-3xl font-bold text-blue-900 mt-2">{sourceBreakdown.facebook}</p>
                 <p className="text-xs text-blue-600 mt-1">commandes</p>
               </div>
               <div className="h-11 w-11 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">f</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-700">Facebook Retargeting</p>
+                <p className="text-3xl font-bold text-amber-900 mt-2">{sourceBreakdown.retargeting}</p>
+                <p className="text-xs text-amber-600 mt-1">commandes</p>
+              </div>
+              <div className="h-11 w-11 rounded-full bg-amber-500 text-white flex items-center justify-center text-xl font-bold">↻</div>
             </div>
           </div>
 
@@ -512,7 +543,8 @@ export default function ProductStats() {
                   </th>
                   {trafficSource === 'all' && (
                     <>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-blue-700 bg-blue-50">Facebook</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-blue-700 bg-blue-50">Facebook normal</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-amber-700 bg-amber-50">Retargeting</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-pink-700 bg-pink-50">TikTok</th>
                     </>
                   )}
@@ -562,6 +594,9 @@ export default function ProductStats() {
                         <>
                           <td className="text-center py-3 px-4 bg-blue-50">
                             <span className="font-semibold text-sm text-blue-700">{product.totalFacebook}</span>
+                          </td>
+                          <td className="text-center py-3 px-4 bg-amber-50">
+                            <span className="font-semibold text-sm text-amber-700">{product.totalRetargeting}</span>
                           </td>
                           <td className="text-center py-3 px-4 bg-pink-50">
                             <span className="font-semibold text-sm text-pink-700">{product.totalTikTok}</span>

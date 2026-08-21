@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Phone, Search, RefreshCw, Truck, Zap, Clock, Calendar, Edit2, Trash2, ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ordersApi, rdvApi } from '@/lib/api';
-import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
+import { formatCurrency, formatDateTime, getStatusLabel, getStatusColor, isRetargetingOrder } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 import ExpeditionModal from '@/components/modals/ExpeditionModal';
 import ExpressModal from '@/components/modals/ExpressModal';
@@ -570,6 +570,11 @@ export default function Orders() {
                     {order.sourcePage === 'WhatsApp' && (
                       <span className="badge bg-pink-100 text-pink-700 border border-pink-300 text-[10px] sm:text-xs flex items-center gap-0.5 px-1.5 py-0.5">
                         💬 <span className="hidden sm:inline">WhatsApp</span>
+                      </span>
+                    )}
+                    {isRetargetingOrder(order) && (
+                      <span className="badge flex items-center gap-0.5 border border-violet-300 bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-800 sm:text-xs" title="Remise Retargeting automatique de 1 000 F">
+                        🏷️ <span>RET −1 000 F</span>
                       </span>
                     )}
                     {(order as any).renvoyeAAppelerAt && (

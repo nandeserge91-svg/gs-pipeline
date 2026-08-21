@@ -1,4 +1,16 @@
-import type { OrderStatus } from '@/types';
+import type { Order, OrderStatus } from '@/types';
+
+export const isRetargetingOrder = (
+  order: Pick<Order, 'sourceCampagne' | 'sourcePage' | 'produitPage'>
+): boolean => {
+  const campaign = String(order.sourceCampagne || '').toLowerCase();
+  const page = [order.sourcePage, order.produitPage]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return campaign.includes('retarget') || /-(?:ret|retargeting)(?:\/|\s|$)/.test(page);
+};
 
 export const getStatusLabel = (status: OrderStatus): string => {
   const labels: Record<OrderStatus, string> = {

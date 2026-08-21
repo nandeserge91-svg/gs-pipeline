@@ -2,7 +2,12 @@ import express from 'express';
 
 import { body, validationResult } from 'express-validator';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
-import { parseTaggedProductSource } from '../utils/campaign-source.util.js';
+import {
+  applyRetargetingDiscount,
+  classifyOrderTrafficSource,
+  parseTaggedProductSource,
+  RETARGETING_DISCOUNT_AMOUNT,
+} from '../utils/campaign-source.util.js';
 import { sendSMS, smsTemplates } from '../services/sms.service.js';
 
 const router = express.Router();
@@ -90,9 +95,32 @@ router.post('/make', verifyApiKey, [
       source
     });
 
-    // 1. Chercher le produit via product_key (qui correspond au champ "code")
-    const product = await prisma.product.findUnique({
-      where: { code: product_key }
+    // 1. Retirer une éventuelle balise publicitaire avant la recherche produit.
+    const normalizedProductKey = String(product_key).replace(/^\d+_/, '').trim();
+    const sourceAttribution = parseTaggedProductSource(normalizedProductKey);
+    const hasTaggedProductSource = sourceAttribution.productKey !== sourceAttribution.originalTag;
+    const trafficSource = classifyOrderTrafficSource({
+      campaignSource: [
+        hasTaggedProductSource ? sourceAttribution.campaignSource : null,
+        campaign_source,
+        campaign_name,
+        make_scenario_name,
+      ].filter(Boolean).join(' '),
+      sourcePage: [product_key, source, page_url].filter(Boolean).join(' '),
+    });
+    const resolvedCampaignSource = trafficSource === 'retargeting'
+      ? 'Facebook Retargeting'
+      : hasTaggedProductSource
+        ? sourceAttribution.campaignSource
+        : campaign_source || campaign_name || make_scenario_name || 'Make';
+
+    const product = await prisma.product.findFirst({
+      where: {
+        code: {
+          equals: sourceAttribution.productKey,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (!product) {
@@ -106,7 +134,8 @@ router.post('/make', verifyApiKey, [
 
     // 2. Calculer les montants avec prix variantes
     const orderQuantity = parseInt(quantity) || 1;
-    const totalAmount = calculatePriceByQuantity(product, orderQuantity);
+    const baseTotalAmount = calculatePriceByQuantity(product, orderQuantity);
+    const totalAmount = applyRetargetingDiscount(baseTotalAmount, resolvedCampaignSource);
     
     console.log('💰 Calcul prix:', {
       quantité: orderQuantity,
@@ -114,6 +143,7 @@ router.post('/make', verifyApiKey, [
       prix2: product.prix2,
       prix3: product.prix3,
       prixUnitaire: product.prixUnitaire,
+      remiseRetargeting: resolvedCampaignSource === 'Facebook Retargeting' ? RETARGETING_DISCOUNT_AMOUNT : 0,
       montantTotal: totalAmount
     });
 
@@ -139,8 +169,8 @@ router.post('/make', verifyApiKey, [
         montant: totalAmount,
         
         // Informations marketing
-        sourceCampagne: campaign_source || campaign_name || make_scenario_name || 'Make',
-        sourcePage: source || page_url || make_scenario_name || null,
+        sourceCampagne: resolvedCampaignSource,
+        sourcePage: source || page_url || (hasTaggedProductSource ? sourceAttribution.originalTag : make_scenario_name) || null,
         
         // Statut initial
         status: 'NOUVELLE'
@@ -290,6 +320,7 @@ router.post('/google-sheet', [
     // 🆕 NETTOYAGE DU TAG : Enlever le préfixe de quantité (1_, 2_, 3_)
     let searchTerm = tag || offre;
     let cleanedSearchTerm = searchTerm;
+    let sourceAttribution = parseTaggedProductSource('');
     
     if (searchTerm) {
       // Supprimer le préfixe numérique (1_, 2_, 3_) si présent
@@ -303,7 +334,7 @@ router.post('/google-sheet', [
 
       // Retirer uniquement la balise publicitaire avant la recherche produit.
       // SCARGEL-TIK trouve donc le produit SCARGEL, sans produit ni stock séparé.
-      const sourceAttribution = parseTaggedProductSource(cleanedSearchTerm);
+      sourceAttribution = parseTaggedProductSource(cleanedSearchTerm);
       cleanedSearchTerm = sourceAttribution.productKey;
       
       console.log('📥 Tag reçu:', searchTerm);
@@ -360,10 +391,12 @@ router.post('/google-sheet', [
     const orderQuantity = parseInt(quantite) || 1;
     
     // Si aucun produit trouvé, utiliser un produit par défaut ou créer sans produit
+    const baseAmount = product ? calculatePriceByQuantity(product, orderQuantity) : 0;
+    const discountedAmount = applyRetargetingDiscount(baseAmount, sourceAttribution.campaignSource);
     const productData = product ? {
       produitNom: product.nom,
       productId: product.id,
-      montant: calculatePriceByQuantity(product, orderQuantity),
+      montant: discountedAmount,
       quantite: orderQuantity
     } : {
       produitNom: offre || tag || 'Produit non spécifié',
@@ -379,6 +412,7 @@ router.post('/google-sheet', [
         prix2: product.prix2,
         prix3: product.prix3,
         prixUnitaire: product.prixUnitaire,
+        remiseRetargeting: sourceAttribution.campaignSource === 'Facebook Retargeting' ? RETARGETING_DISCOUNT_AMOUNT : 0,
         montantTotal: productData.montant
       });
     }
@@ -401,7 +435,7 @@ router.post('/google-sheet', [
         ...productData,
         
         // Source
-        sourceCampagne: parseTaggedProductSource(tag || offre).campaignSource || 'Google Sheet - Bee Venom',
+        sourceCampagne: sourceAttribution.campaignSource || 'Google Sheet - Bee Venom',
         sourcePage: tag || offre || null,
         
         // 🆕 Notes (taille, code, etc.)

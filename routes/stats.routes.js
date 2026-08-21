@@ -500,7 +500,7 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
   try {
     const { date, startDate, endDate, source } = req.query;
     const requestedSource = typeof source === 'string' ? source.toLowerCase() : 'all';
-    const sourceFilter = ['all', 'facebook', 'tiktok'].includes(requestedSource)
+    const sourceFilter = ['all', 'facebook', 'retargeting', 'tiktok'].includes(requestedSource)
       ? requestedSource
       : 'all';
 
@@ -563,10 +563,10 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
     // Les compteurs des boutons restent visibles même lorsqu'une source est filtrée.
     const sourceBreakdown = ordersWithTrafficSource.reduce((acc, order) => {
       if (order.trafficSource === 'facebook') acc.facebook++;
+      else if (order.trafficSource === 'retargeting') acc.retargeting++;
       else if (order.trafficSource === 'tiktok') acc.tiktok++;
-      else acc.other++;
       return acc;
-    }, { facebook: 0, tiktok: 0, other: 0 });
+    }, { facebook: 0, retargeting: 0, tiktok: 0 });
 
     const filteredOrders = sourceFilter === 'all'
       ? ordersWithTrafficSource
@@ -590,6 +590,7 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
           stockExpress: order.product?.stockExpress || 0,
           totalCommandes: 0,
           totalFacebook: 0,
+          totalRetargeting: 0,
           totalTikTok: 0,
           totalAutresSources: 0,
           totalEnAttente: 0,
@@ -612,6 +613,8 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
 
       if (order.trafficSource === 'tiktok') {
         stats.totalTikTok++;
+      } else if (order.trafficSource === 'retargeting') {
+        stats.totalRetargeting++;
       } else if (order.trafficSource === 'facebook') {
         stats.totalFacebook++;
       } else {
@@ -669,6 +672,7 @@ router.get('/products-by-date', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE
     const totals = {
       totalCommandes: result.reduce((sum, p) => sum + p.totalCommandes, 0),
       totalFacebook: result.reduce((sum, p) => sum + p.totalFacebook, 0),
+      totalRetargeting: result.reduce((sum, p) => sum + p.totalRetargeting, 0),
       totalTikTok: result.reduce((sum, p) => sum + p.totalTikTok, 0),
       totalAutresSources: result.reduce((sum, p) => sum + p.totalAutresSources, 0),
       totalEnAttente: result.reduce((sum, p) => sum + p.totalEnAttente, 0),

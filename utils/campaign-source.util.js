@@ -1,4 +1,6 @@
-const TAG_SUFFIX_PATTERN = /-(TIK|TIKTOK|FB|FACEBOOK)$/i;
+const TAG_SUFFIX_PATTERN = /-(TIK|TIKTOK|FB|FACEBOOK|RET|RETARGETING)$/i;
+
+export const RETARGETING_DISCOUNT_AMOUNT = 1000;
 
 /**
  * Sépare la balise publicitaire du code produit utilisé pour le stock.
@@ -12,12 +14,16 @@ export function parseTaggedProductSource(value) {
 
   if (suffixMatch) {
     productKey = originalTag.slice(0, -suffixMatch[0].length).trim();
-    campaignSource = /^TIK(?:TOK)?$/i.test(suffixMatch[1])
-      ? 'TikTok Ads'
-      : 'Facebook Ads';
+    if (/^TIK(?:TOK)?$/i.test(suffixMatch[1])) {
+      campaignSource = 'TikTok Ads';
+    } else if (/^RET(?:ARGETING)?$/i.test(suffixMatch[1])) {
+      campaignSource = 'Facebook Retargeting';
+    } else {
+      campaignSource = 'Facebook Ads';
+    }
   }
 
-  // Règle métier : toute commande sans balise TikTok vient de Facebook.
+  // Règle métier : sans balise TikTok ou Retargeting, la commande reste Facebook normal.
   if (!campaignSource) {
     campaignSource = 'Facebook Ads';
   }
@@ -29,11 +35,32 @@ export function classifyOrderTrafficSource({ campaignSource, sourcePage }) {
   const campaign = String(campaignSource || '').toLowerCase();
   const page = String(sourcePage || '').toLowerCase();
 
-  if (campaign.includes('tiktok') || /-(?:tik|tiktk|tiktok)$/.test(page)) {
+  if (campaign.includes('retarget') || /-(?:ret|retargeting)(?:\/|[?#\s]|$)/.test(page)) {
+    return 'retargeting';
+  }
+
+  if (campaign.includes('tiktok') || /-(?:tik|tiktk|tiktok)(?:\/|[?#\s]|$)/.test(page)) {
     return 'tiktok';
   }
 
-  // Toute commande qui n'est pas explicitement TikTok est Facebook,
+  // Toute commande sans balise spécifique est Facebook normal,
   // y compris les anciennes commandes sans source enregistrée.
   return 'facebook';
+}
+
+/**
+ * Applique la remise Retargeting une seule fois sur le montant total de la commande.
+ */
+export function applyRetargetingDiscount(amount, campaignSource) {
+  const numericAmount = Number(amount);
+
+  if (!Number.isFinite(numericAmount)) {
+    return 0;
+  }
+
+  if (String(campaignSource || '').toLowerCase().includes('retarget')) {
+    return Math.max(0, numericAmount - RETARGETING_DISCOUNT_AMOUNT);
+  }
+
+  return numericAmount;
 }
