@@ -511,6 +511,8 @@ export default function Orders() {
               className={`group relative overflow-hidden rounded-[1.75rem] border p-3 shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-4 ${
                 selectedOrderIds.includes(order.id) 
                   ? 'border-indigo-500 bg-gradient-to-br from-indigo-100 via-violet-50 to-blue-100 shadow-indigo-300/70 ring-2 ring-indigo-500/70'
+                  : isRetargetingOrder(order)
+                  ? 'border-rose-400 bg-gradient-to-br from-rose-100 via-pink-50 to-fuchsia-100 shadow-rose-200/80 ring-1 ring-rose-200/70 hover:shadow-rose-300/70'
                   : order.sourcePage === 'WhatsApp'
                   ? 'border-pink-400 bg-gradient-to-br from-pink-100 via-fuchsia-50 to-rose-100 shadow-pink-200/80 hover:shadow-pink-300/70'
                   : order.enAttentePaiement
@@ -525,6 +527,8 @@ export default function Orders() {
               <div className={`absolute inset-x-0 top-0 h-1.5 ${
                 selectedOrderIds.includes(order.id)
                   ? 'bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-500'
+                  : isRetargetingOrder(order)
+                  ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500'
                   : order.sourcePage === 'WhatsApp'
                   ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-rose-500'
                   : order.enAttentePaiement
@@ -573,7 +577,7 @@ export default function Orders() {
                       </span>
                     )}
                     {isRetargetingOrder(order) && (
-                      <span className="badge flex items-center gap-0.5 border border-violet-300 bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-800 sm:text-xs" title="Remise Retargeting automatique de 1 000 F">
+                      <span className="badge flex items-center gap-0.5 border border-rose-300 bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 sm:text-xs" title="Remise Retargeting automatique de 1 000 F">
                         🏷️ <span>RET −1 000 F</span>
                       </span>
                     )}

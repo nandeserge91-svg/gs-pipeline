@@ -386,14 +386,16 @@ export default function Orders() {
                   {filteredOrders?.map((order: Order) => (
                     <tr 
                       key={order.id} 
-                      className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        order.sourcePage === 'WhatsApp'
+                      className={`border-b border-gray-100 ${
+                        isRetargetingOrder(order)
+                          ? 'bg-rose-50 border-l-4 border-l-rose-500 hover:bg-rose-100'
+                          : order.sourcePage === 'WhatsApp'
                           ? 'bg-pink-50 border-l-4 border-l-pink-500'
                           : order.enAttentePaiement 
                           ? 'bg-yellow-50 border-l-4 border-l-yellow-500' 
                           : order.renvoyeAAppelerAt 
                           ? 'bg-green-50 border-l-4 border-l-green-500' 
-                          : ''
+                          : 'hover:bg-gray-50'
                       }`}
                     >
                       <td className="py-3 px-4 text-sm font-medium">
@@ -404,7 +406,7 @@ export default function Orders() {
                             </span>
                           )}
                           {isRetargetingOrder(order) && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-violet-300 bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800" title="Commande Retargeting : remise automatique de 1 000 F">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800" title="Commande Retargeting : remise automatique de 1 000 F">
                               🏷️ RET −1 000 F
                             </span>
                           )}
