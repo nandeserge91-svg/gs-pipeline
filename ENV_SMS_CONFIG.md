@@ -1,4 +1,47 @@
-# 📱 CONFIGURATION SMS8.io
+# 📱 CONFIGURATION SMS
+
+## Fournisseur actif : SMSEnvoie (téléphone Xiaomi1)
+
+Depuis le passage à SMSEnvoie, les SMS automatiques partent du téléphone Android
+**Xiaomi1** connecté à https://smsenvoie.com. SMS8.io reste disponible en secours.
+
+Variables Railway (service backend) :
+
+```env
+# Clé API SMSEnvoie (Tableau de bord SMSEnvoie → API). Dès qu'elle est renseignée,
+# SMSEnvoie devient le fournisseur actif.
+SMSENVOIE_API_KEY=sk_live_votre_cle
+
+# Téléphone utilisé, par son nom dans SMSEnvoie (Xiaomi1 par défaut)
+SMSENVOIE_DEVICE_NAME=Xiaomi1
+# ...ou par son identifiant exact (prioritaire sur le nom), facultatif
+# SMSENVOIE_DEVICE_ID=
+
+# Carte SIM du Xiaomi1 : 0 = SIM 1, 1 = SIM 2, vide = choix automatique SMSEnvoie
+SMSENVOIE_SIM_SLOT=0
+
+# Facultatif : forcer le fournisseur (SMSENVOIE ou SMS8). SMS8 = retour immédiat à l'ancien système.
+# SMS_PROVIDER=SMSENVOIE
+
+# Facultatif : réglages de la file d'envoi
+# SMSENVOIE_MIN_INTERVAL_MS=7000   # 1 requête toutes les 7 s (limite API : 10/min)
+# SMSENVOIE_MAX_AGE_MINUTES=720    # un SMS non parti après 12 h est abandonné
+# SMSENVOIE_TIMEOUT_MS=15000
+```
+
+Fonctionnement :
+- chaque SMS est enregistré dans `sms_logs` (statut `PENDING`, fournisseur `SMSEnvoie`),
+  puis la file l'envoie à SMSEnvoie, un toutes les 7 secondes au plus ;
+- les commandes et assignations n'attendent plus l'API SMS ;
+- si SMSEnvoie refuse temporairement (limite, réseau, clé, quota, téléphone introuvable),
+  le SMS reste en attente et repart automatiquement ; au-delà de 6 tentatives ou 12 h, il passe en `FAILED` ;
+- les SMS de test de l'administration sont tentés immédiatement pour afficher l'erreur éventuelle.
+
+Retour à SMS8 : ajouter `SMS_PROVIDER=SMS8` (les SMS déjà en file SMSEnvoie partent quand même).
+
+---
+
+# 📱 Ancienne configuration SMS8.io (secours)
 
 ## Variables d'environnement à ajouter
 

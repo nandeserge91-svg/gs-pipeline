@@ -1,5 +1,10 @@
 import prisma from '../config/prisma.js';
-import { generateSmsFromTemplate, sendSMS } from './sms.service.js';
+import {
+  generateSmsFromTemplate,
+  sendSMS,
+  SMS_ALREADY_HANDLED_STATUSES,
+  SMS_LOG_PROVIDER_FILTER
+} from './sms.service.js';
 
 export const MARKETING_REMINDER_DAYS = Object.freeze([3, 5, 7]);
 export const MARKETING_MAX_ATTEMPTS = 3;
@@ -215,8 +220,8 @@ export async function runMarketingRelaunches(options = {}) {
       where: {
         orderId: order.id,
         type: smsType,
-        status: 'SENT',
-        provider: { startsWith: 'SMS8' },
+        status: { in: SMS_ALREADY_HANDLED_STATUSES },
+        provider: SMS_LOG_PROVIDER_FILTER,
         sentAt: { gte: reminder.cancellationAt }
       },
       select: { id: true, sentAt: true }

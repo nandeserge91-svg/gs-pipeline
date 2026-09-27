@@ -1,18 +1,48 @@
 /**
- * 📱 SERVICE SMS8.io - Envoi de SMS automatiques
- * 
- * Ce service gère l'envoi de SMS via SMS8.io pour :
+ * 📱 SERVICE SMS - Envoi de SMS automatiques
+ *
+ * Ce service gère l'envoi de SMS pour :
  * - Notifications clients (commandes, livraisons, RDV)
  * - Alertes internes (livreurs, appelants)
  * - Confirmations de paiement
- * 
- * Documentation API : https://app.sms8.io/
+ *
+ * Deux fournisseurs (téléphone Android passerelle) :
+ * - SMSEnvoie (https://smsenvoie.com) : actif dès que SMSENVOIE_API_KEY est définie
+ *   (ou SMS_PROVIDER=SMSENVOIE). Envoi par file d'attente, voir smsenvoie.service.js.
+ * - SMS8.io (https://app.sms8.io/) : fournisseur historique, conservé en secours
+ *   (SMS_PROVIDER=SMS8 pour y revenir).
  */
 
 import axios from 'axios';
 import prisma from '../config/prisma.js';
 import { cleanPhoneNumber } from '../utils/phone.util.js';
-import { sendWhatsAppMessage } from './wasender.service.js';
+import { sendWhatsAppMessage, WASENDER_PROVIDER_NAME } from './wasender.service.js';
+import {
+  enqueueSmsEnvoieMessage,
+  getSmsEnvoieQuota,
+  SMSENVOIE_PROVIDER_NAME
+} from './smsenvoie.service.js';
+
+export const SMS_PROVIDERS = Object.freeze({ SMS8: 'SMS8', SMSENVOIE: 'SMSENVOIE' });
+
+/**
+ * Fournisseur SMS actif :
+ * - SMS_PROVIDER=SMSENVOIE ou SMS8 force le choix ;
+ * - sinon SMSEnvoie dès que SMSENVOIE_API_KEY est renseignée, SMS8 autrement.
+ */
+export function getActiveSmsProvider(env = process.env) {
+  const explicit = String(env.SMS_PROVIDER || '').trim().toUpperCase();
+  if (explicit === SMS_PROVIDERS.SMS8 || explicit === SMS_PROVIDERS.SMSENVOIE) {
+    return explicit;
+  }
+  return String(env.SMSENVOIE_API_KEY || '').trim() ? SMS_PROVIDERS.SMSENVOIE : SMS_PROVIDERS.SMS8;
+}
+
+// Journaux SMS tous fournisseurs confondus (SMS8 + SMSEnvoie), hors messages WhatsApp.
+export const SMS_LOG_PROVIDER_FILTER = Object.freeze({ not: WASENDER_PROVIDER_NAME });
+
+// Un SMS en file d'attente (PENDING) ou déjà confié au fournisseur ne doit pas être renvoyé.
+export const SMS_ALREADY_HANDLED_STATUSES = Object.freeze(['PENDING', 'SENT', 'DELIVERED', 'READ']);
 
 // Configuration SMS8.io
 const SMS8_API_URL = process.env.SMS8_API_URL || 'https://app.sms8.io/services/send.php';
@@ -244,13 +274,25 @@ export async function sendSms8Message(phone, message, metadata = {}) {
 }
 
 /**
- * Envoie toujours le SMS historique. Le service WhatsApp n'accepte que
+ * Envoie un SMS par le fournisseur actif uniquement (sans WhatsApp).
+ * Avec SMSEnvoie, le SMS est mis en file d'attente et le résultat revient tout de suite
+ * ({ success: true, queued: true, smsLogId }).
+ */
+export async function sendProviderSms(phone, message, metadata = {}) {
+  if (getActiveSmsProvider() === SMS_PROVIDERS.SMSENVOIE) {
+    return enqueueSmsEnvoieMessage(phone, message, metadata);
+  }
+  return sendSms8Message(phone, message, metadata);
+}
+
+/**
+ * Envoie toujours le SMS. Le service WhatsApp n'accepte que
  * DELIVERY_ASSIGNED ; tous les autres événements restent exclusivement SMS.
- * Le résultat principal reste celui de SMS8 afin de ne modifier aucun flux existant.
+ * Le résultat principal reste celui du SMS afin de ne modifier aucun flux existant.
  */
 export async function sendSMS(phone, message, metadata = {}) {
   const [smsResult, whatsappResult] = await Promise.all([
-    sendSms8Message(phone, message, metadata),
+    sendProviderSms(phone, message, metadata),
     sendWhatsAppMessage(phone, message, metadata)
   ]);
 
@@ -452,6 +494,18 @@ export const smsTemplates = {
  */
 export async function getSMSCredits() {
   try {
+    if (getActiveSmsProvider() === SMS_PROVIDERS.SMSENVOIE) {
+      const quota = await getSmsEnvoieQuota();
+      return {
+        success: true,
+        provider: SMSENVOIE_PROVIDER_NAME,
+        credits: quota.remaining ?? 'Illimité',
+        usedThisMonth: quota.usedThisMonth,
+        plan: quota.planName,
+        message: 'Quota SMSEnvoie récupéré avec succès'
+      };
+    }
+
     const response = await axios.get(SMS8_API_URL, {
       params: {
         key: CONFIGURED_SMS8_API_KEY
@@ -485,7 +539,7 @@ export async function getSMSStats(days = 30) {
     const stats = await prisma.smsLog.groupBy({
       by: ['status'],
       where: {
-        provider: { startsWith: 'SMS8' },
+        provider: SMS_LOG_PROVIDER_FILTER,
         sentAt: {
           gte: dateLimit
         }
@@ -496,13 +550,16 @@ export async function getSMSStats(days = 30) {
     const total = stats.reduce((sum, s) => sum + s._count, 0);
     const sent = stats.find(s => s.status === 'SENT')?._count || 0;
     const failed = stats.find(s => s.status === 'FAILED')?._count || 0;
+    const pending = stats.find(s => s.status === 'PENDING')?._count || 0;
 
     return {
       success: true,
       period: `${days} derniers jours`,
+      provider: getActiveSmsProvider(),
       total,
       sent,
       failed,
+      pending,
       successRate: total > 0 ? ((sent / total) * 100).toFixed(2) + '%' : '0%'
     };
   } catch (error) {
@@ -520,7 +577,7 @@ export async function getSMSStats(days = 30) {
  */
 export async function getSMSHistory(filters = {}) {
   try {
-    const where = { provider: { startsWith: 'SMS8' } };
+    const where = { provider: SMS_LOG_PROVIDER_FILTER };
     
     if (filters.orderId) where.orderId = parseInt(filters.orderId);
     if (filters.userId) where.userId = parseInt(filters.userId);
@@ -630,6 +687,8 @@ export async function sendScheduledSMS() {
 
 export default {
   sendSMS,
+  sendProviderSms,
+  getActiveSmsProvider,
   smsTemplates,
   getSMSCredits,
   getSMSStats,

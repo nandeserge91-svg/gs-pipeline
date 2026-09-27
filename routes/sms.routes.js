@@ -11,9 +11,11 @@ import {
   smsTemplates, 
   getSMSCredits, 
   getSMSStats, 
-  getSMSHistory 
+  getSMSHistory,
+  getActiveSmsProvider
 } from '../services/sms.service.js';
 import { getWasenderConfiguration } from '../services/wasender.service.js';
+import { getSmsEnvoiePublicConfiguration } from '../services/smsenvoie.service.js';
 
 const router = express.Router();
 
@@ -149,16 +151,20 @@ router.post('/test', authorize('ADMIN'), async (req, res) => {
       });
     }
 
-    // Envoi du SMS de test
+    // Envoi du SMS de test (tentative immédiate pour afficher l'erreur éventuelle)
     const result = await sendSMS(phoneNumber, message, {
       type: 'NOTIFICATION',
-      userId: req.user.id
+      userId: req.user.id,
+      immediate: true
     });
 
     if (result.success) {
       res.json({
         success: true,
-        message: 'SMS de test envoyé avec succès.',
+        queued: Boolean(result.queued),
+        message: result.queued
+          ? 'SMS de test mis en file d’envoi SMSEnvoie (envoi dans quelques instants).'
+          : 'SMS de test envoyé avec succès.',
         smsLogId: result.smsLogId,
         credits: result.credits
       });
@@ -272,7 +278,8 @@ router.get('/config', authorize('ADMIN'), async (req, res) => {
   try {
     const config = {
       enabled: process.env.SMS_ENABLED === 'true',
-      provider: 'SMS8',
+      provider: getActiveSmsProvider(),
+      smsenvoie: getSmsEnvoiePublicConfiguration(),
       whatsapp: getWasenderConfiguration(),
       senderName: process.env.SMS_SENDER_NAME || 'GS-Pipeline',
       typesEnabled: {
@@ -338,13 +345,17 @@ router.post('/send-manual', authorize('ADMIN', 'GESTIONNAIRE', 'APPELANT'), asyn
     const result = await sendSMS(phoneNumber, message, {
       type: 'NOTIFICATION',
       userId: req.user.id,
-      orderId: orderId ? parseInt(orderId) : undefined
+      orderId: orderId ? parseInt(orderId) : undefined,
+      immediate: true
     });
 
     if (result.success) {
       res.json({
         success: true,
-        message: 'SMS envoyé avec succès.',
+        queued: Boolean(result.queued),
+        message: result.queued
+          ? 'SMS mis en file d’envoi (envoi dans quelques instants).'
+          : 'SMS envoyé avec succès.',
         smsLogId: result.smsLogId,
         credits: result.credits
       });

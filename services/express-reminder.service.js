@@ -1,7 +1,9 @@
 import prisma from '../config/prisma.js';
 import {
   generateSmsFromTemplate,
-  sendSms8Message
+  sendProviderSms,
+  SMS_ALREADY_HANDLED_STATUSES,
+  SMS_LOG_PROVIDER_FILTER
 } from './sms.service.js';
 
 export const EXPRESS_REMINDER_DAYS = Object.freeze([1, 2, 3, 5, 7]);
@@ -120,7 +122,7 @@ export async function runExpressReminders(options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const logger = options.logger || console;
   const generateMessage = options.generateMessage || generateSmsFromTemplate;
-  const sendSms = options.sendSms || sendSms8Message;
+  const sendSms = options.sendSms || sendProviderSms;
 
   const summary = {
     disabled: false,
@@ -233,8 +235,8 @@ export async function runExpressReminders(options = {}) {
       where: {
         orderId: order.id,
         type: 'EXPRESS_REMINDER',
-        provider: { startsWith: 'SMS8' },
-        status: 'SENT',
+        provider: SMS_LOG_PROVIDER_FILTER,
+        status: { in: SMS_ALREADY_HANDLED_STATUSES },
         sentAt: { gte: reminder.dueAt }
       },
       select: { id: true, sentAt: true }
