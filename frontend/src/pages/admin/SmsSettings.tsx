@@ -40,9 +40,16 @@ interface SmsStats {
 }
 
 interface AndroidConfig {
+  provider?: 'SMS8' | 'SMSENVOIE';
+  providerLabel?: string;
+  configured?: boolean;
   deviceId: string | null;
+  deviceName?: string | null;
   simSlot: string | null;
-  selectionMode: 'SIM_SLOT';
+  simLabel?: string;
+  simSlotInvalid?: boolean;
+  maxPerMinute?: number;
+  selectionMode: 'SIM_SLOT' | 'DEVICE';
   usesSenderNumber: false;
 }
 
@@ -98,6 +105,7 @@ export default function SmsSettings() {
   const [settings, setSettings] = useState<SmsSetting[]>([]);
   const [stats, setStats] = useState<SmsStats>({});
   const [androidConfig, setAndroidConfig] = useState<AndroidConfig>({
+    provider: 'SMS8',
     deviceId: null,
     simSlot: null,
     selectionMode: 'SIM_SLOT',
@@ -204,10 +212,10 @@ export default function SmsSettings() {
 
     setTestingType(key);
     try {
-      await api.post(`/sms-settings/test/${key}`, {
+      const response = await api.post(`/sms-settings/test/${key}`, {
         phoneNumber: testPhone
       });
-      toast.success('SMS de test envoyé avec succès !');
+      toast.success(response.data?.message || 'SMS de test envoyé avec succès !');
       setTestPhone('');
     } catch (error: any) {
       console.error('Erreur test SMS:', error);
@@ -294,8 +302,57 @@ export default function SmsSettings() {
         <>
       {/* Configuration Android - visible seulement dans l'onglet paramètres */}
 
-      {/* Configuration Android */}
-      {androidConfig.deviceId && (
+      {/* Fournisseur SMS : SMSEnvoie (téléphone Xiaomi1) */}
+      {androidConfig.provider === 'SMSENVOIE' && (
+        <div className={`border rounded-lg p-4 ${
+          androidConfig.configured && !androidConfig.simSlotInvalid
+            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+            : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div className="flex items-start gap-3">
+            <Smartphone className={`w-6 h-6 mt-0.5 ${
+              androidConfig.configured && !androidConfig.simSlotInvalid ? 'text-green-600' : 'text-amber-600'
+            }`} />
+            <div className="flex-1">
+              <h3 className={`font-semibold mb-2 ${
+                androidConfig.configured && !androidConfig.simSlotInvalid ? 'text-green-900' : 'text-amber-900'
+              }`}>
+                📱 SMS envoyés via SMSEnvoie
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <span className="text-green-700 font-medium">Téléphone:</span>
+                  <span className="ml-2 text-green-900">
+                    {androidConfig.deviceName || androidConfig.deviceId || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-green-700 font-medium">Carte SIM:</span>
+                  <span className="ml-2 text-green-900">{androidConfig.simLabel || 'Automatique'}</span>
+                </div>
+                <div>
+                  <span className="text-green-700 font-medium">Cadence:</span>
+                  <span className="ml-2 text-green-900">
+                    ≤ {androidConfig.maxPerMinute || 8} SMS / minute
+                  </span>
+                </div>
+              </div>
+              <p className={`mt-2 text-xs ${
+                androidConfig.configured && !androidConfig.simSlotInvalid ? 'text-green-700' : 'text-amber-800'
+              }`}>
+                {!androidConfig.configured
+                  ? 'Clé API SMSEnvoie manquante : ajoutez SMSENVOIE_API_KEY dans les variables Railway.'
+                  : androidConfig.simSlotInvalid
+                    ? 'SMSENVOIE_SIM_SLOT invalide : utilisez 0 (SIM 1), 1 (SIM 2) ou laissez vide.'
+                    : 'Les SMS sont mis en file puis envoyés un par un pour respecter la limite SMSEnvoie (10 requêtes / minute).'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Configuration Android SMS8 */}
+      {androidConfig.provider !== 'SMSENVOIE' && androidConfig.deviceId && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <Smartphone className="w-6 h-6 text-green-600 mt-0.5" />

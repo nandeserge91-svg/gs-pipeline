@@ -26,6 +26,7 @@ import { scheduleAttendanceJobs } from './jobs/attendanceJobs.js';
 import { scheduleCleanupJob } from './jobs/cleanupPhotos.js';
 import { scheduleMarketingRelaunchJobs } from './jobs/marketingRelaunchJobs.js';
 import { scheduleExpressReminderJobs } from './jobs/expressReminderJobs.js';
+import { startSmsEnvoieOutbox } from './services/smsenvoie.service.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -74,6 +75,9 @@ scheduleMarketingRelaunchJobs();
 
 // Relances SMS et WhatsApp pour les colis EXPRESS en attente de retrait
 scheduleExpressReminderJobs();
+
+// 📱 File d'envoi SMSEnvoie (téléphone Xiaomi1) : ≤ 10 requêtes/minute imposées par l'API
+startSmsEnvoieOutbox();
 
 // Route de test
 app.get('/', (req, res) => {

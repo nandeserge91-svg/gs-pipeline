@@ -9,6 +9,31 @@ import {
   getWasenderConfiguration,
   WASENDER_PROVIDER_NAME
 } from '../services/wasender.service.js';
+import { getSmsEnvoiePublicConfiguration } from '../services/smsenvoie.service.js';
+import { getActiveSmsProvider } from '../services/sms.service.js';
+
+// Fournisseur SMS actif et téléphone utilisé (affiché dans « Paramètres SMS »)
+function getSmsProviderConfig(env = process.env) {
+  if (getActiveSmsProvider(env) === 'SMSENVOIE') {
+    return {
+      ...getSmsEnvoiePublicConfiguration(env),
+      selectionMode: 'DEVICE',
+      usesSenderNumber: false
+    };
+  }
+
+  return {
+    provider: 'SMS8',
+    providerLabel: 'SMS8',
+    configured: Boolean(env.SMS8_API_KEY && env.SMS_DEVICE_ID),
+    deviceId: env.SMS_DEVICE_ID || null,
+    deviceName: null,
+    simSlot: env.SMS_SIM_SLOT || null,
+    simLabel: env.SMS_SIM_SLOT === '1' ? 'SIM 2' : 'SIM 1',
+    selectionMode: 'SIM_SLOT',
+    usesSenderNumber: false
+  };
+}
 
 const router = express.Router();
 
@@ -114,12 +139,7 @@ router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
     res.json({
       success: true,
       globalEnabled: process.env.SMS_ENABLED === 'true',
-      androidConfig: {
-        deviceId: process.env.SMS_DEVICE_ID || null,
-        simSlot: process.env.SMS_SIM_SLOT || null,
-        selectionMode: 'SIM_SLOT',
-        usesSenderNumber: false
-      },
+      androidConfig: getSmsProviderConfig(),
       whatsappConfig: getWasenderConfiguration(),
       settings
     });
@@ -180,7 +200,8 @@ router.get('/stats', authenticate, authorize('ADMIN'), async (req, res) => {
     const stats = await prisma.smsLog.groupBy({
       by: ['type', 'status'],
       where: {
-        provider: { startsWith: 'SMS8' },
+        // Tous les SMS (SMS8 historique + SMSEnvoie), hors messages WhatsApp
+        provider: { not: WASENDER_PROVIDER_NAME },
         sentAt: {
           gte: thirtyDaysAgo
         }
@@ -397,13 +418,17 @@ router.post('/test/:type', authenticate, authorize('ADMIN'), async (req, res) =>
 
     const result = await sendSMS(phoneNumber, message, {
       type: smsLogType,
-      userId: req.user.userId
+      userId: req.user.id,
+      immediate: true
     });
 
     if (result.success) {
       res.json({
         success: true,
-        message: 'SMS de test envoyé avec succès',
+        queued: Boolean(result.queued),
+        message: result.queued
+          ? 'SMS de test mis en file d’envoi SMSEnvoie (envoi dans quelques instants)'
+          : 'SMS de test envoyé avec succès',
         smsLogId: result.smsLogId,
         phoneNumber: phoneNumber
       });
