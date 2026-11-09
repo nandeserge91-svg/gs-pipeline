@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import { useAuthStore } from '@/store/authStore';
+import DelivererNote from '@/components/ui/DelivererNote';
 
 const RAISONS_RETOUR = {
   CLIENT_ABSENT: 'Client absent / Injoignable',
@@ -1478,8 +1479,9 @@ export default function Tournees() {
                           <td className="whitespace-nowrap px-3 py-3 text-right font-medium">{formatCurrency(order.montant)}</td>
                           <td className="px-3 py-3 text-xs">
                             <p className="max-w-[200px] truncate text-gray-600" title={order.noteGestionnaire || order.noteAppelant || ''}>
-                              {order.noteGestionnaire || order.noteAppelant || '—'}
+                              {order.noteGestionnaire || order.noteAppelant || (order.noteLivreur ? null : '—')}
                             </p>
+                            <DelivererNote note={order.noteLivreur} />
                           </td>
                           <td className="px-3 py-3 text-center">
                             <span className={`whitespace-nowrap rounded px-2 py-1 text-xs ${getTourneeOrderStatusColor(order.status)}`}>
@@ -1933,9 +1935,10 @@ export default function Tournees() {
                                 <span className="text-gray-600 truncate block" title={order.noteAppelant}>
                                   💬 {order.noteAppelant}
                                 </span>
-                              ) : (
+                              ) : !order.noteLivreur ? (
                                 <span className="text-gray-400">-</span>
-                              )}
+                              ) : null}
+                              <DelivererNote note={order.noteLivreur} />
                             </td>
                             <td className="px-3 py-2 text-center">
                               <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${getTourneeOrderStatusColor(order.status)}`}>

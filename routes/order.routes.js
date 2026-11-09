@@ -489,6 +489,10 @@ router.put('/:id/status', async (req, res) => {
       if (order.delivererId !== user.id) {
         return res.status(403).json({ error: 'Cette commande ne vous est pas assignée.' });
       }
+      // Un refus doit toujours être expliqué par le livreur
+      if (status === 'REFUSEE' && (typeof note !== 'string' || !note.trim())) {
+        return res.status(400).json({ error: 'Indiquez la cause du refus dans la note avant de valider.' });
+      }
     }
 
     // Transaction pour gérer le statut + stock de manière cohérente

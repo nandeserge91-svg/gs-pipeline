@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Truck, Package, Search, Filter, Calendar, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { deliveryApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
+import DelivererNote from '@/components/ui/DelivererNote';
 
 export default function Deliveries() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -308,6 +309,7 @@ export default function Deliveries() {
                           <span className={`badge ${getStatusColor(order.status)}`}>
                             {getStatusLabel(order.status)}
                           </span>
+                          <DelivererNote note={order.noteLivreur} />
                         </td>
                         <td className="py-2 px-3 text-sm">
                           {order.deliveryType === 'EXPEDITION' && order.codeExpedition ? (

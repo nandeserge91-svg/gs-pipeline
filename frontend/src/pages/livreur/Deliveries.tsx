@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Phone, Navigation, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -6,11 +6,21 @@ import { deliveryApi, ordersApi } from '@/lib/api';
 import { formatCurrency, getStatusLabel, getStatusColor } from '@/utils/statusHelpers';
 import type { Order } from '@/types';
 
+const REFUSAL_NOTE_REQUIRED_MESSAGE = 'Indiquez la cause du refus dans la note avant de valider.';
+
 export default function Deliveries() {
   const [selectedDate, setSelectedDate] = useState(''); // ✅ Vide par défaut = toutes les livraisons
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [note, setNote] = useState('');
+  const [refusalNoteMissing, setRefusalNoteMissing] = useState(false);
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
+
+  const closeModal = () => {
+    setSelectedOrder(null);
+    setNote('');
+    setRefusalNoteMissing(false);
+  };
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['livreur-deliveries', selectedDate],
@@ -23,8 +33,7 @@ export default function Deliveries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['livreur-deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['livreur-my-stats'] });
-      setSelectedOrder(null);
-      setNote('');
+      closeModal();
       toast.success('Livraison mise à jour avec succès');
     },
     onError: (error: any) => {
@@ -38,14 +47,22 @@ export default function Deliveries() {
     // Vérifier si le délai de 24h n'est pas dépassé
     if (selectedOrder.status !== 'ASSIGNEE' && !canModifyOrder(selectedOrder)) {
       toast.error('Le délai de 24h pour modifier cette livraison est dépassé');
-      setSelectedOrder(null);
+      closeModal();
       return;
     }
-    
+
+    const refusalNote = note.trim();
+    if (status === 'REFUSEE' && !refusalNote) {
+      setRefusalNoteMissing(true);
+      toast.error(REFUSAL_NOTE_REQUIRED_MESSAGE);
+      noteInputRef.current?.focus();
+      return;
+    }
+
     updateStatusMutation.mutate({
       id: selectedOrder.id,
       status,
-      note: note || undefined,
+      note: (status === 'REFUSEE' ? refusalNote : note) || undefined,
     });
   };
 
@@ -344,16 +361,28 @@ export default function Deliveries() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Note (optionnel)
+              <label htmlFor="delivery-note" className="block text-sm font-medium text-gray-700 mb-2">
+                Note <span className="font-normal text-gray-500">(obligatoire si le client refuse le colis)</span>
               </label>
               <textarea
+                id="delivery-note"
+                ref={noteInputRef}
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="input"
+                onChange={(e) => {
+                  setNote(e.target.value);
+                  setRefusalNoteMissing(false);
+                }}
+                className={`input ${refusalNoteMissing ? 'border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/50' : ''}`}
                 rows={3}
-                placeholder="Ajouter une note..."
+                placeholder="En cas de refus, indiquez la cause..."
+                aria-invalid={refusalNoteMissing}
+                aria-describedby={refusalNoteMissing ? 'delivery-note-error' : undefined}
               />
+              {refusalNoteMissing && (
+                <p id="delivery-note-error" role="alert" className="mt-2 text-sm font-medium text-red-600">
+                  {REFUSAL_NOTE_REQUIRED_MESSAGE}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -381,10 +410,7 @@ export default function Deliveries() {
             </div>
 
             <button
-              onClick={() => {
-                setSelectedOrder(null);
-                setNote('');
-              }}
+              onClick={closeModal}
               className="btn btn-secondary w-full mt-4"
             >
               Fermer

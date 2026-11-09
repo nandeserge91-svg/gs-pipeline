@@ -7,6 +7,7 @@ import type { Order } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import CreateOrderModal from '@/components/modals/CreateOrderModal';
+import DelivererNote from '@/components/ui/DelivererNote';
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -451,6 +452,7 @@ export default function Orders() {
                         <span className={`badge ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
                         </span>
+                        <DelivererNote note={order.noteLivreur} />
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-500">
                         {formatDateTime(order.createdAt)}

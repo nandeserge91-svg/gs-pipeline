@@ -67,6 +67,7 @@ router.get('/tournees', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK')
             status: true,
             deliveryType: true,
             noteGestionnaire: true,
+            noteLivreur: true,
             product: {
               select: {
                 id: true,
