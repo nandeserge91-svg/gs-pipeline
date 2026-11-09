@@ -64,6 +64,7 @@ router.get('/lists', authorize('ADMIN', 'GESTIONNAIRE', 'GESTIONNAIRE_STOCK', 'A
             produitNom: true,
             montant: true,
             status: true,
+            noteAppelant: true,
             noteLivreur: true,
             deliveryType: true,
             codeExpedition: true,

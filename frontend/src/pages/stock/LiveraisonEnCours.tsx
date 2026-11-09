@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  RefreshCw, 
-  RotateCcw, 
-  Package, 
-  Truck, 
+import { useQuery } from '@tanstack/react-query';
+import {
+  RefreshCw,
+  RotateCcw,
+  Package,
+  Truck,
   AlertTriangle,
+  CheckCircle,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -14,9 +15,8 @@ import {
   User,
   Phone
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
+import DelivererNote from '@/components/ui/DelivererNote';
 
 type DateFilter = 'today' | 'week' | 'month' | 'all';
 
@@ -42,14 +42,10 @@ interface StockAnalysisData {
 }
 
 const LiveraisonEnCours = () => {
-  const { user } = useAuthStore();
-  const queryClient = useQueryClient();
   const [expandedDeliverer, setExpandedDeliverer] = useState<number | null>(null);
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [showHistory, setShowHistory] = useState(false);
-
-  const canSync = user?.role === 'ADMIN';
 
   // Query pour récupérer les données
   const { data, isLoading, refetch } = useQuery<StockAnalysisData>({
@@ -59,21 +55,6 @@ const LiveraisonEnCours = () => {
         params: { includeHistory: showHistory }
       });
       return data;
-    }
-  });
-
-  // Mutation pour synchroniser
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post('/stock-analysis/recalculate-local-reserve');
-      return data;
-    },
-    onSuccess: (result) => {
-      toast.success(result.message || 'Synchronisation réussie');
-      queryClient.invalidateQueries({ queryKey: ['stock-analysis-local'] });
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Erreur lors de la synchronisation');
     }
   });
 
@@ -144,6 +125,12 @@ const LiveraisonEnCours = () => {
             <Clock size={12} /> En livraison
           </span>
         );
+      case 'LIVREE':
+        return (
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex items-center gap-1">
+            <CheckCircle size={12} /> Livré
+          </span>
+        );
       case 'REFUSEE':
         return (
           <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium flex items-center gap-1">
@@ -164,17 +151,6 @@ const LiveraisonEnCours = () => {
         );
       default:
         return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{status}</span>;
-    }
-  };
-
-  const handleSync = () => {
-    const confirmed = window.confirm(
-      'Synchroniser le stock "en livraison" (stockLocalReserve) avec la réalité des commandes en cours ?\n\n' +
-      'Cela corrige les valeurs négatives/erronées et crée des mouvements de type CORRECTION.\n' +
-      'Aucun stock magasin (stockActuel) ni EXPRESS ne sera modifié.'
-    );
-    if (confirmed) {
-      syncMutation.mutate();
     }
   };
 
@@ -208,16 +184,6 @@ const LiveraisonEnCours = () => {
             <RefreshCw size={18} />
             Actualiser
           </button>
-          {canSync && (
-            <button
-              onClick={handleSync}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-              disabled={syncMutation.isPending}
-            >
-              <RotateCcw size={18} className={syncMutation.isPending ? 'animate-spin' : ''} />
-              {syncMutation.isPending ? 'Synchronisation...' : 'Synchroniser'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -401,6 +367,7 @@ const LiveraisonEnCours = () => {
                                 <p className="text-xs text-gray-500">
                                   📅 {new Date(cmd.deliveryDate || cmd.createdAt).toLocaleDateString('fr-FR')}
                                 </p>
+                                <DelivererNote note={cmd.noteLivreur} />
                               </div>
                             </div>
                           ))}
@@ -476,6 +443,7 @@ const LiveraisonEnCours = () => {
                             <p className="text-xs text-gray-500">
                               📅 {new Date(cmd.deliveryDate || cmd.createdAt).toLocaleDateString('fr-FR')}
                             </p>
+                            <DelivererNote note={cmd.noteLivreur} />
                           </div>
                         </div>
                       ))}
@@ -497,7 +465,6 @@ const LiveraisonEnCours = () => {
         <ul className="text-sm text-blue-800 space-y-1 ml-6 list-disc">
           <li>Affiche TOUS les produits avec les livreurs</li>
           <li>Inclut: En livraison, Refusé, Annulé, Retourné</li>
-          <li>Utilisez "Synchroniser" pour corriger les écarts (Admin uniquement)</li>
           <li>Les commandes livrées sont automatiquement retirées</li>
         </ul>
       </div>
